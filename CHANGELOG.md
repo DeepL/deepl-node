@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- The debug log helper no longer crashes when axios error fields return a non-primitive from `toString` or `Symbol.toPrimitive`.
+
+### Security
+- Bumped `axios` to `~1.15.2` to address 13 high-severity advisories.
 
 ## [1.27.0] - 2026-04-27
 ### Changed

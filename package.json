@@ -21,7 +21,7 @@
     "dependencies": {
         "@types/node": ">=12.0",
         "adm-zip": "^0.5.16",
-        "axios": "^1.7.4",
+        "axios": "~1.15.2",
         "form-data": "^3.0.4",
         "loglevel": ">=1.6.2"
     },

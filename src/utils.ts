@@ -22,11 +22,28 @@ import {
 
 const logger = loglevel.getLogger('deepl');
 
+// Stringify a value safely for logging. Default `${value}` interpolation
+// throws "Cannot convert object to primitive value" on objects whose
+// `[Symbol.toPrimitive]`/`toString`/`valueOf` returns an object instead of a
+// primitive (some axios error fields fall into this category in certain
+// releases). Fall back to JSON.stringify, and finally to a sentinel string.
+function safeStringify(value: unknown): string {
+    try {
+        return String(value);
+    } catch {
+        try {
+            return JSON.stringify(value) ?? '<unprintable>';
+        } catch {
+            return '<unprintable>';
+        }
+    }
+}
+
 function concatLoggingArgs(args?: object): string {
     let detail = '';
     if (args) {
         for (const [key, value] of Object.entries(args)) {
-            detail += `, ${key} = ${value}`;
+            detail += `, ${key} = ${safeStringify(value)}`;
         }
     }
     return detail;
