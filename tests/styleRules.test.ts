@@ -2,7 +2,15 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 import * as deepl from 'deepl-node';
-import { makeDeeplClient, testTimeout, withMockServer } from './core';
+import fs from 'fs';
+import {
+    exampleText,
+    makeDeeplClient,
+    makeTranslator,
+    tempFiles,
+    testTimeout,
+    withMockServer,
+} from './core';
 
 describe('Style Rules Tests', () => {
     const DEFAULT_STYLE_ID = 'dca2e053-8ae5-45e6-a0d2-881156e7f4e4';
@@ -185,8 +193,8 @@ describe('Style Rules Tests', () => {
         // Note: this test may use the mock server that will not translate the text
         // with a style rule, therefore we do not check the translated result.
         const deeplClient = makeDeeplClient();
-        const exampleText = 'Hallo, Welt!';
-        await deeplClient.translateText(exampleText, 'de', 'en-US', {
+        const exampleTextValue = 'Hallo, Welt!';
+        await deeplClient.translateText(exampleTextValue, 'de', 'en-US', {
             styleRule: DEFAULT_STYLE_ID,
         });
     });
@@ -195,9 +203,45 @@ describe('Style Rules Tests', () => {
         const deeplClient = makeDeeplClient();
         const styleRules = await deeplClient.getAllStyleRules();
         const styleRule = styleRules[0];
-        const exampleText = 'Hallo, Welt!';
-        await deeplClient.translateText(exampleText, 'de', 'en-US', {
+        const exampleTextValue = 'Hallo, Welt!';
+        await deeplClient.translateText(exampleTextValue, 'de', 'en-US', {
             styleRule: styleRule,
         });
     });
+
+    withMockServer(
+        'test translateDocument with styleRule',
+        async () => {
+            // Note: the default style rule language is 'en', so the target language
+            // must be an English variant for the mock server to accept the request.
+            const translator = makeTranslator();
+            const [exampleDocument, , outputDocumentPath] = tempFiles();
+            fs.writeFileSync(exampleDocument, exampleText.de);
+            await translator.translateDocument(exampleDocument, outputDocumentPath, 'de', 'en-US', {
+                styleRule: DEFAULT_STYLE_ID,
+            });
+        },
+        testTimeout,
+    );
+
+    withMockServer(
+        'test translateDocument with StyleRuleInfo object',
+        async () => {
+            const deeplClient = makeDeeplClient();
+            const styleRules = await deeplClient.getAllStyleRules();
+            const styleRule = styleRules[0];
+            const [exampleDocument, , outputDocumentPath] = tempFiles();
+            fs.writeFileSync(exampleDocument, exampleText.de);
+            await deeplClient.translateDocument(
+                exampleDocument,
+                outputDocumentPath,
+                'de',
+                'en-US',
+                {
+                    styleRule: styleRule,
+                },
+            );
+        },
+        testTimeout,
+    );
 });

@@ -175,6 +175,10 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
 -   `glossary`: specifies a glossary to use with translation, either as a string
     containing the glossary ID, or a `MultilingualGlossaryInfo`/`GlossaryInfo` as returned by
     `getMultilingualGlossary()`/`getGlossary()`.
+-   `glossaryIds`: specifies up to 5 glossaries to use with translation, as an array of
+    glossary ID strings, `MultilingualGlossaryInfo`, or `GlossaryInfo` objects. Glossaries are
+    applied in the order given, with the first matching term taking precedence. Requires
+    `sourceLang` to be set, and cannot be combined with the singular `glossary` option.
 -   `styleRule`: specifies a style rule to use with translation, either as a string
     containing the style rule ID, or a `StyleRuleInfo` as returned by `getAllStyleRules()`.
 -   `translationMemory`: specifies a translation memory to use with translation,
@@ -278,7 +282,10 @@ directly:
 
 -   `formality`: same as in [Text translation options](#text-translation-options).
 -   `glossary`: same as in [Text translation options](#text-translation-options).
+-   `glossaryIds`: same as in [Text translation options](#text-translation-options).
 -   `styleRule`: same as in [Text translation options](#text-translation-options).
+-   `translationMemory`: same as in [Text translation options](#text-translation-options).
+-   `translationMemoryThreshold`: same as in [Text translation options](#text-translation-options).
 -   `filename`: if the input file is not provided as file path, this option is
     needed to specify the file extension.
 -   `extraRequestParameters`: same as in [Text translation options](#text-translation-options).

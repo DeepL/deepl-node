@@ -5,11 +5,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added support for using multiple glossaries in text and document translation
+  via the `glossaryIds` option (up to 5 glossary IDs) in `TranslateTextOptions`
+  and `DocumentTranslateOptions`.
+- Added support for style rules in document translation via the `styleRule`
+  option in `DocumentTranslateOptions`.
+- Added support for translation memories in document translation via the
+  `translationMemory` and `translationMemoryThreshold` options in
+  `DocumentTranslateOptions`.
+
 ### Fixed
 - The debug log helper no longer crashes when axios error fields return a non-primitive from `toString` or `Symbol.toPrimitive`.
 
 ### Security
-- Bumped `axios` to `~1.15.2` to address 13 high-severity advisories.
+- Bumped `axios` to `^1.19.0`, `form-data` to `^3.0.5`, and `adm-zip` to
+  `^0.6.0` to resolve high-severity npm audit advisories in production
+  dependencies.
 
 ## [1.27.0] - 2026-04-27
 ### Changed

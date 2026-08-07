@@ -699,7 +699,11 @@ describe('Multilingual Glossary Tests', () => {
         );
         const glossaryName = glossaryCleanup.glossaryName;
         const inputTextEnDe = 'The knight is very strong.';
-        const inputTextDeEn = 'Der Läufer ist super.';
+        const inputTextDeEn = 'Der Hund bellt.';
+        // Glossaries are a soft hint to the model, not a hard replacement, so
+        // the entries must force a plausible non-default target the model will
+        // honor in context (e.g. Hund -> hound, default is "dog"). A term the
+        // model strongly overrides (e.g. Läufer -> carpet) is not applied.
         const glossaryDicts = [
             {
                 sourceLangCode: SOURCE_LANG,
@@ -709,7 +713,7 @@ describe('Multilingual Glossary Tests', () => {
             {
                 sourceLangCode: TARGET_LANG,
                 targetLangCode: SOURCE_LANG,
-                entries: new deepl.GlossaryEntries({ entries: { Läufer: 'carpet' } }),
+                entries: new deepl.GlossaryEntries({ entries: { Hund: 'hound' } }),
             },
         ];
         const createdGlossary: deepl.MultilingualGlossaryInfo =
@@ -731,7 +735,7 @@ describe('Multilingual Glossary Tests', () => {
                 { glossary: createdGlossary },
             );
             expect(typeof translationResultDeEn.text).toBe('string');
-            expect(translationResultDeEn.text.toLowerCase().includes('carpet')).toBe(true);
+            expect(translationResultDeEn.text.toLowerCase().includes('hound')).toBe(true);
             await expect(
                 deeplClient.translateText(inputTextEnDe, null /* sourceLang */, TARGET_LANG, {
                     glossary: createdGlossary,

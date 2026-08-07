@@ -1,7 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { FsHelper } from '../../src/fsHelper';
-import { makeTranslator, testFilePaths, withRealServer } from '../core';
+import {
+    makeTranslator,
+    testFilePaths,
+    withRealServer,
+    withServerEnforcingDocSizeLimit,
+} from '../core';
 import { DocumentTranslationError, Translator } from '../../src';
 import {
     createMinifiableTestDocument,
@@ -10,7 +15,10 @@ import {
 } from './testHelpers';
 import mock from 'mock-fs';
 
-jest.setTimeout(100000);
+// These tests upload 30 MB+ documents to the real API and run a full async
+// document-translation round-trip; the CI runner's network to the server is
+// slower than local, so allow generous headroom to avoid mid-request timeouts.
+jest.setTimeout(240000);
 
 describe('minification lifecycle with translate', () => {
     beforeEach(() => {
@@ -59,7 +67,7 @@ describe('minification lifecycle with translate', () => {
         expect(fs.statSync(outputFilePath).size).toBeGreaterThan(30000000);
     });
 
-    withRealServer(
+    withServerEnforcingDocSizeLimit(
         'should not minify when not specified and should error when translating too large of a document',
         async () => {
             const originalFile = testFilePaths.pptx;
@@ -111,7 +119,7 @@ describe('minification lifecycle with translate', () => {
         verifyDocumentIsTranslated(minifiableFilePath, outputFilePath);
     });
 
-    withRealServer('expect 413 if input file is not a string', async () => {
+    withServerEnforcingDocSizeLimit('expect 413 if input file is not a string', async () => {
         const originalFile = testFilePaths.pptx;
         const translator = makeTranslator() as Translator;
 

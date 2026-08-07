@@ -254,6 +254,13 @@ export const withMockServer = usingMockServer ? it : it.skip;
 export const withMockProxyServer = usingMockProxyServer ? it : it.skip;
 // Use instead of it(...) for tests that cannot run using mock-server
 export const withRealServer = usingMockServer ? it.skip : it;
+// Use instead of it(...) for tests that assert the server rejects documents
+// over the 30 MB translation limit. Not every environment enforces that limit
+// (e.g. the dev/test API does not), so these are opt-in: run them against a
+// limit-enforcing server (e.g. production) with DEEPL_TEST_DOC_SIZE_LIMIT=1.
+export const serverEnforcesDocSizeLimit =
+    !usingMockServer && process.env.DEEPL_TEST_DOC_SIZE_LIMIT === '1';
+export const withServerEnforcingDocSizeLimit = serverEnforcesDocSizeLimit ? it : it.skip;
 
 const proxyUrlString = process.env.DEEPL_PROXY_URL;
 const proxyUrl = proxyUrlString ? new URL(proxyUrlString) : undefined;
@@ -294,6 +301,7 @@ module.exports = {
     withMockServer,
     withMockProxyServer,
     withRealServer,
+    withServerEnforcingDocSizeLimit,
     makeTranslator,
     makeDeeplClient,
     documentTranslationTestTimeout,

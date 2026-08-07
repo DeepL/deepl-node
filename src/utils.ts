@@ -18,6 +18,8 @@ import {
     MultilingualGlossaryInfo,
     MultilingualGlossaryDictionaryEntries,
     StyleRuleInfo,
+    TranslationMemoryId,
+    TranslationMemoryInfo,
 } from './types';
 
 const logger = loglevel.getLogger('deepl');
@@ -161,14 +163,29 @@ export function buildURLSearchParams(
     formality: Formality | undefined,
     glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo | undefined,
     extraRequestParameters: RequestParameters | undefined,
+    glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>,
 ): URLSearchParams {
     targetLang = standardizeLanguageCode(targetLang);
     if (sourceLang !== null) {
         sourceLang = standardizeLanguageCode(sourceLang);
     }
 
-    if (glossary !== undefined && sourceLang === null) {
+    // Treat an empty glossaryIds array as "no glossaries" so it doesn't enforce
+    // the sourceLang requirement or append an empty glossary_ids parameter.
+    const hasGlossaryIds = glossaryIds !== undefined && glossaryIds.length > 0;
+
+    if (glossary !== undefined && hasGlossaryIds) {
+        throw new DeepLError(
+            'glossary and glossaryIds options cannot be used together, please use only one.',
+        );
+    }
+
+    if ((glossary !== undefined || hasGlossaryIds) && sourceLang === null) {
         throw new DeepLError('sourceLang is required if using a glossary');
+    }
+
+    if (glossaryIds !== undefined && glossaryIds.length > 5) {
+        throw new DeepLError('glossaryIds option supports at most 5 glossaries.');
     }
 
     if (targetLang === 'en') {
@@ -201,6 +218,20 @@ export function buildURLSearchParams(
             glossary = glossary.glossaryId;
         }
         searchParams.append('glossary_id', glossary);
+    }
+    if (glossaryIds !== undefined && glossaryIds.length > 0) {
+        const ids = glossaryIds.map((glossaryId) => {
+            if (!isString(glossaryId)) {
+                if (glossaryId.glossaryId === undefined) {
+                    throw new DeepLError(
+                        'glossaryIds entries should be strings containing the Glossary ID or GlossaryInfo objects.',
+                    );
+                }
+                return glossaryId.glossaryId;
+            }
+            return glossaryId;
+        });
+        searchParams.append('glossary_ids', ids.join(','));
     }
     if (extraRequestParameters !== undefined) {
         for (const paramName in extraRequestParameters) {
@@ -241,6 +272,56 @@ export function appendTextsAndReturnIsSingular(
         }
     }
     return singular;
+}
+
+/**
+ * Validates and appends style-rule and translation-memory options to HTTP request parameters.
+ * These options are shared between text and document translation requests.
+ * @param data Parameters for HTTP request.
+ * @param options Options containing style-rule and translation-memory fields.
+ * @private
+ */
+export function appendStyleAndTranslationMemoryOptions(
+    data: URLSearchParams,
+    options: {
+        styleRule?: StyleId | StyleRuleInfo;
+        translationMemory?: TranslationMemoryId | TranslationMemoryInfo;
+        translationMemoryThreshold?: number;
+    },
+) {
+    if (options.styleRule !== undefined) {
+        if (!isString(options.styleRule)) {
+            if (options.styleRule.styleId === undefined) {
+                throw new DeepLError(
+                    'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
+                );
+            }
+            data.append('style_id', options.styleRule.styleId);
+        } else {
+            data.append('style_id', options.styleRule);
+        }
+    }
+    if (options.translationMemory !== undefined) {
+        if (!isString(options.translationMemory)) {
+            if (options.translationMemory.translationMemoryId === undefined) {
+                throw new DeepLError(
+                    'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
+                );
+            }
+            data.append('translation_memory_id', options.translationMemory.translationMemoryId);
+        } else {
+            data.append('translation_memory_id', options.translationMemory);
+        }
+    }
+    if (options.translationMemoryThreshold !== undefined) {
+        if (options.translationMemory === undefined) {
+            throw new DeepLError('translationMemoryThreshold requires translationMemory');
+        }
+        if (options.translationMemoryThreshold < 0 || options.translationMemoryThreshold > 100) {
+            throw new DeepLError('translationMemoryThreshold must be a number between 0 and 100.');
+        }
+        data.append('translation_memory_threshold', options.translationMemoryThreshold.toString());
+    }
 }
 
 /**
@@ -295,37 +376,7 @@ export function validateAndAppendTextOptions(
     if (options.ignoreTags !== undefined) {
         data.append('ignore_tags', joinTagList(options.ignoreTags));
     }
-    if (options.styleRule !== undefined) {
-        if (!isString(options.styleRule)) {
-            if (options.styleRule.styleId === undefined) {
-                throw new DeepLError(
-                    'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
-                );
-            }
-            data.append('style_id', options.styleRule.styleId);
-        }
-    }
-    if (options.translationMemory !== undefined) {
-        if (!isString(options.translationMemory)) {
-            if (options.translationMemory.translationMemoryId === undefined) {
-                throw new DeepLError(
-                    'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
-                );
-            }
-            data.append('translation_memory_id', options.translationMemory.translationMemoryId);
-        } else {
-            data.append('translation_memory_id', options.translationMemory);
-        }
-    }
-    if (options.translationMemoryThreshold !== undefined) {
-        if (options.translationMemory === undefined) {
-            throw new DeepLError('translationMemoryThreshold requires translationMemory');
-        }
-        if (options.translationMemoryThreshold < 0 || options.translationMemoryThreshold > 100) {
-            throw new DeepLError('translationMemoryThreshold must be a number between 0 and 100.');
-        }
-        data.append('translation_memory_threshold', options.translationMemoryThreshold.toString());
-    }
+    appendStyleAndTranslationMemoryOptions(data, options);
     if (options.customInstructions !== undefined) {
         for (const instruction of options.customInstructions) {
             data.append('custom_instructions', instruction);

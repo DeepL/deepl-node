@@ -154,8 +154,20 @@ export interface TranslateTextOptions extends BaseRequestOptions {
 
     /** Specifies the ID of a glossary to use with translation. Or
      * using the given v2 glossary or given multilingual glossary.
+     *
+     * Cannot be combined with `glossaryIds`.
      */
     glossary?: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo;
+
+    /** Specifies the IDs of up to 5 glossaries to use with translation. Glossaries
+     * are applied in the order given, with the first matching term taking
+     * precedence. Accepts glossary ID strings, GlossaryInfo, or
+     * MultilingualGlossaryInfo objects (the `.glossaryId` is extracted).
+     *
+     * Requires `sourceLang` to be set. Cannot be combined with the singular
+     * `glossary` option.
+     */
+    glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>;
 
     /** Specifies the ID of a style rule to use with translation, or
      * a StyleRuleInfo object as returned by getAllStyleRules().
@@ -216,13 +228,33 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
 
     /** Specifies the ID of a glossary to use with translation. Or
      * using the given v2 glossary or given multilingual glossary.
+     *
+     * Cannot be combined with `glossaryIds`.
      */
     glossary?: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo;
+
+    /** Specifies the IDs of up to 5 glossaries to use with translation. Glossaries
+     * are applied in the order given, with the first matching term taking
+     * precedence. Accepts glossary ID strings, GlossaryInfo, or
+     * MultilingualGlossaryInfo objects (the `.glossaryId` is extracted).
+     *
+     * Requires `sourceLang` to be set. Cannot be combined with the singular
+     * `glossary` option.
+     */
+    glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>;
 
     /** Specifies the ID of a style rule to use with translation, or
      * a StyleRuleInfo object as returned by getAllStyleRules().
      */
     styleRule?: StyleId | StyleRuleInfo;
+
+    /** Specifies the ID of a translation memory to use with translation, or
+     * a TranslationMemoryInfo object as returned by listTranslationMemories().
+     */
+    translationMemory?: TranslationMemoryId | TranslationMemoryInfo;
+
+    /** Specifies the minimum similarity threshold (0 to 100) for translation memory matches. */
+    translationMemoryThreshold?: number;
 
     /** Filename including extension, only required when translating documents as streams. */
     filename?: string;

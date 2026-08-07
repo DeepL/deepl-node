@@ -43,6 +43,7 @@ import {
 import {
     appendTextsAndReturnIsSingular,
     validateAndAppendTextOptions,
+    appendStyleAndTranslationMemoryOptions,
     nonRegionalLanguageCode,
     buildURLSearchParams,
     isFreeAccountAuthKey,
@@ -246,6 +247,7 @@ export class Translator {
             options?.formality,
             options?.glossary,
             options?.extraRequestParameters,
+            options?.glossaryIds,
         );
         // Always send show_billed_characters=1, remove when the API default is changed to true
         data.append('show_billed_characters', '1');
@@ -618,7 +620,9 @@ export class Translator {
             options?.formality,
             options?.glossary,
             options?.extraRequestParameters,
+            options?.glossaryIds,
         );
+        appendStyleAndTranslationMemoryOptions(data, options ?? {});
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/document',

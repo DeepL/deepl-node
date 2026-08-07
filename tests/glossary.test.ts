@@ -379,4 +379,116 @@ describe('translate using glossaries', () => {
         },
         testTimeout,
     ); // Increased timeout for test involving translation
+
+    it('should create basic text using multiple glossaryIds', async () => {
+        const textsEn = ['Apple', 'Banana'];
+        const textsDe = ['Apfel', 'Banane'];
+        const entriesApple = new deepl.GlossaryEntries({ entries: { Apple: 'Apfel' } });
+        const entriesBanana = new deepl.GlossaryEntries({ entries: { Banana: 'Banane' } });
+
+        const translator = makeTranslator();
+        const [glossaryApple, cleanupGlossaryApple] = await createManagedGlossary(translator, {
+            sourceLang: 'en',
+            targetLang: 'de',
+            entries: entriesApple,
+            glossaryNameSuffix: '_apple',
+        });
+        const [glossaryBanana, cleanupGlossaryBanana] = await createManagedGlossary(translator, {
+            sourceLang: 'en',
+            targetLang: 'de',
+            entries: entriesBanana,
+            glossaryNameSuffix: '_banana',
+        });
+        try {
+            const result = await translator.translateText(textsEn, 'en', 'de', {
+                glossaryIds: [glossaryApple, glossaryBanana],
+            });
+            expect(result.map((textResult: deepl.TextResult) => textResult.text)).toStrictEqual(
+                textsDe,
+            );
+        } finally {
+            await cleanupGlossaryApple();
+            await cleanupGlossaryBanana();
+        }
+    });
+
+    it(
+        'should translate documents using multiple glossaryIds',
+        async () => {
+            const [exampleDocumentPath, , outputDocumentPath] = tempFiles();
+            const inputText = 'artist\nprize';
+            const expectedOutputText = 'Maler\nGewinn';
+            fs.writeFileSync(exampleDocumentPath, inputText);
+            const translator = makeTranslator();
+            const [glossaryArtist, cleanupGlossaryArtist] = await createManagedGlossary(
+                translator,
+                {
+                    sourceLang: 'en',
+                    targetLang: 'de',
+                    entries: new deepl.GlossaryEntries({ entries: { artist: 'Maler' } }),
+                    glossaryNameSuffix: '_artist',
+                },
+            );
+            const [glossaryPrize, cleanupGlossaryPrize] = await createManagedGlossary(translator, {
+                sourceLang: 'en',
+                targetLang: 'de',
+                entries: new deepl.GlossaryEntries({ entries: { prize: 'Gewinn' } }),
+                glossaryNameSuffix: '_prize',
+            });
+
+            try {
+                await translator.translateDocument(
+                    exampleDocumentPath,
+                    outputDocumentPath,
+                    'en',
+                    'de',
+                    { glossaryIds: [glossaryArtist, glossaryPrize] },
+                );
+                expect(fs.readFileSync(outputDocumentPath).toString()).toBe(expectedOutputText);
+            } finally {
+                await cleanupGlossaryArtist();
+                await cleanupGlossaryPrize();
+            }
+        },
+        testTimeout,
+    ); // Increased timeout for test involving translation
+
+    it('should reject combining glossary and glossaryIds', async () => {
+        const translator = makeTranslator();
+        await expect(
+            translator.translateText('Test', 'en', 'de', {
+                glossary: nonExistentGlossaryId,
+                glossaryIds: [invalidGlossaryId],
+            }),
+        ).rejects.toThrowError('cannot be used together');
+    });
+
+    it('should reject more than 5 glossaryIds', async () => {
+        const translator = makeTranslator();
+        const tooManyIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+        await expect(
+            translator.translateText('Test', 'en', 'de', { glossaryIds: tooManyIds }),
+        ).rejects.toThrowError('at most 5');
+    });
+
+    it('should reject glossaryIds without sourceLang', async () => {
+        const translator = makeTranslator();
+        await expect(
+            translator.translateText('Test', null, 'de', { glossaryIds: [invalidGlossaryId] }),
+        ).rejects.toThrowError('sourceLang is required');
+    });
+
+    it(
+        'should treat an empty glossaryIds array as no glossaries',
+        async () => {
+            const translator = makeTranslator();
+            // An empty array must not require sourceLang or append an empty
+            // glossary_ids parameter; it behaves as if no glossary was given.
+            const result = await translator.translateText('Hello', null, 'de', {
+                glossaryIds: [],
+            });
+            expect(typeof result.text).toBe('string');
+        },
+        testTimeout,
+    );
 });
