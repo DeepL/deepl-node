@@ -17,7 +17,14 @@ import {
     StyleRuleInfoApiResponse,
     StyleId,
     CustomInstruction,
+    TranslationMemoryId,
     TranslationMemoryInfo,
+    TranslationMemoryExport,
+    TranslationMemoryImport,
+    TranslationMemoryJob,
+    TranslationMemorySegments,
+    TranslationMemorySegmentsOptions,
+    TranslationMemoryJobStatus,
 } from './types';
 import {
     parseMultilingualGlossaryDictionaryInfo,
@@ -28,15 +35,26 @@ import {
     parseStyleRuleInfoList,
     parseStyleRuleInfo,
     parseCustomInstruction,
+    parseTranslationMemoryExport,
+    parseTranslationMemoryImport,
+    parseTranslationMemoryInfoJson,
     parseTranslationMemoryInfoList,
+    parseTranslationMemoryJob,
+    parseTranslationMemorySegments,
 } from './parsing';
 import {
     appendCsvDictionaryEntries,
     appendDictionaryEntries,
     appendTextsAndReturnIsSingular,
     extractGlossaryId,
+    extractTranslationMemoryId,
+    logInfo,
+    timeout,
 } from './utils';
-import { ArgumentError, GlossaryNotFoundError } from './errors';
+import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
+import { IncomingMessage } from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 export type CustomInstructionRequestBody = {
     label: string;
     prompt: string;
@@ -630,6 +648,435 @@ export class DeepLClient extends Translator {
 
         await checkStatusCode(statusCode, content);
         return parseTranslationMemoryInfoList(content);
+    }
+
+    /**
+     * Retrieves a single translation memory by ID.
+     *
+     * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @returns {Promise<TranslationMemoryInfo>} Details of the translation memory.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getTranslationMemory(
+        translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+    ): Promise<TranslationMemoryInfo> {
+        const translationMemoryId = extractTranslationMemoryId(translationMemory);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/translation_memories/${translationMemoryId}`,
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseTranslationMemoryInfoJson(content);
+    }
+
+    /**
+     * Retrieves one page of the segments of a translation memory.
+     *
+     * Pagination is cursor-based: omit pageCursor on the first call, then pass the previous
+     * response's nextPageCursor to fetch the next page. An absent nextPageCursor means the last
+     * page has been returned. Note that segmentCount is the translation-memory total and is not
+     * reduced by filterText.
+     *
+     * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @param options: Optional pagination and filtering options.
+     * @returns {Promise<TranslationMemorySegments>} One page of segments.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async listTranslationMemorySegments(
+        translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+        options?: TranslationMemorySegmentsOptions,
+    ): Promise<TranslationMemorySegments> {
+        const translationMemoryId = extractTranslationMemoryId(translationMemory);
+        const queryParams = new URLSearchParams();
+        if (options?.pageSize !== undefined) {
+            queryParams.append('page_size', String(options.pageSize));
+        }
+        if (options?.pageCursor !== undefined) {
+            queryParams.append('page_cursor', options.pageCursor);
+        }
+        if (options?.filterText !== undefined) {
+            queryParams.append('filter_text', options.filterText);
+        }
+        if (options?.filterCaseSensitive !== undefined) {
+            queryParams.append(
+                'filter_case_sensitive',
+                String(options.filterCaseSensitive).toLowerCase(),
+            );
+        }
+
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/translation_memories/${translationMemoryId}/segments`,
+            { data: queryParams },
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseTranslationMemorySegments(content);
+    }
+
+    /**
+     * Deletes the specified translation memory.
+     *
+     * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async deleteTranslationMemory(
+        translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+    ): Promise<void> {
+        const translationMemoryId = extractTranslationMemoryId(translationMemory);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'DELETE',
+            `/v3/translation_memories/${translationMemoryId}`,
+        );
+
+        await checkStatusCode(statusCode, content);
+    }
+
+    /**
+     * Creates an import job for a new translation memory.
+     *
+     * The job only declares the file; upload the TMX file itself to the returned upload URL with
+     * uploadTranslationMemoryFile(), then poll getTranslationMemoryJob() for the outcome. Use
+     * importTranslationMemoryFromFilepath() to do all three steps at once.
+     *
+     * @param fileName: Name of the TMX file to import, for example 'legal.tmx'.
+     * @param contentLength: Size of the TMX file in bytes.
+     * @param options: Optional contentType (defaults to 'application/xml') and displayName for the
+     * resulting translation memory (defaults to the file name).
+     * @returns {Promise<TranslationMemoryImport>} The job ID and upload URL.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async createTranslationMemoryImport(
+        fileName: string,
+        contentLength: number,
+        options?: { contentType?: string; displayName?: string },
+    ): Promise<TranslationMemoryImport> {
+        if (!fileName) {
+            throw new ArgumentError('fileName must not be empty');
+        }
+        if (!(contentLength > 0)) {
+            throw new ArgumentError('contentLength must be greater than 0');
+        }
+
+        const sourceFile: Record<string, unknown> = {
+            file_name: fileName,
+            content_length: contentLength,
+        };
+        if (options?.contentType !== undefined) {
+            sourceFile.content_type = options.contentType;
+        }
+        const jsonBody: Record<string, unknown> = { source_file: sourceFile };
+        if (options?.displayName !== undefined) {
+            jsonBody.parameters = { display_name: options.displayName };
+        }
+
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            '/v3/translation_memories/import',
+            { jsonBody },
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseTranslationMemoryImport(content);
+    }
+
+    /**
+     * Uploads a TMX file to the upload URL of an import job.
+     *
+     * The upload URL is a pre-signed storage URL outside of the DeepL API, so the authentication
+     * key is not sent with this request, and any 2xx response counts as success. The API detects
+     * the upload asynchronously, so the job keeps reporting 'awaiting_input' for a while afterwards
+     * before it starts processing.
+     *
+     * @param translationMemoryImport: The import returned by createTranslationMemoryImport(), or
+     * its upload URL.
+     * @param fileBuffer: TMX file content.
+     * @param contentType: MIME type of the file, which must match the content type declared when
+     * the import job was created. Defaults to 'application/xml'.
+     *
+     * @throws {DeepLError} If any error occurs while uploading the file.
+     */
+    async uploadTranslationMemoryFile(
+        translationMemoryImport: string | TranslationMemoryImport,
+        fileBuffer: Buffer,
+        contentType = 'application/xml',
+    ): Promise<void> {
+        const uploadUrl =
+            typeof translationMemoryImport === 'string'
+                ? translationMemoryImport
+                : translationMemoryImport.uploadUrl;
+        if (!uploadUrl) {
+            throw new ArgumentError('uploadUrl must not be empty');
+        }
+
+        const { statusCode, content } = await this.storageHttpClient.sendRequestWithBackoff<string>(
+            'PUT',
+            uploadUrl,
+            { rawBody: fileBuffer, headers: { 'Content-Type': contentType } },
+        );
+
+        if (statusCode < 200 || statusCode >= 300) {
+            throw new DeepLError(
+                `Error uploading translation memory file, HTTP status: ${statusCode}, content: ${content}`,
+            );
+        }
+    }
+
+    /**
+     * Creates an export job for a translation memory.
+     *
+     * Poll getTranslationMemoryJob() for the download URL of the exported TMX file. Use
+     * exportTranslationMemoryToFilepath() to do both steps and write the file at once.
+     *
+     * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @returns {Promise<TranslationMemoryExport>} The job ID, and whether the API reused a
+     * previously completed export.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async createTranslationMemoryExport(
+        translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+    ): Promise<TranslationMemoryExport> {
+        const translationMemoryId = extractTranslationMemoryId(translationMemory);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            `/v3/translation_memories/${translationMemoryId}/export`,
+        );
+
+        await checkStatusCode(statusCode, content);
+        // 200 means the API reused a previously completed export, 202 that it started a new one.
+        return parseTranslationMemoryExport(content, statusCode === 200);
+    }
+
+    /**
+     * Retrieves the status of a translation memory import or export job.
+     *
+     * @param jobId: ID of the job to query.
+     * @returns {Promise<TranslationMemoryJob>} The current status of the job.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getTranslationMemoryJob(jobId: string): Promise<TranslationMemoryJob> {
+        if (!jobId) {
+            throw new ArgumentError('jobId must not be empty');
+        }
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/translation_memories/jobs/${jobId}`,
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseTranslationMemoryJob(content);
+    }
+
+    /**
+     * Polls a translation memory job until it finishes, sleeping between requests, and resolves
+     * with the final status.
+     *
+     * Note that an import job keeps reporting 'awaiting_input' for a while after its file has been
+     * uploaded, because the API detects the upload asynchronously. That status is therefore polled
+     * through like any other non-terminal one. A job whose file is never uploaded does not finish
+     * on its own, so pass timeoutMs when that is a possibility.
+     *
+     * @param jobId: ID of the job to wait for.
+     * @param timeoutMs: (Optional) Maximum time to wait in milliseconds before rejecting. Note that
+     * this is not accurate to the millisecond, as the job is only polled every 5 seconds.
+     * @returns {Promise<TranslationMemoryJob>} The job once it has finished.
+     *
+     * @throws {DeepLError} If the job fails, the timeout is exceeded, or any error occurs while
+     * communicating with the DeepL API.
+     */
+    async isTranslationMemoryJobComplete(
+        jobId: string,
+        timeoutMs?: number,
+    ): Promise<TranslationMemoryJob> {
+        let job = await this.getTranslationMemoryJob(jobId);
+        const startTimeMs = Date.now();
+        while (!DeepLClient.isJobDone(job)) {
+            // The API always returns exactly one result with a known status. Anything else
+            // would never reach a terminal state, so fail closed instead of polling forever.
+            const status = job.results[0]?.status;
+            if (job.results.length === 0 || !DeepLClient.KNOWN_JOB_STATUSES.includes(status!)) {
+                throw new DeepLError(
+                    `Translation memory job ${jobId} returned an unusable status: ${
+                        status ?? 'none'
+                    }`,
+                );
+            }
+            if (timeoutMs !== undefined && Date.now() - startTimeMs > timeoutMs) {
+                throw new DeepLError(
+                    `Timeout of ${timeoutMs}ms exceeded for translation memory job`,
+                );
+            }
+            const secs = 5.0;
+            await timeout(secs * 1000);
+            logInfo(`Rechecking translation memory job status after sleeping for ${secs} seconds.`);
+            job = await this.getTranslationMemoryJob(jobId);
+        }
+        const result = job.results[0];
+        if (result !== undefined && (result.status === 'failed' || result.status === 'expired')) {
+            throw new DeepLError(result.errorMessage || `Job ${result.status}`);
+        }
+        return job;
+    }
+
+    /**
+     * Downloads the TMX file of a completed export job to the given output file path or stream.
+     *
+     * @param job: Completed export job carrying the download URL.
+     * @param outputFile: String containing output file path, or a WriteStream to store file data.
+     *
+     * @throws {DeepLError} If the job has no download URL, or any error occurs while downloading.
+     */
+    async downloadTranslationMemoryExport(
+        job: TranslationMemoryJob,
+        outputFile: string | fs.WriteStream,
+    ): Promise<void> {
+        const downloadUrl = job.results[0]?.downloadUrl;
+        if (!downloadUrl) {
+            throw new ArgumentError(
+                'translation memory export job has no download URL; it may not have completed yet',
+            );
+        }
+
+        // Streamed rather than buffered as text, mirroring downloadDocument(): a TMX export can
+        // be large, and decoding it to a string would both hold it all in memory and risk
+        // corrupting bytes that are not valid UTF-8.
+        const { statusCode, content } =
+            await this.storageHttpClient.sendRequestWithBackoff<IncomingMessage>(
+                'GET',
+                downloadUrl,
+                {},
+                true,
+            );
+        // Routed through checkStatusCode so the storage service's error body ends up in the
+        // message and the response stream is drained rather than left holding the socket.
+        await checkStatusCode(statusCode, content, false, true);
+
+        if (typeof outputFile === 'string') {
+            const fileStream = fs.createWriteStream(outputFile, { flags: 'wx' });
+            try {
+                await DeepLClient.pipeToStream(content, fileStream);
+            } catch (e) {
+                await new Promise((resolve) => fileStream.close(resolve));
+                // Never leave a truncated TMX behind: a caller that logs and continues would
+                // otherwise see a file that looks like a successful export. But 'wx' fails with
+                // EEXIST precisely to protect a file that was already there, so deleting on that
+                // error would destroy the very file the flag exists to guard.
+                if ((e as NodeJS.ErrnoException)?.code !== 'EEXIST') {
+                    await fs.promises.unlink(outputFile).catch(() => undefined);
+                }
+                throw e;
+            }
+            return;
+        }
+        return DeepLClient.pipeToStream(content, outputFile);
+    }
+
+    /**
+     * Pipes a response stream to the given writable, rejecting if either side errors and
+     * destroying the other so neither is left dangling.
+     * @private
+     */
+    private static pipeToStream(content: IncomingMessage, outputStream: fs.WriteStream) {
+        return new Promise<void>((resolve, reject) => {
+            const fail = (error: Error) => {
+                content.destroy();
+                outputStream.destroy();
+                reject(error);
+            };
+            content.on('error', fail);
+            outputStream.on('error', fail);
+            outputStream.on('finish', resolve);
+            content.pipe(outputStream);
+        });
+    }
+
+    /**
+     * Imports a TMX file as a new translation memory: creates the import job, uploads the file,
+     * and waits for processing to finish.
+     *
+     * Note that the API detects the upload asynchronously, so the job keeps reporting
+     * 'awaiting_input' for a while (usually well under a minute) before it completes.
+     *
+     * @param inputPath: Path of the TMX file to import.
+     * @param options: Optional displayName for the resulting translation memory (defaults to the
+     * file name), contentType (defaults to 'application/xml'), and timeoutMs limiting how long to
+     * wait for the import to finish.
+     * @returns {Promise<TranslationMemoryJob>} The completed import job; its result carries the
+     * new translation memory ID.
+     *
+     * @throws {DeepLError} If the import fails, the timeout is exceeded, or any error occurs while
+     * communicating with the DeepL API.
+     */
+    async importTranslationMemoryFromFilepath(
+        inputPath: string,
+        options?: { displayName?: string; contentType?: string; timeoutMs?: number },
+    ): Promise<TranslationMemoryJob> {
+        const fileBuffer = await fs.promises.readFile(inputPath);
+        const created = await this.createTranslationMemoryImport(
+            path.basename(inputPath),
+            fileBuffer.length,
+            { displayName: options?.displayName, contentType: options?.contentType },
+        );
+        await this.uploadTranslationMemoryFile(
+            created,
+            fileBuffer,
+            options?.contentType ?? 'application/xml',
+        );
+        return this.isTranslationMemoryJobComplete(created.jobId, options?.timeoutMs);
+    }
+
+    /**
+     * Exports a translation memory to a TMX file: creates the export job, waits for it to finish,
+     * and writes the result to outputFile.
+     *
+     * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @param outputFile: String containing output file path, or a WriteStream to store file data.
+     * @param options: Optional timeoutMs limiting how long to wait for the export to finish.
+     * @returns {Promise<TranslationMemoryJob>} The completed export job.
+     *
+     * @throws {DeepLError} If the export fails, the timeout is exceeded, or any error occurs while
+     * communicating with the DeepL API.
+     */
+    async exportTranslationMemoryToFilepath(
+        translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+        outputFile: string | fs.WriteStream,
+        options?: { timeoutMs?: number },
+    ): Promise<TranslationMemoryJob> {
+        const created = await this.createTranslationMemoryExport(translationMemory);
+        const job = await this.isTranslationMemoryJobComplete(created.jobId, options?.timeoutMs);
+        await this.downloadTranslationMemoryExport(job, outputFile);
+        return job;
+    }
+
+    /** Statuses the API is known to report; anything else is treated as unusable. @private */
+    private static readonly KNOWN_JOB_STATUSES: TranslationMemoryJobStatus[] = [
+        'awaiting_input',
+        'processing',
+        'completed',
+        'downloaded',
+        'failed',
+        'expired',
+    ];
+
+    /**
+     * True once the job has finished, successfully or not.
+     * @private
+     */
+    private static isJobDone(job: TranslationMemoryJob): boolean {
+        const status = job.results[0]?.status;
+        return (
+            status === 'completed' ||
+            status === 'downloaded' ||
+            status === 'failed' ||
+            status === 'expired'
+        );
     }
 
     /**

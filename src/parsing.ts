@@ -32,6 +32,16 @@ import {
     TranslationMemoryInfo,
     TranslationMemoryInfoApiResponse,
     ListTranslationMemoryApiResponse,
+    TranslationMemoryExport,
+    TranslationMemoryExportApiResponse,
+    TranslationMemoryImport,
+    TranslationMemoryImportApiResponse,
+    TranslationMemoryJob,
+    TranslationMemoryJobApiResponse,
+    TranslationMemoryJobResult,
+    TranslationMemoryJobStatus,
+    TranslationMemorySegments,
+    TranslationMemorySegmentsApiResponse,
 } from './types';
 import { standardizeLanguageCode } from './utils';
 
@@ -616,6 +626,18 @@ export function parseStyleRuleInfoList(json: string): StyleRuleInfo[] {
 }
 
 /**
+ * Parses an optional API timestamp, returning undefined if it is absent or unparseable.
+ * @private
+ */
+function parseOptionalTimestamp(value?: string): Date | undefined {
+    if (!value) {
+        return undefined;
+    }
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
  * Parses the given translation memory API response to a TranslationMemoryInfo object.
  * @private
  */
@@ -628,7 +650,21 @@ export function parseTranslationMemoryInfo(
         sourceLanguage: tm.source_language,
         targetLanguages: tm.target_languages,
         segmentCount: tm.segment_count,
+        creationTime: parseOptionalTimestamp(tm.creation_time),
+        updatedTime: parseOptionalTimestamp(tm.updated_time),
     };
+}
+
+/**
+ * Parses the given JSON string to a TranslationMemoryInfo object.
+ * @private
+ */
+export function parseTranslationMemoryInfoJson(json: string): TranslationMemoryInfo {
+    try {
+        return parseTranslationMemoryInfo(JSON.parse(json) as TranslationMemoryInfoApiResponse);
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
 }
 
 /**
@@ -639,6 +675,108 @@ export function parseTranslationMemoryInfoList(json: string): TranslationMemoryI
     try {
         const obj = JSON.parse(json) as ListTranslationMemoryApiResponse;
         return obj.translation_memories.map(parseTranslationMemoryInfo);
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to a TranslationMemorySegments object.
+ * @private
+ */
+export function parseTranslationMemorySegments(json: string): TranslationMemorySegments {
+    try {
+        const obj = JSON.parse(json) as TranslationMemorySegmentsApiResponse;
+        return {
+            segments: (obj.segments ?? []).map((segment) => ({
+                sourceSegmentId: segment.source_segment_id,
+                sourceText: segment.source_text,
+                creationTime: parseOptionalTimestamp(segment.creation_time),
+                updatedTime: parseOptionalTimestamp(segment.updated_time),
+                lastUsedTime: parseOptionalTimestamp(segment.last_used_time),
+                targets: (segment.targets ?? []).map((target) => ({
+                    targetSegmentId: target.target_segment_id,
+                    targetLanguage: target.target_language,
+                    targetText: target.target_text,
+                    creationTime: parseOptionalTimestamp(target.creation_time),
+                    updatedTime: parseOptionalTimestamp(target.updated_time),
+                    lastUsedTime: parseOptionalTimestamp(target.last_used_time),
+                })),
+            })),
+            segmentCount: obj.segment_count ?? 0,
+            nextPageCursor: obj.next_page_cursor,
+        };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to a TranslationMemoryImport object.
+ * @private
+ */
+export function parseTranslationMemoryImport(json: string): TranslationMemoryImport {
+    try {
+        const obj = JSON.parse(json) as TranslationMemoryImportApiResponse;
+        return {
+            jobId: obj.job_id,
+            uploadUrl: obj.upload_url,
+            expiresAt: parseOptionalTimestamp(obj.expires_at),
+        };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to a TranslationMemoryExport object. reusedExisting reflects
+ * whether the API answered 200 (reused a completed export) rather than 202 (started a new one).
+ * @private
+ */
+export function parseTranslationMemoryExport(
+    json: string,
+    reusedExisting: boolean,
+): TranslationMemoryExport {
+    try {
+        const obj = JSON.parse(json) as TranslationMemoryExportApiResponse;
+        return {
+            jobId: obj.job_id,
+            translationMemoryId: obj.parameters?.translation_memory_id,
+            reusedExisting,
+        };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to a TranslationMemoryJob object.
+ * @private
+ */
+export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
+    try {
+        const obj = JSON.parse(json) as TranslationMemoryJobApiResponse;
+        const results: TranslationMemoryJobResult[] = (obj.results ?? []).map((result) => ({
+            status: (result.status ?? '') as TranslationMemoryJobStatus,
+            requiredAction: result.status_metadata?.required_action,
+            downloadUrl: result.download_url,
+            expiresAt: parseOptionalTimestamp(result.expires_at),
+            errorMessage: result.error?.message,
+            translationMemoryId: result.translation_memory_id,
+            skippedSegmentCount: result.skipped_segment_count,
+        }));
+        return {
+            jobId: obj.job_id,
+            operation: (obj.operation ?? '') as 'import' | 'export',
+            product: obj.product ?? 'translation_memory',
+            results,
+            creationTime: parseOptionalTimestamp(obj.creation_time),
+            updatedTime: parseOptionalTimestamp(obj.updated_time),
+            translationMemoryId: obj.parameters?.translation_memory_id,
+            displayName: obj.parameters?.display_name,
+            sourceContentType: obj.source_file?.content_type,
+            sourceContentLength: obj.source_file?.content_length,
+        };
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }

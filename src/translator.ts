@@ -169,6 +169,18 @@ export class Translator {
             minTimeout,
             options?.proxy,
         );
+        // Deliberately built from scratch rather than by subtracting Authorization from the
+        // headers above: uploads and downloads of translation memory files go to pre-signed
+        // Asset Store URLs outside the DeepL API, and a client that never holds the auth key
+        // cannot leak it. Only the User-Agent is carried over; per-request headers such as
+        // Content-Type are still supplied by the caller.
+        this.storageHttpClient = new HttpClient(
+            serverUrl,
+            { 'User-Agent': headers['User-Agent'] },
+            maxRetries,
+            minTimeout,
+            options?.proxy,
+        );
     }
 
     /**
@@ -719,4 +731,11 @@ export class Translator {
      * @protected
      */
     protected readonly httpClient: HttpClient;
+    /**
+     * Client for requests to pre-signed storage URLs, which are served by the Asset Store rather
+     * than the DeepL API. It is constructed without the DeepL Authorization header — and without
+     * any caller-configured headers — so credentials cannot reach a third-party host even by
+     * mistake. See {@link Translator.constructor}.
+     */
+    protected readonly storageHttpClient: HttpClient;
 }

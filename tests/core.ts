@@ -95,6 +95,8 @@ export interface TestTranslatorOptions {
     proxy?: deepl.ProxyConfig;
     sendPlatformInfo?: boolean;
     appInfo?: deepl.AppInfo;
+    /** Extra HTTP headers, merged over the mock-server session headers. */
+    headers?: Record<string, string>;
 
     mockServerNoResponseTimes?: number;
     mockServer429ResponseTimes?: number;
@@ -106,6 +108,11 @@ export interface TestTranslatorOptions {
     mockServerDocTranslateTime?: number;
     mockServerExpectProxy?: boolean;
     mockServerOptional?: boolean;
+    /**
+     * Number of polls a translation memory job reports its non-terminal status for before
+     * completing, so that polling loops can be exercised.
+     */
+    mockServerTmJobProcessingPolls?: number;
 }
 
 /**
@@ -231,6 +238,10 @@ export function makeDeeplClient(options?: TestTranslatorOptions): deepl.DeepLCli
         sessionHeaders['mock-server-session-expect-proxy'] = options?.mockServerExpectProxy
             ? '1'
             : '0';
+    if (options?.mockServerTmJobProcessingPolls !== undefined)
+        sessionHeaders['mock-server-session-tm-job-processing-polls'] = String(
+            options?.mockServerTmJobProcessingPolls,
+        );
     if (Object.entries(sessionHeaders).length !== 0) {
         if (!usingMockServer && !options?.mockServerOptional)
             throw new Error('Mock-server session is only used if using mock-server.');
@@ -239,7 +250,7 @@ export function makeDeeplClient(options?: TestTranslatorOptions): deepl.DeepLCli
 
     return new deepl.DeepLClient(authKey, {
         serverUrl: serverUrl,
-        headers: sessionHeaders,
+        headers: { ...sessionHeaders, ...options?.headers },
         minTimeout: options?.minTimeout,
         maxRetries: options?.maxRetries,
         proxy: options?.proxy,

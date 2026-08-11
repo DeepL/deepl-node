@@ -55,6 +55,11 @@ interface SendRequestOptions {
     fileBuffer?: Buffer;
     /** Filename of file to include. */
     filename?: string;
+    /**
+     * Request body sent verbatim, without form or JSON encoding. Used to upload files to storage
+     * URLs handed out by the API. Cannot be used together with data, jsonBody or fileBuffer.
+     */
+    rawBody?: Buffer;
 }
 
 /**
@@ -146,7 +151,9 @@ export class HttpClient {
             validateStatus: null, // do not throw errors for any status codes
         };
 
-        if (options.fileBuffer) {
+        if (options.rawBody) {
+            axiosRequestConfig.data = options.rawBody;
+        } else if (options.fileBuffer) {
             const form = new FormData();
             form.append('file', options.fileBuffer, { filename: options.filename });
             if (options.data) {
@@ -168,6 +175,13 @@ export class HttpClient {
         } else if (options.data) {
             if (method === 'GET') {
                 axiosRequestConfig.params = options.data;
+                // URLSearchParams serializes spaces as "+", which is correct for a form body
+                // but not for a URI query string. Any literal "+" in a value is already
+                // escaped as %2B by this point, so every remaining "+" is a space.
+                axiosRequestConfig.paramsSerializer = {
+                    serialize: (params) =>
+                        new URLSearchParams(params).toString().replace(/\+/g, '%20'),
+                };
             } else {
                 axiosRequestConfig.data = options.data;
             }

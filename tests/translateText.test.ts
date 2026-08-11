@@ -311,12 +311,17 @@ describe('translate text', () => {
     withRealServer('should translate with custom instructions', async () => {
         const translator = makeTranslator();
         const text = 'Hello world. I am testing if custom instructions are working correctly.';
-        const resultWithCustomInstructions = await translator.translateText(text, null, 'de', {
-            customInstructions: ['Use informal language', 'Be concise'],
+        // Assert the instruction was applied, rather than that the output merely differs from an
+        // unconstrained translation. This previously used 'Use informal language' / 'Be concise'
+        // and compared against a translation made without instructions, but the default
+        // translation of this sentence is already informal and concise, so the API legitimately
+        // returned identical text and the comparison drifted with the model.
+        const result = await translator.translateText(text, null, 'de', {
+            customInstructions: ['Render the whole text in ALL CAPS'],
         });
-        const resultWithoutCustomInstructions = await translator.translateText(text, null, 'de');
-        expect(resultWithCustomInstructions.text).toBeTruthy();
-        expect(resultWithoutCustomInstructions.text).not.toBe(resultWithCustomInstructions.text);
+        expect(result.text).toBeTruthy();
+        expect(result.detectedSourceLang).toBe('en');
+        expect(result.text).toBe(result.text.toUpperCase());
     });
 
     it('should translate with empty custom instructions array', async () => {

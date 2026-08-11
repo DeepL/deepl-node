@@ -815,6 +815,10 @@ export interface TranslationMemoryInfo {
     readonly sourceLanguage: string;
     readonly targetLanguages: string[];
     readonly segmentCount: number;
+    /** Undefined if the API did not provide the timestamp. */
+    readonly creationTime?: Date;
+    /** Undefined if the API did not provide the timestamp. */
+    readonly updatedTime?: Date;
 }
 
 /**
@@ -827,6 +831,8 @@ export interface TranslationMemoryInfoApiResponse {
     source_language: string;
     target_languages: string[];
     segment_count: number;
+    creation_time?: string;
+    updated_time?: string;
 }
 
 /**
@@ -835,4 +841,207 @@ export interface TranslationMemoryInfoApiResponse {
  */
 export interface ListTranslationMemoryApiResponse {
     translation_memories: TranslationMemoryInfoApiResponse[];
+}
+
+/**
+ * A target-language translation attached to a translation memory source segment.
+ */
+export interface TranslationMemoryTargetSegment {
+    readonly targetSegmentId: string;
+    readonly targetLanguage: string;
+    readonly targetText: string;
+    readonly creationTime?: Date;
+    readonly updatedTime?: Date;
+    readonly lastUsedTime?: Date;
+}
+
+/**
+ * A source segment of a translation memory and its translations.
+ */
+export interface TranslationMemorySegment {
+    readonly sourceSegmentId: string;
+    readonly sourceText: string;
+    readonly targets: TranslationMemoryTargetSegment[];
+    readonly creationTime?: Date;
+    readonly updatedTime?: Date;
+    readonly lastUsedTime?: Date;
+}
+
+/**
+ * One page of translation memory segments.
+ */
+export interface TranslationMemorySegments {
+    readonly segments: TranslationMemorySegment[];
+    /**
+     * Total number of segments stored in the translation memory. This is translation-memory-level
+     * metadata and is not reduced by filterText.
+     */
+    readonly segmentCount: number;
+    /**
+     * Opaque cursor to pass as pageCursor to fetch the next page, or undefined on the last page.
+     */
+    readonly nextPageCursor?: string;
+}
+
+/**
+ * Options for listing the segments of a translation memory.
+ */
+export interface TranslationMemorySegmentsOptions {
+    /** Maximum segments per page (1-100, defaults to 50). */
+    pageSize?: number;
+    /** Cursor from a previous response; omit on the first call. */
+    pageCursor?: string;
+    /** Substring filter across source and target text, at least 2 characters. */
+    filterText?: string;
+    /** Whether filterText is case-sensitive, defaults to false. */
+    filterCaseSensitive?: boolean;
+}
+
+/**
+ * A newly created translation memory import job. The TMX file must be uploaded to uploadUrl before
+ * expiresAt; processing starts automatically once the upload is detected.
+ */
+export interface TranslationMemoryImport {
+    readonly jobId: string;
+    readonly uploadUrl: string;
+    readonly expiresAt?: Date;
+}
+
+/**
+ * A translation memory export job.
+ */
+export interface TranslationMemoryExport {
+    readonly jobId: string;
+    readonly translationMemoryId?: string;
+    /** True if the API reused a previously completed export instead of starting a new one. */
+    readonly reusedExisting: boolean;
+}
+
+/**
+ * Status of a translation memory import or export job, one of 'awaiting_input', 'processing',
+ * 'completed', 'downloaded', 'failed' or 'expired'.
+ */
+export type TranslationMemoryJobStatus =
+    | 'awaiting_input'
+    | 'processing'
+    | 'completed'
+    | 'downloaded'
+    | 'failed'
+    | 'expired';
+
+/**
+ * The outcome of a translation memory import or export job.
+ */
+export interface TranslationMemoryJobResult {
+    readonly status: TranslationMemoryJobStatus;
+    /** Human-readable action the caller must take, set while the job waits on the caller. */
+    readonly requiredAction?: string;
+    /** Download URL of the exported TMX file, set once an export completes. */
+    readonly downloadUrl?: string;
+    readonly expiresAt?: Date;
+    /** Error description, set when the job failed. */
+    readonly errorMessage?: string;
+    /** ID of the translation memory created by a completed import. */
+    readonly translationMemoryId?: string;
+    /** Number of segments an import skipped. */
+    readonly skippedSegmentCount?: number;
+}
+
+/**
+ * Status of a translation memory import or export job.
+ */
+export interface TranslationMemoryJob {
+    readonly jobId: string;
+    readonly operation: 'import' | 'export';
+    readonly product: string;
+    /** Results of the job; the API returns exactly one. */
+    readonly results: TranslationMemoryJobResult[];
+    readonly creationTime?: Date;
+    readonly updatedTime?: Date;
+    /** Translation memory an export job reads from. */
+    readonly translationMemoryId?: string;
+    /** Display name an import job assigns to the new translation memory. */
+    readonly displayName?: string;
+    /** MIME type declared for an import job's file. */
+    readonly sourceContentType?: string;
+    /** Size in bytes declared for an import job's file. */
+    readonly sourceContentLength?: number;
+}
+
+/**
+ * Type used during JSON parsing of API response for translation memory segments.
+ * @private
+ */
+export interface TranslationMemorySegmentsApiResponse {
+    segments?: {
+        source_segment_id: string;
+        source_text: string;
+        creation_time?: string;
+        updated_time?: string;
+        last_used_time?: string;
+        targets?: {
+            target_segment_id: string;
+            target_language: string;
+            target_text: string;
+            creation_time?: string;
+            updated_time?: string;
+            last_used_time?: string;
+        }[];
+    }[];
+    segment_count?: number;
+    next_page_cursor?: string;
+}
+
+/**
+ * Type used during JSON parsing of API response for creating a translation memory import.
+ * @private
+ */
+export interface TranslationMemoryImportApiResponse {
+    job_id: string;
+    upload_url: string;
+    expires_at?: string;
+}
+
+/**
+ * Type used during JSON parsing of API response for creating a translation memory export.
+ * @private
+ */
+export interface TranslationMemoryExportApiResponse {
+    job_id: string;
+    parameters?: {
+        translation_memory_id?: string;
+    };
+}
+
+/**
+ * Type used during JSON parsing of API response for a translation memory job.
+ * @private
+ */
+export interface TranslationMemoryJobApiResponse {
+    job_id: string;
+    product?: string;
+    operation?: string;
+    creation_time?: string;
+    updated_time?: string;
+    source_file?: {
+        content_type?: string;
+        content_length?: number;
+    };
+    parameters?: {
+        translation_memory_id?: string;
+        display_name?: string;
+    };
+    results?: {
+        status?: string;
+        status_metadata?: {
+            required_action?: string;
+        };
+        download_url?: string;
+        expires_at?: string;
+        error?: {
+            message?: string;
+        };
+        translation_memory_id?: string;
+        skipped_segment_count?: number;
+    }[];
 }

@@ -429,3 +429,22 @@ export function appendCsvDictionaryEntries(
 export function extractGlossaryId(glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo) {
     return typeof glossary === 'string' ? glossary : glossary.glossaryId;
 }
+
+/**
+ * Extract the translation memory ID from the argument.
+ * @param translationMemory The translation memory as a string or TranslationMemoryInfo.
+ * @private
+ */
+export function extractTranslationMemoryId(
+    translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+): TranslationMemoryId {
+    const translationMemoryId = isString(translationMemory)
+        ? translationMemory
+        : translationMemory.translationMemoryId;
+    if (!translationMemoryId) {
+        throw new DeepLError(
+            'translationMemory should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
+        );
+    }
+    return translationMemoryId;
+}

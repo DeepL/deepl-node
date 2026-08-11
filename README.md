@@ -610,12 +610,6 @@ await deeplClient.deleteStyleRule('YOUR_STYLE_ID');
 Translation memories store and reuse previously created translations, helping to
 maintain consistency and reduce translation costs by leveraging past work.
 
-#### Uploading and managing translation memories
-
-Currently translation memories must be uploaded and managed in the DeepL UI via
-https://www.deepl.com/translation-memory. Full CRUD functionality via the APIs will
-come shortly.
-
 #### Listing translation memories
 
 Use `listTranslationMemories()` to list available translation memories
@@ -626,6 +620,109 @@ const translationMemories = await deeplClient.listTranslationMemories();
 for (const tm of translationMemories) {
     console.log(`${tm.name} (${tm.translationMemoryId})`);
 }
+```
+
+#### Retrieving a translation memory
+
+Use `getTranslationMemory()` to retrieve a single translation memory. It accepts
+either a translation memory ID or a `TranslationMemoryInfo` object.
+
+```javascript
+const tm = await deeplClient.getTranslationMemory('YOUR_TM_ID');
+console.log(`${tm.name}: ${tm.segmentCount} segments, updated ${tm.updatedTime}`);
+```
+
+#### Listing the segments of a translation memory
+
+`listTranslationMemorySegments()` returns one page of segments. Pagination is
+cursor-based: omit `pageCursor` on the first call, then pass the previous
+response's `nextPageCursor` until it is `undefined`. Optionally filter with
+`filterText` (at least 2 characters, matched against both source and target
+text) and `filterCaseSensitive`. Note that `segmentCount` is the
+translation-memory total and is not reduced by the filter.
+
+```javascript
+let pageCursor = undefined;
+do {
+    const page = await deeplClient.listTranslationMemorySegments('YOUR_TM_ID', {
+        pageSize: 50,
+        pageCursor,
+    });
+    for (const segment of page.segments) {
+        console.log(segment.sourceText);
+        for (const target of segment.targets) {
+            console.log(`  ${target.targetLanguage}: ${target.targetText}`);
+        }
+    }
+    pageCursor = page.nextPageCursor;
+} while (pageCursor);
+```
+
+#### Importing a translation memory
+
+`importTranslationMemoryFromFilepath()` imports a TMX file as a new translation
+memory: it creates the import job, uploads the file, and waits for processing to
+finish. The returned job carries the ID of the new translation memory.
+
+```javascript
+const job = await deeplClient.importTranslationMemoryFromFilepath('/path/to/legal.tmx', {
+    displayName: 'Legal TM',
+    timeoutMs: 300000,
+});
+console.log(`Created translation memory ${job.results[0].translationMemoryId}`);
+console.log(`Skipped segments: ${job.results[0].skippedSegmentCount}`);
+```
+
+The three steps are also available separately, for example to upload the file
+yourself or to poll for progress. `createTranslationMemoryImport()` returns an
+upload URL that the file must be uploaded to, then `getTranslationMemoryJob()`
+reports the status.
+
+```javascript
+const fileBuffer = await fs.promises.readFile('/path/to/legal.tmx');
+const created = await deeplClient.createTranslationMemoryImport('legal.tmx', fileBuffer.length, {
+    displayName: 'Legal TM',
+});
+await deeplClient.uploadTranslationMemoryFile(created, fileBuffer);
+
+const job = await deeplClient.isTranslationMemoryJobComplete(created.jobId, 300000);
+```
+
+The job status is `'awaiting_input'` until the file is uploaded, and stays
+`'awaiting_input'` for a while afterwards because the API detects the upload
+asynchronously. `isTranslationMemoryJobComplete()` polls through that status
+like any other non-terminal one. A job whose file is never uploaded does not
+finish on its own, so pass a timeout in milliseconds when that is a
+possibility.
+
+#### Exporting a translation memory
+
+`exportTranslationMemoryToFilepath()` exports a translation memory to a TMX file:
+it creates the export job, waits for it to finish, and writes the result.
+
+```javascript
+const job = await deeplClient.exportTranslationMemoryToFilepath(
+    'YOUR_TM_ID',
+    '/path/to/exported.tmx',
+);
+```
+
+As with import, the individual steps are available separately. Note that the API
+may reuse a previously completed export of an unchanged translation memory,
+indicated by `reusedExisting`.
+
+```javascript
+const created = await deeplClient.createTranslationMemoryExport('YOUR_TM_ID');
+const job = await deeplClient.isTranslationMemoryJobComplete(created.jobId, 300000);
+await deeplClient.downloadTranslationMemoryExport(job, '/path/to/exported.tmx');
+```
+
+#### Deleting a translation memory
+
+Use `deleteTranslationMemory()` to delete a translation memory.
+
+```javascript
+await deeplClient.deleteTranslationMemory('YOUR_TM_ID');
 ```
 
 #### Using a translation memory in translations

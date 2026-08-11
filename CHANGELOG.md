@@ -14,6 +14,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for translation memories in document translation via the
   `translationMemory` and `translationMemoryThreshold` options in
   `DocumentTranslateOptions`.
+- Added support for the translation memory management APIs:
+  `getTranslationMemory()`, `listTranslationMemorySegments()`,
+  `deleteTranslationMemory()`, `createTranslationMemoryImport()`,
+  `uploadTranslationMemoryFile()`, `createTranslationMemoryExport()`,
+  `getTranslationMemoryJob()`, `isTranslationMemoryJobComplete()`, and
+  `downloadTranslationMemoryExport()`, along with the
+  `importTranslationMemoryFromFilepath()` and
+  `exportTranslationMemoryToFilepath()` convenience functions that create the
+  job, transfer the TMX file, and wait for the job to finish. Because the API
+  detects the file upload asynchronously, an import job keeps reporting
+  `awaiting_input` for a while after the upload; the wait loop polls through
+  that status and accepts an optional `timeoutMs` to bound the wait.
+- Added the `TranslationMemorySegments`, `TranslationMemorySegment`,
+  `TranslationMemoryTargetSegment`, `TranslationMemorySegmentsOptions`,
+  `TranslationMemoryImport`, `TranslationMemoryExport`, `TranslationMemoryJob`,
+  `TranslationMemoryJobResult`, and `TranslationMemoryJobStatus` types.
+- Added optional `creationTime` and `updatedTime` fields to
+  `TranslationMemoryInfo`.
+
+### Changed
+- Requests to the pre-signed storage URLs used for translation memory import and export now
+  go through a separate HTTP client that is constructed without the DeepL `Authorization`
+  header, instead of stripping it per request. Headers supplied via `TranslatorOptions.headers`
+  are no longer sent to those URLs either — only the `User-Agent` and the per-request
+  `Content-Type`. Proxy settings are unaffected.
 
 ### Fixed
 - The debug log helper no longer crashes when axios error fields return a non-primitive from `toString` or `Symbol.toPrimitive`.
