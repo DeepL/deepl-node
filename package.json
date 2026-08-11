@@ -1,7 +1,7 @@
 {
     "name": "deepl-node",
     "description": "deepl-node is the official DeepL Node.js client library",
-    "version": "1.27.0",
+    "version": "1.28.0",
     "author": "DeepL SE <open-source@deepl.com> (https://www.deepl.com)",
     "license": "MIT",
     "repository": {
