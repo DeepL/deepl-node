@@ -146,8 +146,6 @@ build:
     parallel:
         matrix:
             - DOCKER_IMAGE: 'node:22-alpine'
-            - DOCKER_IMAGE: 'node:14-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:16-alpine'
               USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:17-alpine'
