@@ -151,6 +151,19 @@ interface GlossaryLanguagePairApiResponse {
 }
 
 /**
+ * Type used during JSON parsing of a single entry of the /v3/languages API response.
+ * @private
+ */
+interface LanguageApiResponseV3 {
+    lang: string;
+    name: string;
+    usable_as_source: boolean;
+    usable_as_target: boolean;
+    status: string;
+    features?: Record<string, unknown>;
+}
+
+/**
  * Type used during JSON parsing of API response for lists of glossary language pairs.
  * @private
  */
@@ -511,6 +524,61 @@ export function parseLanguageArray(json: string): Language[] {
 }
 
 /**
+ * Parses the given /v3/languages API response entry to a Language object, restricted to the
+ * source-language shape: no supportsFormality field, matching the historical /v2/languages
+ * response when queried without `type=target`.
+ * @private
+ */
+function parseSourceLanguageV3(lang: LanguageApiResponseV3): Language {
+    try {
+        return {
+            name: lang.name,
+            code: standardizeLanguageCode(lang.lang),
+        };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given /v3/languages API response entry to a Language object, restricted to the
+ * target-language shape: always includes supportsFormality, matching the historical
+ * /v2/languages response when queried with `type=target`.
+ * @private
+ */
+function parseTargetLanguageV3(lang: LanguageApiResponseV3): Language {
+    try {
+        return {
+            name: lang.name,
+            code: standardizeLanguageCode(lang.lang),
+            supportsFormality: 'formality' in (lang.features ?? {}),
+        };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string returned by `GET /v3/languages?resource=translate_text` to an
+ * array of Language objects containing only the languages usable as a source language.
+ * @private
+ */
+export function parseSourceLanguageArrayV3(json: string): Language[] {
+    const obj = JSON.parse(json) as LanguageApiResponseV3[];
+    return obj.filter((lang) => lang.usable_as_source).map((lang) => parseSourceLanguageV3(lang));
+}
+
+/**
+ * Parses the given JSON string returned by `GET /v3/languages?resource=translate_text` to an
+ * array of Language objects containing only the languages usable as a target language.
+ * @private
+ */
+export function parseTargetLanguageArrayV3(json: string): Language[] {
+    const obj = JSON.parse(json) as LanguageApiResponseV3[];
+    return obj.filter((lang) => lang.usable_as_target).map((lang) => parseTargetLanguageV3(lang));
+}
+
+/**
  * Parses the given glossary language pair API response to a GlossaryLanguagePair object.
  * @private
  */
@@ -534,6 +602,35 @@ export function parseGlossaryLanguagePairArray(json: string): GlossaryLanguagePa
     return obj.supported_languages.map((langPair: GlossaryLanguagePairApiResponse) =>
         parseGlossaryLanguagePair(langPair),
     );
+}
+
+/**
+ * Parses the given JSON string returned by `GET /v3/languages?resource=glossary` to an array of
+ * GlossaryLanguagePair objects: the cross-product of languages usable as a glossary source
+ * language and languages usable as a glossary target language, excluding self-pairs. Codes are
+ * kept as returned by the API (lowercase), matching the historical
+ * /v2/glossary-language-pairs response.
+ * @private
+ */
+export function parseGlossaryLanguagePairArrayV3(json: string): GlossaryLanguagePair[] {
+    try {
+        const obj = JSON.parse(json) as LanguageApiResponseV3[];
+        const sourceLangs = obj.filter((lang) => lang.usable_as_source).map((lang) => lang.lang);
+        const targetLangs = obj.filter((lang) => lang.usable_as_target).map((lang) => lang.lang);
+        const pairs: GlossaryLanguagePair[] = [];
+        for (const sourceLang of sourceLangs) {
+            for (const targetLang of targetLangs) {
+                if (sourceLang === targetLang) continue;
+                pairs.push({
+                    sourceLang: sourceLang as SourceGlossaryLanguageCode,
+                    targetLang: targetLang as TargetGlossaryLanguageCode,
+                });
+            }
+        }
+        return pairs;
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
 }
 
 /**

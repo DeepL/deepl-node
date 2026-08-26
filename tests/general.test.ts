@@ -217,6 +217,7 @@ describe('general', () => {
                 expect(language.name).toBe('English');
             }
             expect(language).not.toHaveProperty('supportsFormality');
+            expect(language.code).toBe(language.code.toLowerCase());
         }
         expect(sourceLanguages.filter((language) => language.code === 'en').length).toBe(1);
 
@@ -228,6 +229,11 @@ describe('general', () => {
             expect(language.supportsFormality).toBeDefined();
         }
         expect(targetLanguages.filter((language) => language.code === 'de').length).toBe(1);
+        // Formality is not supported by every target language, so the flag must vary rather than
+        // always being true (which would indicate the feature check is a no-op).
+        expect(targetLanguages.some((language) => language.supportsFormality === false)).toBe(
+            true,
+        );
     });
 
     it('lists language resources', async () => {
@@ -260,6 +266,9 @@ describe('general', () => {
                 for (const languagePair of languagePairs) {
                     expect(languagePair.sourceLang.length).toBeGreaterThan(0);
                     expect(languagePair.targetLang.length).toBeGreaterThan(0);
+                    expect(languagePair.sourceLang).not.toBe(languagePair.targetLang);
+                    expect(languagePair.sourceLang).toBe(languagePair.sourceLang.toLowerCase());
+                    expect(languagePair.targetLang).toBe(languagePair.targetLang.toLowerCase());
                 }
             });
     });

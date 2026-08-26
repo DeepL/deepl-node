@@ -19,8 +19,9 @@ import {
     parseDocumentStatus,
     parseGlossaryInfo,
     parseGlossaryInfoList,
-    parseGlossaryLanguagePairArray,
-    parseLanguageArray,
+    parseGlossaryLanguagePairArrayV3,
+    parseSourceLanguageArrayV3,
+    parseTargetLanguageArrayV3,
     parseTextResultArray,
     parseUsage,
 } from './parsing';
@@ -201,12 +202,16 @@ export class Translator {
      * @return Fulfills with array of Language objects containing available source languages.
      */
     async getSourceLanguages(): Promise<readonly Language[]> {
+        const data = new URLSearchParams({ resource: 'translate_text' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            '/v2/languages',
+            '/v3/languages',
+            {
+                data,
+            },
         );
         await checkStatusCode(statusCode, content);
-        return parseLanguageArray(content);
+        return parseSourceLanguageArrayV3(content);
     }
 
     /**
@@ -214,16 +219,16 @@ export class Translator {
      * @return Fulfills with array of Language objects containing available target languages.
      */
     async getTargetLanguages(): Promise<readonly Language[]> {
-        const data = new URLSearchParams({ type: 'target' });
+        const data = new URLSearchParams({ resource: 'translate_text' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            '/v2/languages',
+            '/v3/languages',
             {
                 data,
             },
         );
         await checkStatusCode(statusCode, content);
-        return parseLanguageArray(content);
+        return parseTargetLanguageArrayV3(content);
     }
 
     /**
@@ -231,12 +236,16 @@ export class Translator {
      * @return Fulfills with an array of GlossaryLanguagePair objects containing languages supported for glossaries.
      */
     async getGlossaryLanguagePairs(): Promise<readonly GlossaryLanguagePair[]> {
+        const data = new URLSearchParams({ resource: 'glossary' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            '/v2/glossary-language-pairs',
+            '/v3/languages',
+            {
+                data,
+            },
         );
         await checkStatusCode(statusCode, content);
-        return parseGlossaryLanguagePairArray(content);
+        return parseGlossaryLanguagePairArrayV3(content);
     }
 
     /**
