@@ -231,9 +231,7 @@ describe('general', () => {
         expect(targetLanguages.filter((language) => language.code === 'de').length).toBe(1);
         // Formality is not supported by every target language, so the flag must vary rather than
         // always being true (which would indicate the feature check is a no-op).
-        expect(targetLanguages.some((language) => language.supportsFormality === false)).toBe(
-            true,
-        );
+        expect(targetLanguages.some((language) => language.supportsFormality === false)).toBe(true);
     });
 
     it('lists language resources', async () => {
