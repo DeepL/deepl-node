@@ -1045,3 +1045,39 @@ export interface TranslationMemoryJobApiResponse {
         skipped_segment_count?: number;
     }[];
 }
+
+/**
+ * A feature of a DeepL API resource, as returned by `DeepLClient.getLanguageResources()`.
+ */
+export interface ResourceFeature {
+    /** Feature identifier, matching the feature keys reported per language, e.g. 'glossary'. */
+    readonly name: string;
+    /** If true, the source language must support this feature. Undefined means false. */
+    readonly needsSourceSupport?: boolean;
+    /** If true, the target language must support this feature. Undefined means false. */
+    readonly needsTargetSupport?: boolean;
+}
+
+/**
+ * A DeepL API resource and the features it supports, as returned by
+ * `DeepLClient.getLanguageResources()`.
+ */
+export interface LanguageResource {
+    /** Resource identifier, e.g. 'translate_text' or 'glossary'. */
+    readonly name: string;
+    /** Features supported by this resource, keyed by feature name. */
+    readonly features: Record<string, ResourceFeature>;
+}
+
+/**
+ * Type used during JSON parsing of API response for language resources.
+ * @private
+ */
+export interface LanguageResourceApiResponse {
+    name: string;
+    features?: {
+        name: string;
+        needs_source_support?: boolean;
+        needs_target_support?: boolean;
+    }[];
+}

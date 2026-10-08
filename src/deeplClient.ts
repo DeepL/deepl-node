@@ -25,6 +25,7 @@ import {
     TranslationMemorySegments,
     TranslationMemorySegmentsOptions,
     TranslationMemoryJobStatus,
+    LanguageResource,
 } from './types';
 import {
     parseMultilingualGlossaryDictionaryInfo,
@@ -41,6 +42,7 @@ import {
     parseTranslationMemoryInfoList,
     parseTranslationMemoryJob,
     parseTranslationMemorySegments,
+    parseLanguageResourceList,
 } from './parsing';
 import {
     appendCsvDictionaryEntries,
@@ -580,6 +582,24 @@ export class DeepLClient extends Translator {
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
+    }
+
+    /**
+     * Retrieves the resources supported by the DeepL API, along with their features and whether
+     * each feature requires support from the source and/or target language.
+     *
+     * @returns {Promise<LanguageResource[]>} An array of objects, one per supported resource.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getLanguageResources(): Promise<LanguageResource[]> {
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            '/v3/languages/resources',
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseLanguageResourceList(content);
     }
 
     /**

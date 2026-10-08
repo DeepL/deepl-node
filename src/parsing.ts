@@ -42,6 +42,9 @@ import {
     TranslationMemoryJobStatus,
     TranslationMemorySegments,
     TranslationMemorySegmentsApiResponse,
+    LanguageResource,
+    LanguageResourceApiResponse,
+    ResourceFeature,
 } from './types';
 import { standardizeLanguageCode } from './utils';
 
@@ -777,6 +780,29 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             sourceContentType: obj.source_file?.content_type,
             sourceContentLength: obj.source_file?.content_length,
         };
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to an array of LanguageResource objects.
+ * @private
+ */
+export function parseLanguageResourceList(json: string): LanguageResource[] {
+    try {
+        const obj = JSON.parse(json) as LanguageResourceApiResponse[];
+        return obj.map((resource) => {
+            const features: Record<string, ResourceFeature> = {};
+            for (const feature of resource.features ?? []) {
+                features[feature.name] = {
+                    name: feature.name,
+                    needsSourceSupport: feature.needs_source_support,
+                    needsTargetSupport: feature.needs_target_support,
+                };
+            }
+            return { name: resource.name, features };
+        });
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }

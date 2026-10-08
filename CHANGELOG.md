@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
+  supported by the DeepL API and, for each feature, whether the source and/or
+  target language must support it. Added the `LanguageResource` and
+  `ResourceFeature` types.
 
 ## [1.28.1] - 2026-10-09
 ### Security

@@ -28,6 +28,7 @@ import {
     withMockServer,
     withMockProxyServer,
     makeTranslator,
+    makeDeeplClient,
     proxyConfig,
     urlToMockRegexp,
     withRealServer,
@@ -227,6 +228,26 @@ describe('general', () => {
             expect(language.supportsFormality).toBeDefined();
         }
         expect(targetLanguages.filter((language) => language.code === 'de').length).toBe(1);
+    });
+
+    it('lists language resources', async () => {
+        const deeplClient = makeDeeplClient();
+        const resources = await deeplClient.getLanguageResources();
+        expect(resources.length).toBeGreaterThan(0);
+
+        for (const resource of resources) {
+            expect(resource.name.length).toBeGreaterThan(0);
+            for (const [featureName, feature] of Object.entries(resource.features)) {
+                expect(feature.name).toBe(featureName);
+                expect([undefined, true, false]).toContain(feature.needsSourceSupport);
+                expect([undefined, true, false]).toContain(feature.needsTargetSupport);
+            }
+        }
+
+        const translateText = resources.find((resource) => resource.name === 'translate_text');
+        expect(translateText).toBeDefined();
+        expect(translateText?.features.glossary?.needsSourceSupport).toBe(true);
+        expect(translateText?.features.glossary?.needsTargetSupport).toBe(true);
     });
 
     it('lists glossary language pairs', () => {
