@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.28.1] - 2026-10-09
 ### Security
 - Bumped `axios` to `^1.20.0` and `adm-zip` to `^0.6.1` to resolve
   high-severity npm audit advisories in production dependencies.
@@ -425,7 +427,8 @@ official DeepL Node.js client library took over this package name. Thanks to
 [Tristan De Oliveira](https://github.com/icrotz) for transferring the package
 ownership.
 
-[Unreleased]: https://github.com/DeepL/deepl-node/compare/v1.28.0...HEAD
+[Unreleased]: https://github.com/DeepL/deepl-node/compare/v1.28.1...HEAD
+[1.28.1]: https://github.com/DeepL/deepl-node/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/DeepL/deepl-node/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/DeepL/deepl-node/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/DeepL/deepl-node/compare/v1.25.0...v1.26.0
