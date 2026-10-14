@@ -132,6 +132,29 @@ export class DeepLClient extends Translator {
             : WriteResult[];
     }
 
+    async correctText<T extends string | string[]>(
+        texts: T,
+        targetLang?: string | null,
+    ): Promise<T extends string ? WriteResult : WriteResult[]> {
+        const data = new URLSearchParams();
+        if (targetLang) {
+            data.append('target_lang', targetLang);
+        }
+
+        const singular = appendTextsAndReturnIsSingular(data, texts);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            '/v2/write/correct',
+            { data },
+        );
+
+        await checkStatusCode(statusCode, content);
+        const writeResults = parseWriteResultArray(content);
+        return (singular ? writeResults[0] : writeResults) as T extends string
+            ? WriteResult
+            : WriteResult[];
+    }
+
     /**
      * Creates a glossary with given name with all of the specified
      * dictionaries, each with their own language pair and entries. The

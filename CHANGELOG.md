@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   target language must support it. Added the `LanguageResource` and
   `ResourceFeature` types.
 - Added `de-CH`, `de-DE`, `es-ES`, `fr-CA`, and `fr-FR` to `TargetLanguageCode`.
+- Added `correctText()` to `DeepLClient`, which corrects grammar, spelling and punctuation
+  of a string or an array of strings via `POST /v2/write/correct`. Takes an optional
+  target language and returns `WriteResult` objects, like `rephraseText()`.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
