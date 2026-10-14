@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and
   `ResourceFeature` types.
+
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
   `GET /v3/languages` endpoint instead of the deprecated `GET /v2/languages` and
