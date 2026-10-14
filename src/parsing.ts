@@ -132,25 +132,6 @@ interface WriteResultArrayApiResponse {
 }
 
 /**
- * Type used during JSON parsing of API response for languages.
- * @private
- */
-interface LanguageApiResponse {
-    language: string;
-    name: string;
-    supports_formality?: boolean;
-}
-
-/**
- * Type used during JSON parsing of API response for glossary language pairs.
- * @private
- */
-interface GlossaryLanguagePairApiResponse {
-    source_lang: string;
-    target_lang: string;
-}
-
-/**
  * Type used during JSON parsing of a single entry of the /v3/languages API response.
  * @private
  */
@@ -161,14 +142,6 @@ interface LanguageApiResponseV3 {
     usable_as_target: boolean;
     status: string;
     features?: Record<string, unknown>;
-}
-
-/**
- * Type used during JSON parsing of API response for lists of glossary language pairs.
- * @private
- */
-interface GlossaryLanguagePairArrayApiResponse {
-    supported_languages: GlossaryInfoApiResponse[];
 }
 
 /**
@@ -495,35 +468,6 @@ export function parseWriteResultArray(json: string): WriteResult[] {
 }
 
 /**
- * Parses the given language API response to a Language object.
- * @private
- */
-function parseLanguage(lang: LanguageApiResponse): Language {
-    try {
-        const result = {
-            name: lang.name,
-            code: standardizeLanguageCode(lang.language),
-            supportsFormality: lang.supports_formality,
-        };
-        if (result.supportsFormality === undefined) {
-            delete result.supportsFormality;
-        }
-        return result;
-    } catch (error) {
-        throw new DeepLError(`Error parsing response JSON: ${error}`);
-    }
-}
-
-/**
- * Parses the given JSON string to an array of Language objects.
- * @private
- */
-export function parseLanguageArray(json: string): Language[] {
-    const obj = JSON.parse(json) as LanguageApiResponse[];
-    return obj.map((lang: LanguageApiResponse) => parseLanguage(lang));
-}
-
-/**
  * Parses the given /v3/languages API response entry to a Language object, restricted to the
  * source-language shape: no supportsFormality field, matching the historical /v2/languages
  * response when queried without `type=target`.
@@ -576,32 +520,6 @@ export function parseSourceLanguageArrayV3(json: string): Language[] {
 export function parseTargetLanguageArrayV3(json: string): Language[] {
     const obj = JSON.parse(json) as LanguageApiResponseV3[];
     return obj.filter((lang) => lang.usable_as_target).map((lang) => parseTargetLanguageV3(lang));
-}
-
-/**
- * Parses the given glossary language pair API response to a GlossaryLanguagePair object.
- * @private
- */
-function parseGlossaryLanguagePair(obj: GlossaryLanguagePairApiResponse): GlossaryLanguagePair {
-    try {
-        return {
-            sourceLang: obj.source_lang as SourceGlossaryLanguageCode,
-            targetLang: obj.target_lang as TargetGlossaryLanguageCode,
-        };
-    } catch (error) {
-        throw new DeepLError(`Error parsing response JSON: ${error}`);
-    }
-}
-
-/**
- * Parses the given JSON string to an array of GlossaryLanguagePair objects.
- * @private
- */
-export function parseGlossaryLanguagePairArray(json: string): GlossaryLanguagePair[] {
-    const obj = JSON.parse(json) as GlossaryLanguagePairArrayApiResponse;
-    return obj.supported_languages.map((langPair: GlossaryLanguagePairApiResponse) =>
-        parseGlossaryLanguagePair(langPair),
-    );
 }
 
 /**

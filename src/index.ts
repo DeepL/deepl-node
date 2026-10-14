@@ -18,8 +18,6 @@ import {
     parseDocumentStatus,
     parseGlossaryInfo,
     parseGlossaryInfoList,
-    parseGlossaryLanguagePairArray,
-    parseLanguageArray,
     parseTextResultArray,
     parseUsage,
 } from './parsing';
