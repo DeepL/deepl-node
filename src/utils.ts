@@ -188,16 +188,6 @@ export function buildURLSearchParams(
         throw new DeepLError('glossaryIds option supports at most 5 glossaries.');
     }
 
-    if (targetLang === 'en') {
-        throw new DeepLError(
-            "targetLang='en' is deprecated, please use 'en-GB' or 'en-US' instead.",
-        );
-    } else if (targetLang === 'pt') {
-        throw new DeepLError(
-            "targetLang='pt' is deprecated, please use 'pt-PT' or 'pt-BR' instead.",
-        );
-    }
-
     const searchParams = new URLSearchParams({
         target_lang: targetLang,
     });

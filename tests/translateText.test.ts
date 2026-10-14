@@ -69,18 +69,12 @@ describe('translate text', () => {
         expect(result.billedCharacters).toBe(exampleText.en.length);
     });
 
-    it('should reject deprecated target codes', async () => {
+    it('should accept target codes without regional variant', async () => {
         const translator = makeTranslator();
-
-        const targetLangEn = <deepl.TargetLanguageCode>'en'; // Type cast to silence type-checks
-        await expect(translator.translateText(exampleText.de, null, targetLangEn)).rejects.toThrow(
-            /deprecated/,
-        );
-
-        const targetLangPt = <deepl.TargetLanguageCode>'pt'; // Type cast to silence type-checks
-        await expect(translator.translateText(exampleText.de, null, targetLangPt)).rejects.toThrow(
-            /deprecated/,
-        );
+        const resultEn = await translator.translateText(exampleText.de, null, 'en');
+        expect(resultEn.detectedSourceLang).toBe('de');
+        const resultPt = await translator.translateText(exampleText.de, null, 'pt');
+        expect(resultPt.detectedSourceLang).toBe('de');
     });
 
     it('should reject invalid language codes', async () => {

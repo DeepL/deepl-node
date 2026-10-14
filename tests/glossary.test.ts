@@ -355,12 +355,6 @@ describe('translate using glossaries', () => {
                 entries,
                 glossaryNameSuffix: '_ende',
             });
-            const [glossaryDeEn, cleanupGlossaryDeEn] = await createManagedGlossary(translator, {
-                sourceLang: 'de',
-                targetLang: 'en',
-                entries,
-                glossaryNameSuffix: '_deen',
-            });
             try {
                 await expect(
                     translator.translateText(text, null, 'de', { glossary: glossaryEnDe }),
@@ -368,13 +362,8 @@ describe('translate using glossaries', () => {
                 await expect(
                     translator.translateText(text, 'de', 'en-US', { glossary: glossaryEnDe }),
                 ).rejects.toThrowError('No dictionary found for language pair');
-                const targetLangEn = <deepl.TargetLanguageCode>'en'; // Type cast to silence type-checks
-                await expect(
-                    translator.translateText(text, 'de', targetLangEn, { glossary: glossaryDeEn }),
-                ).rejects.toThrowError("targetLang='en' is deprecated");
             } finally {
                 await cleanupGlossaryEnDe();
-                await cleanupGlossaryDeEn();
             }
         },
         testTimeout,

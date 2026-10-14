@@ -10,12 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and
   `ResourceFeature` types.
+- Added `de-CH`, `de-DE`, `es-ES`, `fr-CA`, and `fr-FR` to `TargetLanguageCode`.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
   `GET /v3/languages` endpoint instead of the deprecated `GET /v2/languages` and
   `GET /v2/glossary-language-pairs` endpoints. The returned language lists may contain
   additional languages.
+- Target languages `en` and `pt` are no longer rejected client-side as deprecated;
+  the DeepL API translates them as `en-US` and `pt-PT`. `TargetLanguageCode` now
+  includes `en` and `pt`.
 
 ## [1.28.1] - 2026-10-09
 ### Security

@@ -391,14 +391,23 @@ export type SourceLanguageCode = CommonLanguageCode | 'en' | 'pt';
 
 /**
  * Language codes that may be used as a target language.
+ * 'en' and 'pt' translate as American English (en-US) and European Portuguese (pt-PT); use a
+ * regional variant to choose explicitly.
  * Note: although the language code type definitions are case-sensitive, this package and the DeepL
  * API accept case-insensitive language codes.
  */
 export type TargetLanguageCode =
     | CommonLanguageCode
+    | 'en'
+    | 'pt'
+    | 'de-CH'
+    | 'de-DE'
     | 'en-GB'
     | 'en-US'
     | 'es-419'
+    | 'es-ES'
+    | 'fr-CA'
+    | 'fr-FR'
     | 'pt-BR'
     | 'pt-PT'
     | 'zh-HANS'
