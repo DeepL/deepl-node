@@ -895,6 +895,27 @@ console.log(rephrasedTexts[0].text); // The rephrased text for "How are you?" in
 console.log(rephrasedTexts[1].text); // The rephrased text for "What are you doing today?" in a friendly tone
 ```
 
+### Correcting Text
+
+To correct grammar, spelling and punctuation, call `correctText()`. The first argument is a string containing the text you want to correct, or an array of strings if you want to correct multiple texts.
+
+The second argument is optional and is the target language code, for example `'de'` or `'en-US'`. If it is omitted or `null`, the language of the input text is used.
+
+`correctText()` returns a Promise that fulfills with a `WriteResult` object or an array of `WriteResult` objects corresponding to your input text(s). The `WriteResult` object has the following properties:
+- `text`: the corrected text,
+- `detectedSourceLang`: the detected source language code,
+- `targetLang`: the target language code.
+
+```javascript
+// Correcting a single text:
+const corrected = await deepLClient.correctText('I has a apple.', 'en-US');
+console.log(corrected.text); // It has an apple.
+
+// Correcting multiple texts:
+const correctedTexts = await deepLClient.correctText(['I has a apple.', 'She go to school.']);
+console.log(correctedTexts[1].text); // She goes to school.
+```
+
 
 #### Logging
 
