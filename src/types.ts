@@ -1090,3 +1090,56 @@ export interface LanguageResourceApiResponse {
         needs_target_support?: boolean;
     }[];
 }
+
+/**
+ * DeepL API resource that languages can be queried for with `DeepLClient.getLanguagesForResource()`.
+ */
+export type LanguageResourceName =
+    | 'translate_text'
+    | 'translate_document'
+    | 'glossary'
+    | 'voice'
+    | 'write'
+    | 'style_rules'
+    | 'translation_memory';
+
+/**
+ * Additional languages and features to include in the `DeepLClient.getLanguagesForResource()` response:
+ * - 'beta': languages and features in beta, in addition to stable ones.
+ * - 'external': features that rely on third-party service providers.
+ */
+export type LanguageInclude = 'beta' | 'external';
+
+/**
+ * Options for `DeepLClient.getLanguagesForResource()`.
+ */
+export interface GetLanguagesForResourceOptions {
+    /** Additional languages and features to include. By default only stable ones are returned. */
+    include?: LanguageInclude[];
+}
+
+/**
+ * Support information for a feature of a language, as returned by `DeepLClient.getLanguagesForResource()`.
+ */
+export interface LanguageFeature {
+    /** Availability status of this feature for this language, e.g. 'stable' or 'beta'. */
+    readonly status: string;
+}
+
+/**
+ * A language supported by a DeepL API resource, as returned by `DeepLClient.getLanguagesForResource()`.
+ */
+export interface LanguageSupport {
+    /** Language code (BCP 47), e.g. 'de' or 'en-US'. */
+    readonly code: string;
+    /** Name of the language in English. */
+    readonly name: string;
+    /** Availability status of this language, e.g. 'stable' or 'beta'. */
+    readonly status: string;
+    /** True if this language can be used as a source language with the queried resource. */
+    readonly usableAsSource: boolean;
+    /** True if this language can be used as a target language with the queried resource. */
+    readonly usableAsTarget: boolean;
+    /** Features supported for this language with the queried resource, keyed by feature name. */
+    readonly features: Record<string, LanguageFeature>;
+}

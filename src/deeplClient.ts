@@ -26,6 +26,9 @@ import {
     TranslationMemorySegmentsOptions,
     TranslationMemoryJobStatus,
     LanguageResource,
+    LanguageResourceName,
+    GetLanguagesForResourceOptions,
+    LanguageSupport,
 } from './types';
 import {
     parseMultilingualGlossaryDictionaryInfo,
@@ -43,6 +46,7 @@ import {
     parseTranslationMemoryJob,
     parseTranslationMemorySegments,
     parseLanguageResourceList,
+    parseLanguageSupportList,
 } from './parsing';
 import {
     appendCsvDictionaryEntries,
@@ -605,6 +609,41 @@ export class DeepLClient extends Translator {
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
+    }
+
+    /**
+     * Retrieves the languages supported by the given DeepL API resource, along with whether each
+     * language is usable as source and/or target language and the features it supports.
+     *
+     * @param {LanguageResourceName} resource - The resource to query languages for, e.g.
+     *     'translate_text' or 'glossary'.
+     * @param {GetLanguagesForResourceOptions} [options] - Optional settings; `include` adds beta languages and
+     *     features, or features relying on third-party providers.
+     * @returns {Promise<LanguageSupport[]>} An array of objects, one per supported language.
+     *
+     * @throws {ArgumentError} If the resource is empty.
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getLanguagesForResource(
+        resource: LanguageResourceName,
+        options?: GetLanguagesForResourceOptions,
+    ): Promise<LanguageSupport[]> {
+        if (!resource) {
+            throw new ArgumentError('resource must be a non-empty string');
+        }
+        const data = new URLSearchParams({ resource });
+        for (const include of options?.include ?? []) {
+            data.append('include', include);
+        }
+
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            '/v3/languages',
+            { data },
+        );
+
+        await checkStatusCode(statusCode, content);
+        return parseLanguageSupportList(content);
     }
 
     /**

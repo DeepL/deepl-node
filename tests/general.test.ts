@@ -254,6 +254,101 @@ describe('general', () => {
         expect(translateText?.features.glossary?.needsTargetSupport).toBe(true);
     });
 
+    it('lists languages for each resource', async () => {
+        const deeplClient = makeDeeplClient();
+        const resources: deepl.LanguageResourceName[] = [
+            'translate_text',
+            'translate_document',
+            'glossary',
+            'voice',
+            'write',
+            'style_rules',
+            'translation_memory',
+        ];
+        for (const resource of resources) {
+            const languages = await deeplClient.getLanguagesForResource(resource);
+            expect(languages.length).toBeGreaterThan(0);
+            for (const language of languages) {
+                expect(language.code.length).toBeGreaterThan(0);
+                expect(language.name.length).toBeGreaterThan(0);
+                expect(language.status.length).toBeGreaterThan(0);
+                expect(typeof language.usableAsSource).toBe('boolean');
+                expect(typeof language.usableAsTarget).toBe('boolean');
+                for (const feature of Object.values(language.features)) {
+                    expect(feature.status.length).toBeGreaterThan(0);
+                }
+            }
+        }
+
+        const german = (await deeplClient.getLanguagesForResource('translate_text')).find(
+            (language) => language.code === 'de',
+        );
+        expect(german?.name).toBe('German');
+        expect(german?.usableAsSource).toBe(true);
+        expect(german?.usableAsTarget).toBe(true);
+        expect(german?.features.formality).toBeDefined();
+    });
+
+    it('lists languages with include values', async () => {
+        const deeplClient = makeDeeplClient();
+        const languages = await deeplClient.getLanguagesForResource('translate_text', {
+            include: ['beta', 'external'],
+        });
+        expect(languages.some((language) => language.code === 'de')).toBe(true);
+    });
+
+    it('rejects invalid getLanguagesForResource resources', async () => {
+        const deeplClient = makeDeeplClient();
+        await expect(
+            deeplClient.getLanguagesForResource('' as deepl.LanguageResourceName),
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
+        await expect(
+            deeplClient.getLanguagesForResource('not_a_resource' as deepl.LanguageResourceName),
+        ).rejects.toThrow(/Bad request/);
+    });
+
+    describe('getLanguagesForResource request shape', () => {
+        beforeAll(() => {
+            nock.disableNetConnect();
+        });
+
+        it('sends resource and repeated include query parameters', async () => {
+            nock(urlToMockRegexp)
+                .get('/v3/languages')
+                .query(true)
+                .reply(function (uri) {
+                    const params = new URL(uri, 'http://localhost').searchParams;
+                    expect(params.get('resource')).toBe('glossary');
+                    expect(params.getAll('include')).toEqual(['beta', 'external']);
+                    return [
+                        200,
+                        '[{"lang":"de","name":"German","usable_as_source":true,' +
+                            '"usable_as_target":false,"status":"beta",' +
+                            '"features":{"glossary":{"status":"stable"}}}]',
+                        {},
+                    ];
+                });
+            const languages = await makeDeeplClient().getLanguagesForResource('glossary', {
+                include: ['beta', 'external'],
+            });
+            expect(languages).toEqual([
+                {
+                    code: 'de',
+                    name: 'German',
+                    status: 'beta',
+                    usableAsSource: true,
+                    usableAsTarget: false,
+                    features: { glossary: { status: 'stable' } },
+                },
+            ]);
+        });
+
+        afterAll(() => {
+            nock.cleanAll();
+            nock.enableNetConnect();
+        });
+    });
+
     it('lists glossary language pairs', () => {
         const translator = makeTranslator();
         return translator

@@ -45,6 +45,8 @@ import {
     LanguageResource,
     LanguageResourceApiResponse,
     ResourceFeature,
+    LanguageSupport,
+    LanguageFeature,
 } from './types';
 import { standardizeLanguageCode } from './utils';
 
@@ -817,6 +819,33 @@ export function parseLanguageResourceList(json: string): LanguageResource[] {
                 };
             }
             return { name: resource.name, features };
+        });
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string returned by `GET /v3/languages` to an array of LanguageSupport
+ * objects. Language codes are kept as returned by the API.
+ * @private
+ */
+export function parseLanguageSupportList(json: string): LanguageSupport[] {
+    try {
+        const obj = JSON.parse(json) as LanguageApiResponseV3[];
+        return obj.map((lang) => {
+            const features: Record<string, LanguageFeature> = {};
+            for (const [name, feature] of Object.entries(lang.features ?? {})) {
+                features[name] = { status: (feature as { status: string }).status };
+            }
+            return {
+                code: lang.lang,
+                name: lang.name,
+                status: lang.status,
+                usableAsSource: lang.usable_as_source,
+                usableAsTarget: lang.usable_as_target,
+                features,
+            };
         });
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);

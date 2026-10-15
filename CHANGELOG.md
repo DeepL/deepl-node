@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and
   `ResourceFeature` types.
+- Added `getLanguagesForResource()` to `DeepLClient`, which retrieves the languages supported
+  by a DeepL API resource (`GET /v3/languages`), whether each is usable as source
+  and/or target language, and the features it supports. The optional `include`
+  option adds beta languages and features, or features relying on third-party
+  providers. Added the `LanguageSupport`, `LanguageFeature`,
+  `LanguageResourceName`, `LanguageInclude` and `GetLanguagesForResourceOptions` types.
 - Added `de-CH`, `de-DE`, `es-ES`, `fr-CA`, and `fr-FR` to `TargetLanguageCode`.
 - Added `correctText()` to `DeepLClient`, which corrects grammar, spelling and punctuation
   of a string or an array of strings via `POST /v2/write/correct`. Takes an optional
