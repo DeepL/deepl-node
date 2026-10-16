@@ -8,8 +8,8 @@ import nock from 'nock';
 
 import { makeDeeplClient, serverUrl } from './client';
 
-// Request bodies of v3 glossary create, update and replace are asserted against the real API
-// (tests/realApi) until they are sent as JSON.
+// Request bodies of v3 glossary create from entries, update and replace are asserted against the
+// real API (tests/realApi) until they are sent as JSON.
 
 const glossaryReply = {
     glossary_id: 'g-1',
@@ -27,6 +27,31 @@ const parsedDictionaries = [
 ];
 
 const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
+
+describe('DeepLClient.createMultilingualGlossaryWithCsv', () => {
+    it('sends the CSV content with entries_format csv and parses the glossary', async () => {
+        const csv = 'sourceEntry1,targetEntry1\n"source""Entry","target,Entry"';
+        nock(serverUrl)
+            .post('/v3/glossaries', {
+                name: 'my glossary',
+                'dictionaries[0].source_lang': 'en',
+                'dictionaries[0].target_lang': 'de',
+                'dictionaries[0].entries': csv,
+                'dictionaries[0].entries_format': 'csv',
+            })
+            .reply(201, glossaryReply);
+
+        const glossary = await makeDeeplClient().createMultilingualGlossaryWithCsv(
+            'my glossary',
+            'en',
+            'de',
+            csv,
+        );
+
+        expect(glossary.glossaryId).toBe('g-1');
+        expect(glossary.dictionaries).toEqual(parsedDictionaries);
+    });
+});
 
 describe('DeepLClient.getMultilingualGlossary', () => {
     it('requests the glossary by ID and parses its dictionaries', async () => {

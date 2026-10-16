@@ -86,27 +86,4 @@ describe('DeepLClient multilingual glossaries', () => {
         },
         testTimeout,
     );
-
-    it(
-        'sends a v3 glossary created from CSV',
-        async () => {
-            const client = makeDeeplClient();
-            const csv = 'sourceEntry1,targetEntry1\n"source""Entry","target,Entry"';
-
-            const glossary = await client.createMultilingualGlossaryWithCsv(
-                getUniqueName('glossary-v3-csv'),
-                'en',
-                'de',
-                csv,
-            );
-            try {
-                expect(glossary.dictionaries).toEqual([
-                    { sourceLangCode: 'en', targetLangCode: 'de', entryCount: 2 },
-                ]);
-            } finally {
-                await client.deleteMultilingualGlossary(glossary).catch(() => undefined);
-            }
-        },
-        testTimeout,
-    );
 });
