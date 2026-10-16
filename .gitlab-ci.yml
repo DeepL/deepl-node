@@ -186,9 +186,12 @@ test_offline_manual:
         KUBERNETES_MEMORY_LIMIT: 8Gi
     image: node:24-alpine
     script:
-        - npm run test:real-api -- --reporters="default" --reporters="jest-junit"
+        - npm run test:real-api -- --coverage --reporters="default" --reporters="jest-junit"
     artifacts:
         reports:
+            coverage_report:
+                coverage_format: cobertura
+                path: coverage/clover.xml
             junit:
                 - junit.xml
         when: always
