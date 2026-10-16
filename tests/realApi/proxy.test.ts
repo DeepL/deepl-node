@@ -20,9 +20,14 @@ describe('Translator proxy option', () => {
             const usage = await makeTranslator({ proxy: { host: '127.0.0.1', port } }).getUsage();
 
             expect(usage.toString()).toContain('Usage this billing period');
-            expect(connectTargets).toEqual([
-                `${new URL(process.env.DEEPL_SERVER_URL as string).host}:443`,
-            ]);
+            const authKey = process.env.DEEPL_AUTH_KEY as string;
+            const serverUrl = new URL(
+                process.env.DEEPL_SERVER_URL ??
+                    (authKey.endsWith(':fx')
+                        ? 'https://api-free.deepl.com'
+                        : 'https://api.deepl.com'),
+            );
+            expect(connectTargets).toEqual([`${serverUrl.hostname}:${serverUrl.port || 443}`]);
         } finally {
             server.close();
         }
