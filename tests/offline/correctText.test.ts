@@ -4,7 +4,7 @@
 
 import nock from 'nock';
 
-import { makeOfflineDeeplClient, offlineServerUrl } from '../core';
+import { makeDeeplClient, serverUrl } from './client';
 
 const corrected = {
     improvements: [{ text: 'out', detected_source_language: 'DE', target_language: 'de' }],
@@ -12,25 +12,25 @@ const corrected = {
 
 describe('DeepLClient.correctText', () => {
     it('sends the text and parses the result', async () => {
-        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .post('/v2/write/correct', { text: 'abc' })
             .reply(200, corrected);
 
-        const result = await makeOfflineDeeplClient().correctText('abc');
+        const result = await makeDeeplClient().correctText('abc');
 
         expect(result).toEqual({ text: 'out', detectedSourceLang: 'de', targetLang: 'de' });
     });
 
     it('sends the target language', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .post('/v2/write/correct', { text: 'abc', target_lang: 'de' })
             .reply(200, corrected);
 
-        await makeOfflineDeeplClient().correctText('abc', 'de');
+        await makeDeeplClient().correctText('abc', 'de');
     });
 
     it('sends every text of an array and returns one result per text', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .post('/v2/write/correct', { text: ['a', 'b'] })
             .reply(200, {
                 improvements: [
@@ -39,14 +39,12 @@ describe('DeepLClient.correctText', () => {
                 ],
             });
 
-        const results = await makeOfflineDeeplClient().correctText(['a', 'b']);
+        const results = await makeDeeplClient().correctText(['a', 'b']);
 
         expect(results.map((result) => result.text)).toEqual(['A', 'B']);
     });
 
     it('throws DeepLError when a text is empty', async () => {
-        await expect(makeOfflineDeeplClient().correctText('', 'de')).rejects.toThrow(
-            /non-empty string/,
-        );
+        await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(/non-empty string/);
     });
 });

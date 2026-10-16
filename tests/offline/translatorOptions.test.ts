@@ -6,12 +6,12 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeTranslator, serverUrl } from './client';
 
 const usage = { character_count: 1, character_limit: 2 };
 
 /** Declares GET /v2/usage, requiring the User-Agent header to satisfy `matches`. */
-function expectUserAgent(matches: (userAgent: string) => boolean, host = offlineServerUrl) {
+function expectUserAgent(matches: (userAgent: string) => boolean, host = serverUrl) {
     nock(host, { reqheaders: { 'user-agent': matches } })
         .get('/v2/usage')
         .reply(200, usage);
@@ -23,11 +23,11 @@ describe('Translator constructor', () => {
     });
 
     it('sends the auth key in the Authorization header', async () => {
-        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key my-key' } })
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key my-key' } })
             .get('/v2/usage')
             .reply(200, usage);
 
-        await makeOfflineTranslator({ authKey: 'my-key' }).getUsage();
+        await makeTranslator({ authKey: 'my-key' }).getUsage();
     });
 
     it('sends requests to the API for free accounts when the auth key ends in :fx', async () => {
@@ -45,15 +45,15 @@ describe('Translator constructor', () => {
     it('sends requests to serverUrl when it is set', async () => {
         nock('https://example.test').get('/v2/usage').reply(200, usage);
 
-        await makeOfflineTranslator({ serverUrl: 'https://example.test' }).getUsage();
+        await makeTranslator({ serverUrl: 'https://example.test' }).getUsage();
     });
 
     it('sends the configured headers with every request', async () => {
-        nock(offlineServerUrl, { reqheaders: { 'x-test': 'v', authorization: /^DeepL-Auth-Key/ } })
+        nock(serverUrl, { reqheaders: { 'x-test': 'v', authorization: /^DeepL-Auth-Key/ } })
             .get('/v2/usage')
             .reply(200, usage);
 
-        await makeOfflineTranslator({ headers: { 'X-Test': 'v' } }).getUsage();
+        await makeTranslator({ headers: { 'X-Test': 'v' } }).getUsage();
     });
 });
 
@@ -68,19 +68,19 @@ describe('Translator User-Agent', () => {
     it('sends the library version and platform info by default', async () => {
         expectUserAgent(platformInfo);
 
-        await makeOfflineTranslator().getUsage();
+        await makeTranslator().getUsage();
     });
 
     it('sends the platform info when sendPlatformInfo is true', async () => {
         expectUserAgent(platformInfo);
 
-        await makeOfflineTranslator({ sendPlatformInfo: true }).getUsage();
+        await makeTranslator({ sendPlatformInfo: true }).getUsage();
     });
 
     it('sends no platform info when sendPlatformInfo is false', async () => {
         expectUserAgent(noPlatformInfo);
 
-        await makeOfflineTranslator({ sendPlatformInfo: false }).getUsage();
+        await makeTranslator({ sendPlatformInfo: false }).getUsage();
     });
 
     it.each([[undefined], [true], [false]])(
@@ -88,7 +88,7 @@ describe('Translator User-Agent', () => {
         async (sendPlatformInfo) => {
             expectUserAgent((userAgent) => userAgent.endsWith(' sampleCSApp/1.2.3'));
 
-            await makeOfflineTranslator({
+            await makeTranslator({
                 sendPlatformInfo,
                 appInfo: { appName: 'sampleCSApp', appVersion: '1.2.3' },
             }).getUsage();

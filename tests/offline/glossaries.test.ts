@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeTranslator, serverUrl } from './client';
 
 const glossaryReply = {
     glossary_id: 'g-1',
@@ -20,7 +20,7 @@ const glossaryReply = {
 
 describe('Translator.createGlossary', () => {
     it('sends the name, base languages and TSV entries and parses the glossary', async () => {
-        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .post('/v2/glossaries', {
                 name: 'my glossary',
                 source_lang: 'en',
@@ -30,7 +30,7 @@ describe('Translator.createGlossary', () => {
             })
             .reply(201, glossaryReply);
 
-        const glossary = await makeOfflineTranslator().createGlossary(
+        const glossary = await makeTranslator().createGlossary(
             'my glossary',
             <deepl.LanguageCode>'EN-US',
             <deepl.LanguageCode>'de-DE',
@@ -50,7 +50,7 @@ describe('Translator.createGlossary', () => {
 
     it('throws DeepLError when the name is empty', async () => {
         await expect(
-            makeOfflineTranslator().createGlossary(
+            makeTranslator().createGlossary(
                 '',
                 'en',
                 'de',
@@ -61,7 +61,7 @@ describe('Translator.createGlossary', () => {
 
     it('throws DeepLError when there are no entries', async () => {
         await expect(
-            makeOfflineTranslator().createGlossary('n', 'en', 'de', new deepl.GlossaryEntries()),
+            makeTranslator().createGlossary('n', 'en', 'de', new deepl.GlossaryEntries()),
         ).rejects.toThrow(/must not be empty/);
     });
 });
@@ -69,7 +69,7 @@ describe('Translator.createGlossary', () => {
 describe('Translator.createGlossaryWithCsv', () => {
     it('sends the CSV content with entries_format csv', async () => {
         const csv = 'sourceEntry1,targetEntry1,en,de\n"source""Entry","target,Entry",en,de';
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .post('/v2/glossaries', {
                 name: 'my glossary',
                 source_lang: 'en',
@@ -79,7 +79,7 @@ describe('Translator.createGlossaryWithCsv', () => {
             })
             .reply(201, glossaryReply);
 
-        const glossary = await makeOfflineTranslator().createGlossaryWithCsv(
+        const glossary = await makeTranslator().createGlossaryWithCsv(
             'my glossary',
             'en',
             'de',
@@ -92,17 +92,17 @@ describe('Translator.createGlossaryWithCsv', () => {
 
 describe('Translator.getGlossary', () => {
     it('requests the glossary by ID', async () => {
-        nock(offlineServerUrl).get('/v2/glossaries/g-1').reply(200, glossaryReply);
+        nock(serverUrl).get('/v2/glossaries/g-1').reply(200, glossaryReply);
 
-        const glossary = await makeOfflineTranslator().getGlossary('g-1');
+        const glossary = await makeTranslator().getGlossary('g-1');
 
         expect(glossary.glossaryId).toBe('g-1');
     });
 
     it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
-        nock(offlineServerUrl).get('/v2/glossaries/g-1').reply(404, { message: 'not found' });
+        nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'not found' });
 
-        await expect(makeOfflineTranslator().getGlossary('g-1')).rejects.toThrow(
+        await expect(makeTranslator().getGlossary('g-1')).rejects.toThrow(
             deepl.GlossaryNotFoundError,
         );
     });
@@ -110,11 +110,11 @@ describe('Translator.getGlossary', () => {
 
 describe('Translator.listGlossaries', () => {
     it('parses every glossary of the response', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v2/glossaries')
             .reply(200, { glossaries: [glossaryReply, { ...glossaryReply, glossary_id: 'g-2' }] });
 
-        const glossaries = await makeOfflineTranslator().listGlossaries();
+        const glossaries = await makeTranslator().listGlossaries();
 
         expect(glossaries.map((glossary) => glossary.glossaryId)).toEqual(['g-1', 'g-2']);
     });
@@ -125,11 +125,11 @@ describe('Translator.getGlossaryEntries', () => {
         ['a glossary ID', 'g-1'],
         ['a GlossaryInfo', <deepl.GlossaryInfo>{ glossaryId: 'g-1' }],
     ])('requests the entries of %s and parses the TSV response', async (_, glossary) => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v2/glossaries/g-1/entries')
             .reply(200, 'Apple\tApfel\nBanana\tBanane\n');
 
-        const entries = await makeOfflineTranslator().getGlossaryEntries(glossary);
+        const entries = await makeTranslator().getGlossaryEntries(glossary);
 
         expect(entries.entries()).toEqual({ Apple: 'Apfel', Banana: 'Banane' });
     });
@@ -140,8 +140,8 @@ describe('Translator.deleteGlossary', () => {
         ['a glossary ID', 'g-1'],
         ['a GlossaryInfo', <deepl.GlossaryInfo>{ glossaryId: 'g-1' }],
     ])('sends DELETE for %s', async (_, glossary) => {
-        nock(offlineServerUrl).delete('/v2/glossaries/g-1').reply(204);
+        nock(serverUrl).delete('/v2/glossaries/g-1').reply(204);
 
-        await makeOfflineTranslator().deleteGlossary(glossary);
+        await makeTranslator().deleteGlossary(glossary);
     });
 });

@@ -5,14 +5,15 @@
 import * as deepl from 'deepl-node';
 
 import { timeout } from '../../src/utils';
-import { makeDeeplClient, runName, testTimeout } from '../core';
+import { makeDeeplClient } from './client';
+import { getUniqueName, testTimeout } from './helpers';
 
 describe('DeepLClient multilingual glossaries', () => {
     it(
         'sends the v3 glossary requests: create, get, list, entries, rename, update, replace and delete',
         async () => {
             const client = makeDeeplClient();
-            const name = runName('glossary-v3');
+            const name = getUniqueName('glossary-v3');
             const enDe = {
                 sourceLangCode: 'en',
                 targetLangCode: 'de',
@@ -93,7 +94,7 @@ describe('DeepLClient multilingual glossaries', () => {
             const csv = 'sourceEntry1,targetEntry1\n"source""Entry","target,Entry"';
 
             const glossary = await client.createMultilingualGlossaryWithCsv(
-                runName('glossary-v3-csv'),
+                getUniqueName('glossary-v3-csv'),
                 'en',
                 'de',
                 csv,

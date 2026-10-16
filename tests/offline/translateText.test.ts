@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeTranslator, serverUrl } from './client';
 
 const translation = {
     translations: [{ detected_source_language: 'EN', text: 'out', billed_characters: 3 }],
@@ -15,16 +15,16 @@ const baseBody = { text: 'abc', target_lang: 'de', show_billed_characters: '1' }
 
 /** Declares a POST /v2/translate that expects exactly this body. */
 function expectTranslateBody(body: nock.DataMatcherMap, reply: object = translation) {
-    return nock(offlineServerUrl).post('/v2/translate', body).reply(200, reply);
+    return nock(serverUrl).post('/v2/translate', body).reply(200, reply);
 }
 
 describe('Translator.translateText', () => {
     it('sends the text, the target language and the billed characters flag', async () => {
-        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .post('/v2/translate', baseBody)
             .reply(200, translation);
 
-        await makeOfflineTranslator().translateText('abc', null, 'de');
+        await makeTranslator().translateText('abc', null, 'de');
     });
 
     it('parses the detected language, billed characters and model type', async () => {
@@ -39,7 +39,7 @@ describe('Translator.translateText', () => {
             ],
         });
 
-        const result = await makeOfflineTranslator().translateText('abc', null, 'de');
+        const result = await makeTranslator().translateText('abc', null, 'de');
 
         expect(result).toEqual({
             text: 'out',
@@ -60,7 +60,7 @@ describe('Translator.translateText', () => {
             },
         );
 
-        const results = await makeOfflineTranslator().translateText(['a', 'b'], null, 'de');
+        const results = await makeTranslator().translateText(['a', 'b'], null, 'de');
 
         expect(results.map((result) => result.text)).toEqual(['A', 'B']);
         expect(results.map((result) => result.detectedSourceLang)).toEqual(['en', 'fr']);
@@ -69,7 +69,7 @@ describe('Translator.translateText', () => {
     it('sends language codes in standard case', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', target_lang: 'en-US' });
 
-        await makeOfflineTranslator().translateText(
+        await makeTranslator().translateText(
             'abc',
             <deepl.SourceLanguageCode>'eN',
             <deepl.TargetLanguageCode>'EN-us',
@@ -86,7 +86,7 @@ describe('Translator.translateText', () => {
     ])('sends formality %s as %s', async (formality, sent) => {
         expectTranslateBody({ ...baseBody, formality: sent });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             formality: <deepl.Formality>formality,
         });
     });
@@ -100,7 +100,7 @@ describe('Translator.translateText', () => {
     ])('sends splitSentences %s as %s', async (splitSentences, sent) => {
         expectTranslateBody({ ...baseBody, split_sentences: sent });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             splitSentences: <deepl.SentenceSplittingMode>splitSentences,
         });
     });
@@ -111,7 +111,7 @@ describe('Translator.translateText', () => {
     ])('sends preserveFormatting %s as %s', async (preserveFormatting, sent) => {
         expectTranslateBody({ ...baseBody, preserve_formatting: sent });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', { preserveFormatting });
+        await makeTranslator().translateText('abc', null, 'de', { preserveFormatting });
     });
 
     it('sends the tag handling options', async () => {
@@ -125,7 +125,7 @@ describe('Translator.translateText', () => {
             ignore_tags: 'raw,code',
         });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             tagHandling: 'xml',
             tagHandlingVersion: 'v2',
             outlineDetection: false,
@@ -142,7 +142,7 @@ describe('Translator.translateText', () => {
             model_type: 'latency_optimized',
         });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             context: 'a knife',
             modelType: 'latency_optimized',
         });
@@ -151,7 +151,7 @@ describe('Translator.translateText', () => {
     it('sends one custom_instructions parameter per instruction', async () => {
         expectTranslateBody({ ...baseBody, custom_instructions: ['Be brief', 'Use "Sie"'] });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             customInstructions: ['Be brief', 'Use "Sie"'],
         });
     });
@@ -159,13 +159,13 @@ describe('Translator.translateText', () => {
     it('sends no custom_instructions parameter for an empty array', async () => {
         expectTranslateBody(baseBody);
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', { customInstructions: [] });
+        await makeTranslator().translateText('abc', null, 'de', { customInstructions: [] });
     });
 
     it('sends the style rule ID of a StyleRuleInfo', async () => {
         expectTranslateBody({ ...baseBody, style_id: 'style-1' });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             styleRule: <deepl.StyleRuleInfo>{ styleId: 'style-1' },
         });
     });
@@ -177,7 +177,7 @@ describe('Translator.translateText', () => {
             translation_memory_threshold: '80',
         });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             translationMemory: <deepl.TranslationMemoryInfo>{ translationMemoryId: 'tm-1' },
             translationMemoryThreshold: 80,
         });
@@ -186,7 +186,7 @@ describe('Translator.translateText', () => {
     it('sends the glossary ID of a glossary and of a glossary ID string', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_id: 'g-1' });
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_id: 'g-2' });
-        const translator = makeOfflineTranslator();
+        const translator = makeTranslator();
 
         await translator.translateText('abc', 'en', 'de', {
             glossary: <deepl.GlossaryInfo>{ glossaryId: 'g-1' },
@@ -197,7 +197,7 @@ describe('Translator.translateText', () => {
     it('sends glossaryIds as one comma-separated parameter', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_ids: 'g-1,g-2' });
 
-        await makeOfflineTranslator().translateText('abc', 'en', 'de', {
+        await makeTranslator().translateText('abc', 'en', 'de', {
             glossaryIds: ['g-1', <deepl.GlossaryInfo>{ glossaryId: 'g-2' }],
         });
     });
@@ -205,15 +205,15 @@ describe('Translator.translateText', () => {
     it('sends extraRequestParameters, which override standard parameters', async () => {
         expectTranslateBody({ ...baseBody, target_lang: 'fr', 'my-extra-parameter': 'v' });
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             extraRequestParameters: { target_lang: 'fr', 'my-extra-parameter': 'v' },
         });
     });
 
     it('sends the request to __path when it is set', async () => {
-        nock(offlineServerUrl).post('/v2/translate_secondary', baseBody).reply(200, translation);
+        nock(serverUrl).post('/v2/translate_secondary', baseBody).reply(200, translation);
 
-        await makeOfflineTranslator().translateText('abc', null, 'de', {
+        await makeTranslator().translateText('abc', null, 'de', {
             __path: '/v2/translate_secondary',
         });
     });
@@ -221,7 +221,7 @@ describe('Translator.translateText', () => {
     it.each([[''], [[''] as unknown as string], [['ok', ''] as unknown as string]])(
         'throws DeepLError when a text is empty: %p',
         async (texts) => {
-            await expect(makeOfflineTranslator().translateText(texts, null, 'de')).rejects.toThrow(
+            await expect(makeTranslator().translateText(texts, null, 'de')).rejects.toThrow(
                 /texts parameter/,
             );
         },
@@ -229,13 +229,13 @@ describe('Translator.translateText', () => {
 
     it('throws DeepLError when the target language is empty', async () => {
         await expect(
-            makeOfflineTranslator().translateText('abc', null, <deepl.TargetLanguageCode>''),
+            makeTranslator().translateText('abc', null, <deepl.TargetLanguageCode>''),
         ).rejects.toThrow(deepl.DeepLError);
     });
 
     it('throws DeepLError when glossary and glossaryIds are both set', async () => {
         await expect(
-            makeOfflineTranslator().translateText('abc', 'en', 'de', {
+            makeTranslator().translateText('abc', 'en', 'de', {
                 glossary: 'g-1',
                 glossaryIds: ['g-2'],
             }),
@@ -244,7 +244,7 @@ describe('Translator.translateText', () => {
 
     it('throws DeepLError when more than 5 glossaryIds are set', async () => {
         await expect(
-            makeOfflineTranslator().translateText('abc', 'en', 'de', {
+            makeTranslator().translateText('abc', 'en', 'de', {
                 glossaryIds: ['1', '2', '3', '4', '5', '6'],
             }),
         ).rejects.toThrow(/at most 5/);
@@ -254,14 +254,14 @@ describe('Translator.translateText', () => {
         ['glossary', { glossary: 'g-1' }],
         ['glossaryIds', { glossaryIds: ['g-1'] }],
     ])('throws DeepLError when %s is set without a source language', async (_, options) => {
-        await expect(
-            makeOfflineTranslator().translateText('abc', null, 'de', options),
-        ).rejects.toThrow(/sourceLang is required/);
+        await expect(makeTranslator().translateText('abc', null, 'de', options)).rejects.toThrow(
+            /sourceLang is required/,
+        );
     });
 
     it('throws DeepLError when translationMemoryThreshold is set without a translation memory', async () => {
         await expect(
-            makeOfflineTranslator().translateText('abc', null, 'de', {
+            makeTranslator().translateText('abc', null, 'de', {
                 translationMemoryThreshold: 80,
             }),
         ).rejects.toThrow(/requires translationMemory/);
@@ -271,7 +271,7 @@ describe('Translator.translateText', () => {
         'throws DeepLError when translationMemoryThreshold is %i',
         async (translationMemoryThreshold) => {
             await expect(
-                makeOfflineTranslator().translateText('abc', null, 'de', {
+                makeTranslator().translateText('abc', null, 'de', {
                     translationMemory: 'tm-1',
                     translationMemoryThreshold,
                 }),
@@ -280,9 +280,9 @@ describe('Translator.translateText', () => {
     );
 
     it('throws DeepLError when the response is not valid JSON', async () => {
-        nock(offlineServerUrl).post('/v2/translate').reply(200, 'not json');
+        nock(serverUrl).post('/v2/translate').reply(200, 'not json');
 
-        await expect(makeOfflineTranslator().translateText('abc', null, 'de')).rejects.toThrow(
+        await expect(makeTranslator().translateText('abc', null, 'de')).rejects.toThrow(
             /Error parsing response JSON/,
         );
     });

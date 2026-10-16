@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineDeeplClient, makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeDeeplClient, makeTranslator, serverUrl } from './client';
 
 const languages = [
     {
@@ -36,12 +36,12 @@ const languages = [
 
 describe('Translator.getSourceLanguages', () => {
     it('sends resource=translate_text and parses the source languages', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/languages')
             .query({ resource: 'translate_text' })
             .reply(200, languages);
 
-        const result = await makeOfflineTranslator().getSourceLanguages();
+        const result = await makeTranslator().getSourceLanguages();
 
         expect(result).toEqual([
             { code: 'en', name: 'English' },
@@ -52,12 +52,12 @@ describe('Translator.getSourceLanguages', () => {
 
 describe('Translator.getTargetLanguages', () => {
     it('sends resource=translate_text and parses the target languages and formality support', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/languages')
             .query({ resource: 'translate_text' })
             .reply(200, languages);
 
-        const result = await makeOfflineTranslator().getTargetLanguages();
+        const result = await makeTranslator().getTargetLanguages();
 
         expect(result).toEqual([
             { code: 'de', name: 'German', supportsFormality: true },
@@ -68,12 +68,9 @@ describe('Translator.getTargetLanguages', () => {
 
 describe('Translator.getGlossaryLanguagePairs', () => {
     it('sends resource=glossary and parses the pairs of different languages', async () => {
-        nock(offlineServerUrl)
-            .get('/v3/languages')
-            .query({ resource: 'glossary' })
-            .reply(200, languages);
+        nock(serverUrl).get('/v3/languages').query({ resource: 'glossary' }).reply(200, languages);
 
-        const result = await makeOfflineTranslator().getGlossaryLanguagePairs();
+        const result = await makeTranslator().getGlossaryLanguagePairs();
 
         expect(result).toEqual([
             { sourceLang: 'en', targetLang: 'de' },
@@ -85,7 +82,7 @@ describe('Translator.getGlossaryLanguagePairs', () => {
 
 describe('DeepLClient.getLanguagesForResource', () => {
     it('sends the resource and one include parameter per value', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/languages')
             .query({ resource: 'glossary', include: ['beta', 'external'] })
             .reply(200, [
@@ -99,7 +96,7 @@ describe('DeepLClient.getLanguagesForResource', () => {
                 },
             ]);
 
-        const result = await makeOfflineDeeplClient().getLanguagesForResource('glossary', {
+        const result = await makeDeeplClient().getLanguagesForResource('glossary', {
             include: ['beta', 'external'],
         });
 
@@ -116,21 +113,21 @@ describe('DeepLClient.getLanguagesForResource', () => {
     });
 
     it('sends no include parameter by default', async () => {
-        nock(offlineServerUrl).get('/v3/languages').query({ resource: 'write' }).reply(200, []);
+        nock(serverUrl).get('/v3/languages').query({ resource: 'write' }).reply(200, []);
 
-        await makeOfflineDeeplClient().getLanguagesForResource('write');
+        await makeDeeplClient().getLanguagesForResource('write');
     });
 
     it('throws ArgumentError when the resource is empty', async () => {
         await expect(
-            makeOfflineDeeplClient().getLanguagesForResource('' as deepl.LanguageResourceName),
+            makeDeeplClient().getLanguagesForResource('' as deepl.LanguageResourceName),
         ).rejects.toThrow(deepl.ArgumentError);
     });
 });
 
 describe('DeepLClient.getLanguageResources', () => {
     it('parses the resources and their features', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/languages/resources')
             .reply(200, [
                 {
@@ -146,7 +143,7 @@ describe('DeepLClient.getLanguageResources', () => {
                 },
             ]);
 
-        const result = await makeOfflineDeeplClient().getLanguageResources();
+        const result = await makeDeeplClient().getLanguageResources();
 
         expect(result).toEqual([
             {

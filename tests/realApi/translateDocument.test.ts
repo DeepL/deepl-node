@@ -4,13 +4,15 @@
 
 import fs from 'fs';
 
-import { exampleText, makeTranslator, tempFiles, testTimeout } from '../core';
+import { makeTranslator } from './client';
+import { testTimeout } from './helpers';
+import { inputText, createTextDocument } from '../fixtures';
 
 describe('Translator.translateDocument', () => {
     it(
         'uploads, polls and downloads a .txt document',
         async () => {
-            const [exampleDocument, outputPath] = tempFiles();
+            const [exampleDocument, outputPath] = createTextDocument();
 
             const status = await makeTranslator().translateDocument(
                 exampleDocument,
@@ -20,7 +22,7 @@ describe('Translator.translateDocument', () => {
             );
 
             expect(status.ok() && status.done()).toBe(true);
-            expect(status.billedCharacters).toBe(exampleText.en.length);
+            expect(status.billedCharacters).toBe(inputText.en.length);
             expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
         },
         testTimeout,

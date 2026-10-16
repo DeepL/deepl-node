@@ -4,11 +4,11 @@
 
 import nock from 'nock';
 
-import { makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeTranslator, serverUrl } from './client';
 
 describe('Translator.getUsage', () => {
     it('parses character, document and team document usage', async () => {
-        nock(offlineServerUrl).get('/v2/usage').reply(200, {
+        nock(serverUrl).get('/v2/usage').reply(200, {
             character_count: 10,
             character_limit: 100,
             document_count: 1,
@@ -17,7 +17,7 @@ describe('Translator.getUsage', () => {
             team_document_limit: 50,
         });
 
-        const usage = await makeOfflineTranslator().getUsage();
+        const usage = await makeTranslator().getUsage();
 
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
         expect(usage.document).toMatchObject({ count: 1, limit: 5 });
@@ -29,11 +29,11 @@ describe('Translator.getUsage', () => {
     });
 
     it('leaves out the usage types that the response does not contain', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v2/usage')
             .reply(200, { team_document_count: 1, team_document_limit: 1 });
 
-        const usage = await makeOfflineTranslator().getUsage();
+        const usage = await makeTranslator().getUsage();
 
         expect([usage.character, usage.document]).toEqual([undefined, undefined]);
         expect(usage.teamDocument?.limitReached()).toBe(true);

@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeTranslator } from '../core';
+import { makeTranslator } from './client';
 
 describe('Translator.getUsage', () => {
     it('sends GET /v2/usage and parses the usage', async () => {

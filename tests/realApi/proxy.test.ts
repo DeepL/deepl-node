@@ -6,7 +6,7 @@ import http from 'http';
 import { AddressInfo } from 'net';
 import { createProxy } from 'proxy';
 
-import { makeTranslator } from '../core';
+import { makeTranslator } from './client';
 
 describe('Translator proxy option', () => {
     it('sends requests through the configured proxy', async () => {

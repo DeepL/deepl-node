@@ -8,12 +8,8 @@ import log from 'loglevel';
 import nock from 'nock';
 
 import { RETRYABLE_AXIOS_ERROR_CODES } from '../../src/client';
-import {
-    exampleText,
-    makeOfflineDeeplClient,
-    makeOfflineTranslator,
-    offlineServerUrl,
-} from '../core';
+import { makeDeeplClient, makeTranslator, serverUrl } from './client';
+import { inputText } from '../fixtures';
 
 jest.mock('loglevel', () => ({
     debug: jest.fn(),
@@ -28,46 +24,46 @@ const usage = { character_count: 1, character_limit: 2 };
 
 describe('HttpClient retries', () => {
     it.each([[429], [500], [503]])('retries when the server answers %i', async (status) => {
-        nock(offlineServerUrl).get('/v2/usage').reply(status);
-        nock(offlineServerUrl).get('/v2/usage').reply(200, usage);
+        nock(serverUrl).get('/v2/usage').reply(status);
+        nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        const result = await makeOfflineTranslator().getUsage();
+        const result = await makeTranslator().getUsage();
 
         expect(result.character?.count).toBe(1);
     });
 
     it('retries when the connection is reset', async () => {
-        nock(offlineServerUrl).get('/v2/usage').replyWithError({ code: 'ECONNRESET' });
-        nock(offlineServerUrl).get('/v2/usage').reply(200, usage);
+        nock(serverUrl).get('/v2/usage').replyWithError({ code: 'ECONNRESET' });
+        nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        const result = await makeOfflineTranslator().getUsage();
+        const result = await makeTranslator().getUsage();
 
         expect(result.character?.count).toBe(1);
     });
 
     it('does not retry when the connection is refused', async () => {
-        nock(offlineServerUrl).get('/v2/usage').replyWithError({ code: 'ECONNREFUSED' });
+        nock(serverUrl).get('/v2/usage').replyWithError({ code: 'ECONNREFUSED' });
 
-        await expect(makeOfflineTranslator().getUsage()).rejects.toThrow(deepl.ConnectionError);
+        await expect(makeTranslator().getUsage()).rejects.toThrow(deepl.ConnectionError);
     });
 
     it('does not retry when maxRetries is 0', async () => {
-        nock(offlineServerUrl).get('/v2/usage').reply(500);
+        nock(serverUrl).get('/v2/usage').reply(500);
 
-        await expect(makeOfflineTranslator({ maxRetries: 0 }).getUsage()).rejects.toThrow(
+        await expect(makeTranslator({ maxRetries: 0 }).getUsage()).rejects.toThrow(
             /Unexpected status code: 500/,
         );
     });
 
     it('throws ConnectionError when the server does not answer in time', async () => {
         // Never answers: a delayed reply would leave a timer running past the end of the test
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v2/usage')
             .reply(() => new Promise(() => undefined));
 
-        await expect(
-            makeOfflineTranslator({ maxRetries: 0, minTimeout: 200 }).getUsage(),
-        ).rejects.toThrow(deepl.ConnectionError);
+        await expect(makeTranslator({ maxRetries: 0, minTimeout: 200 }).getUsage()).rejects.toThrow(
+            deepl.ConnectionError,
+        );
     });
 
     it.each([['ETIMEDOUT'], ['ECONNABORTED'], ['ECONNRESET'], ['EPIPE'], ['EAI_AGAIN']])(
@@ -107,7 +103,7 @@ describe('HttpClient debug logging', () => {
     }
 
     it('logs request, trace and response details of translateText', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .post('/v2/translate')
             .reply(
                 200,
@@ -119,13 +115,13 @@ describe('HttpClient debug logging', () => {
                 { 'x-trace-id': 'trace-1' },
             );
 
-        await makeOfflineTranslator().translateText(exampleText.en, null, 'de');
+        await makeTranslator().translateText(inputText.en, null, 'de');
 
         expectRequestTraceAndResponseLogged();
     });
 
     it('logs request, trace and response details of rephraseText', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .post('/v2/write/rephrase')
             .reply(
                 200,
@@ -137,7 +133,7 @@ describe('HttpClient debug logging', () => {
                 { 'x-trace-id': 'trace-1' },
             );
 
-        await makeOfflineDeeplClient().rephraseText(exampleText.de, 'de');
+        await makeDeeplClient().rephraseText(inputText.de, 'de');
 
         expectRequestTraceAndResponseLogged();
     });

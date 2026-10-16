@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeDeeplClient, makeTranslator } from '../core';
+import { makeDeeplClient, makeTranslator } from './client';
 
 describe('Translator.getSourceLanguages', () => {
     it('sends GET /v3/languages and parses the source languages', async () => {

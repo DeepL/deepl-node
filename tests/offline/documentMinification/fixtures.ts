@@ -3,6 +3,13 @@ import * as fs from 'fs';
 import AdmZip from 'adm-zip';
 import { randomFillSync } from 'crypto';
 
+export const testFilePaths = {
+    pptx: 'tests/resources/example_presentation_template.pptx',
+    docx: 'tests/resources/example_document_template.docx',
+    no_media: 'tests/resources/example_document_template_no_media.docx',
+    zip: 'tests/resources/example_zip_template.zip',
+};
+
 const MINIFIABLE_FILE_SIZE = 90000000;
 
 export const createMinifiableTestDocument = (

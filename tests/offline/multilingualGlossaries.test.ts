@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineDeeplClient, offlineServerUrl } from '../core';
+import { makeDeeplClient, serverUrl } from './client';
 
 // Request bodies of v3 glossary create, update and replace are asserted against the real API
 // (tests/realApi) until they are sent as JSON.
@@ -30,11 +30,11 @@ const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
 
 describe('DeepLClient.getMultilingualGlossary', () => {
     it('requests the glossary by ID and parses its dictionaries', async () => {
-        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .get('/v3/glossaries/g-1')
             .reply(200, glossaryReply);
 
-        const glossary = await makeOfflineDeeplClient().getMultilingualGlossary('g-1');
+        const glossary = await makeDeeplClient().getMultilingualGlossary('g-1');
 
         expect(glossary).toEqual({
             glossaryId: 'g-1',
@@ -45,15 +45,15 @@ describe('DeepLClient.getMultilingualGlossary', () => {
     });
 
     it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
-        nock(offlineServerUrl).get('/v3/glossaries/g-1').reply(404, { message: 'not found' });
+        nock(serverUrl).get('/v3/glossaries/g-1').reply(404, { message: 'not found' });
 
-        await expect(makeOfflineDeeplClient().getMultilingualGlossary('g-1')).rejects.toThrow(
+        await expect(makeDeeplClient().getMultilingualGlossary('g-1')).rejects.toThrow(
             deepl.GlossaryNotFoundError,
         );
     });
 
     it('throws ArgumentError when the glossary ID is empty', async () => {
-        await expect(makeOfflineDeeplClient().getMultilingualGlossary('')).rejects.toThrow(
+        await expect(makeDeeplClient().getMultilingualGlossary('')).rejects.toThrow(
             deepl.ArgumentError,
         );
     });
@@ -61,7 +61,7 @@ describe('DeepLClient.getMultilingualGlossary', () => {
 
 describe('DeepLClient.listMultilingualGlossaries', () => {
     it('parses every glossary of the response', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/glossaries')
             .reply(200, {
                 glossaries: [
@@ -70,7 +70,7 @@ describe('DeepLClient.listMultilingualGlossaries', () => {
                 ],
             });
 
-        const glossaries = await makeOfflineDeeplClient().listMultilingualGlossaries();
+        const glossaries = await makeDeeplClient().listMultilingualGlossaries();
 
         expect(glossaries.map((glossary) => glossary.glossaryId)).toEqual(['g-1', 'g-2']);
         expect(glossaries[0].dictionaries).toEqual(parsedDictionaries);
@@ -83,7 +83,7 @@ describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
         ['a glossary ID', 'g-1'],
         ['a MultilingualGlossaryInfo', <deepl.MultilingualGlossaryInfo>{ glossaryId: 'g-1' }],
     ])('sends the language pair as query for %s and parses the entries', async (_, glossary) => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/glossaries/g-1/entries')
             .query({ source_lang: 'en', target_lang: 'de' })
             .reply(200, {
@@ -97,7 +97,7 @@ describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
                 ],
             });
 
-        const dictionary = await makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries(
+        const dictionary = await makeDeeplClient().getMultilingualGlossaryDictionaryEntries(
             glossary,
             'en',
             'de',
@@ -109,13 +109,13 @@ describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
     });
 
     it('throws GlossaryNotFoundError when the response has no dictionary', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .get('/v3/glossaries/g-1/entries')
             .query(true)
             .reply(200, { dictionaries: [] });
 
         await expect(
-            makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries('g-1', 'en', 'de'),
+            makeDeeplClient().getMultilingualGlossaryDictionaryEntries('g-1', 'en', 'de'),
         ).rejects.toThrow(deepl.GlossaryNotFoundError);
     });
 
@@ -125,11 +125,7 @@ describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
         ['targetLanguageCode', ['g-1', 'en', '']],
     ])('throws ArgumentError when %s is empty', async (_, [glossary, source, target]) => {
         await expect(
-            makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries(
-                glossary,
-                source,
-                target,
-            ),
+            makeDeeplClient().getMultilingualGlossaryDictionaryEntries(glossary, source, target),
         ).rejects.toThrow(deepl.ArgumentError);
     });
 });
@@ -139,13 +135,13 @@ describe('DeepLClient.deleteMultilingualGlossary', () => {
         ['a glossary ID', 'g-1'],
         ['a MultilingualGlossaryInfo', <deepl.MultilingualGlossaryInfo>{ glossaryId: 'g-1' }],
     ])('sends DELETE for %s', async (_, glossary) => {
-        nock(offlineServerUrl).delete('/v3/glossaries/g-1').reply(204);
+        nock(serverUrl).delete('/v3/glossaries/g-1').reply(204);
 
-        await makeOfflineDeeplClient().deleteMultilingualGlossary(glossary);
+        await makeDeeplClient().deleteMultilingualGlossary(glossary);
     });
 
     it('throws Error when the glossary ID is empty', async () => {
-        await expect(makeOfflineDeeplClient().deleteMultilingualGlossary('')).rejects.toThrow(
+        await expect(makeDeeplClient().deleteMultilingualGlossary('')).rejects.toThrow(
             'glossaryId must not be empty',
         );
     });
@@ -153,12 +149,12 @@ describe('DeepLClient.deleteMultilingualGlossary', () => {
 
 describe('DeepLClient.deleteMultilingualGlossaryDictionary', () => {
     it('sends DELETE with the language pair as query', async () => {
-        nock(offlineServerUrl)
+        nock(serverUrl)
             .delete('/v3/glossaries/g-1/dictionaries')
             .query({ source_lang: 'en', target_lang: 'de' })
             .reply(204);
 
-        await makeOfflineDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'en', 'de');
+        await makeDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'en', 'de');
     });
 
     it.each([
@@ -167,14 +163,14 @@ describe('DeepLClient.deleteMultilingualGlossaryDictionary', () => {
         ['targetLanguageCode', ['g-1', 'en', '']],
     ])('throws ArgumentError when %s is empty', async (_, [glossary, source, target]) => {
         await expect(
-            makeOfflineDeeplClient().deleteMultilingualGlossaryDictionary(glossary, source, target),
+            makeDeeplClient().deleteMultilingualGlossaryDictionary(glossary, source, target),
         ).rejects.toThrow(deepl.ArgumentError);
     });
 });
 
 describe('DeepLClient glossary methods that validate their arguments', () => {
     const dictionary = { sourceLangCode: 'en', targetLangCode: 'de', entries };
-    const client = () => makeOfflineDeeplClient();
+    const client = () => makeDeeplClient();
 
     it.each([
         ['createMultilingualGlossary', () => client().createMultilingualGlossary('', [dictionary])],

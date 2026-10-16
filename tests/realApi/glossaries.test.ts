@@ -5,14 +5,15 @@
 import * as deepl from 'deepl-node';
 
 import { timeout } from '../../src/utils';
-import { makeTranslator, runName, testTimeout } from '../core';
+import { makeTranslator } from './client';
+import { getUniqueName, testTimeout } from './helpers';
 
 describe('Translator glossaries', () => {
     it(
         'sends the v2 glossary requests: create, get, list, entries and delete',
         async () => {
             const translator = makeTranslator();
-            const name = runName('glossary');
+            const name = getUniqueName('glossary');
             const entries = new deepl.GlossaryEntries({
                 entries: { Apple: 'Apfel', Banana: 'Banane' },
             });

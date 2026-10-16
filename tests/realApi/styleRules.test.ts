@@ -2,14 +2,15 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeDeeplClient, runName, testTimeout } from '../core';
+import { makeDeeplClient } from './client';
+import { getUniqueName, testTimeout } from './helpers';
 
 describe('DeepLClient style rules', () => {
     it(
         'sends the style rule requests: create, get, list, rename, configure, custom instructions and delete',
         async () => {
             const client = makeDeeplClient();
-            const name = runName('styleRule');
+            const name = getUniqueName('styleRule');
             const rules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
 
             const styleRule = await client.createStyleRule({

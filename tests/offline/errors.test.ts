@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeOfflineTranslator, offlineServerUrl } from '../core';
+import { makeTranslator, serverUrl } from './client';
 
 describe('error mapping', () => {
     it.each([
@@ -19,9 +19,9 @@ describe('error mapping', () => {
         [500, deepl.DeepLError, 'Unexpected status code: 500 Internal Server Error'],
         [503, deepl.DeepLError, 'Service unavailable, message: m'],
     ])('throws for status %i', async (status, errorClass, message) => {
-        nock(offlineServerUrl).get('/v2/usage').reply(status, { message: 'm', detail: 'd' });
+        nock(serverUrl).get('/v2/usage').reply(status, { message: 'm', detail: 'd' });
 
-        const error = await makeOfflineTranslator({ maxRetries: 0 })
+        const error = await makeTranslator({ maxRetries: 0 })
             .getUsage()
             .catch((e) => e);
 
@@ -30,24 +30,22 @@ describe('error mapping', () => {
     });
 
     it('throws DeepLError with the raw body when the error body is not JSON', async () => {
-        nock(offlineServerUrl).get('/v2/usage').reply(400, 'plain text');
+        nock(serverUrl).get('/v2/usage').reply(400, 'plain text');
 
-        await expect(makeOfflineTranslator().getUsage()).rejects.toThrow('Bad request, plain text');
+        await expect(makeTranslator().getUsage()).rejects.toThrow('Bad request, plain text');
     });
 
     it('throws GlossaryNotFoundError when a glossary request answers 404', async () => {
-        nock(offlineServerUrl).get('/v2/glossaries/g-1').reply(404, { message: 'm' });
+        nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'm' });
 
-        await expect(makeOfflineTranslator().getGlossary('g-1')).rejects.toThrow(
+        await expect(makeTranslator().getGlossary('g-1')).rejects.toThrow(
             deepl.GlossaryNotFoundError,
         );
     });
 
     it('throws DeepLError when the usage response is not valid JSON', async () => {
-        nock(offlineServerUrl).get('/v2/usage').reply(200, 'not json');
+        nock(serverUrl).get('/v2/usage').reply(200, 'not json');
 
-        await expect(makeOfflineTranslator().getUsage()).rejects.toThrow(
-            /Error parsing response JSON/,
-        );
+        await expect(makeTranslator().getUsage()).rejects.toThrow(/Error parsing response JSON/);
     });
 });

@@ -6,7 +6,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { makeDeeplClient, runName } from '../core';
+import { makeDeeplClient } from './client';
+import { getUniqueName } from './helpers';
 
 const exampleTmx =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -25,7 +26,7 @@ describe('DeepLClient translation memories', () => {
         'sends the translation memory requests: import, upload, get, list, segments, export and delete',
         async () => {
             const client = makeDeeplClient();
-            const name = runName('translationMemory');
+            const name = getUniqueName('translationMemory');
             const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-node-tm-test-'));
             let translationMemoryId: string | undefined;
             try {
