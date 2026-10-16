@@ -141,38 +141,21 @@ build:
 
 # stage: test ----------------------
 
-.test_base:
+.test_offline_base:
     stage: test
-    extends: .test
-    retry: 1
     variables:
         KUBERNETES_MEMORY_LIMIT: 8Gi
     parallel:
         matrix:
-            - DOCKER_IMAGE: 'node:22-alpine'
             - DOCKER_IMAGE: 'node:16-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:17-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:18-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:20-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:22-alpine'
-              USE_MOCK_SERVER: 'use mock server'
             - DOCKER_IMAGE: 'node:24-alpine'
-              USE_MOCK_SERVER: 'use mock server'
     image: ${DOCKER_IMAGE}
     script:
-        - >
-            if [[ ! -z "${USE_MOCK_SERVER}" ]]; then
-              echo "Using mock server"
-              export DEEPL_SERVER_URL=http://deepl-mock:3000
-              export DEEPL_MOCK_SERVER_PORT=3000
-              export DEEPL_PROXY_URL=http://deepl-mock:3001
-              export DEEPL_MOCK_PROXY_SERVER_PORT=3001
-            fi
-        - npm run test:coverage
+        - npm run test:offline -- --coverage --reporters="default" --reporters="jest-junit" --maxWorkers=5
     artifacts:
         reports:
             coverage_report:
@@ -182,38 +165,53 @@ build:
                 - junit.xml
         when: always
 
-test_scheduled:
-    extends: .test_base
+test_offline_scheduled:
+    extends: .test_offline_base
     rules:
         - if: $CI_PIPELINE_SOURCE == "schedule"
     retry: 2
 
-test_manual:
-    extends: .test_base
+test_offline_manual:
+    extends: .test_offline_base
+    rules:
+        - if: $CI_PIPELINE_SOURCE != "schedule"
+
+# Every endpoint once against the real API; no retry, as a retry repeats every request.
+.test_real_api_base:
+    stage: test
+    extends: .test
+    # Replaces the deepl-mock service of .test
+    services: []
+    variables:
+        KUBERNETES_MEMORY_LIMIT: 8Gi
+    image: node:24-alpine
+    script:
+        - npm run test:real-api -- --reporters="default" --reporters="jest-junit"
+    artifacts:
+        reports:
+            junit:
+                - junit.xml
+        when: always
+
+test_real_api_scheduled:
+    extends: .test_real_api_base
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+
+test_real_api_manual:
+    extends: .test_real_api_base
     rules:
         - if: $CI_PIPELINE_SOURCE != "schedule"
 
 .examples_base:
     stage: test
     extends: .test
-    parallel:
-        matrix:
-            - DOCKER_IMAGE: 'node:14-alpine'
-            - DOCKER_IMAGE: 'node:16-alpine'
-            - DOCKER_IMAGE: 'node:17-alpine'
-            - DOCKER_IMAGE: 'node:18-alpine'
-            - DOCKER_IMAGE: 'node:20-alpine'
-            - DOCKER_IMAGE: 'node:22-alpine'
-            - DOCKER_IMAGE: 'node:24-alpine'
-    image: ${DOCKER_IMAGE}
+    # Replaces the deepl-mock service of .test
+    services: []
+    image: node:24-alpine
     before_script: # Note: replaces global before_script
         - npm install --production
     script:
-        - export DEEPL_AUTH_KEY=mock-auth-key
-        - export DEEPL_SERVER_URL=http://deepl-mock:3000
-        - export DEEPL_MOCK_SERVER_PORT=3000
-        - export DEEPL_PROXY_URL=http://deepl-mock:3001
-        - export DEEPL_MOCK_PROXY_SERVER_PORT=3001
         - cd $CI_PROJECT_DIR/examples/commonjs
         - npm install
         - node index.js
