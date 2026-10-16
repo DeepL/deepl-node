@@ -8,9 +8,6 @@ import nock from 'nock';
 
 import { makeDeeplClient, serverUrl } from './client';
 
-// Request bodies of v3 glossary create from entries, update and replace are asserted against the
-// real API (tests/realApi) until they are sent as JSON.
-
 const glossaryReply = {
     glossary_id: 'g-1',
     name: 'my glossary',
@@ -27,6 +24,83 @@ const parsedDictionaries = [
 ];
 
 const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
+
+describe('DeepLClient.createMultilingualGlossary', () => {
+    it('sends the name and every dictionary with TSV entries and parses the glossary', async () => {
+        nock(serverUrl)
+            .post('/v3/glossaries', {
+                name: 'my glossary',
+                'dictionaries[0].source_lang': 'en',
+                'dictionaries[0].target_lang': 'de',
+                'dictionaries[0].entries': 'Apple\tApfel\nBanana\tBanane',
+                'dictionaries[0].entries_format': 'tsv',
+                'dictionaries[1].source_lang': 'en',
+                'dictionaries[1].target_lang': 'fr',
+                'dictionaries[1].entries': 'Apple\tPomme',
+                'dictionaries[1].entries_format': 'tsv',
+            })
+            .reply(201, glossaryReply);
+
+        const glossary = await makeDeeplClient().createMultilingualGlossary('my glossary', [
+            {
+                sourceLangCode: 'en',
+                targetLangCode: 'de',
+                entries: new deepl.GlossaryEntries({
+                    entries: { Apple: 'Apfel', Banana: 'Banane' },
+                }),
+            },
+            {
+                sourceLangCode: 'en',
+                targetLangCode: 'fr',
+                entries: new deepl.GlossaryEntries({ entries: { Apple: 'Pomme' } }),
+            },
+        ]);
+
+        expect(glossary.dictionaries).toEqual(parsedDictionaries);
+    });
+});
+
+describe('DeepLClient.updateMultilingualGlossaryDictionary', () => {
+    it('sends the dictionary with PATCH and parses the glossary', async () => {
+        nock(serverUrl)
+            .patch('/v3/glossaries/g-1', {
+                'dictionaries[0].source_lang': 'en',
+                'dictionaries[0].target_lang': 'de',
+                'dictionaries[0].entries': 'Apple\tApfel',
+                'dictionaries[0].entries_format': 'tsv',
+            })
+            .reply(200, glossaryReply);
+
+        const glossary = await makeDeeplClient().updateMultilingualGlossaryDictionary('g-1', {
+            sourceLangCode: 'en',
+            targetLangCode: 'de',
+            entries: new deepl.GlossaryEntries({ entries: { Apple: 'Apfel' } }),
+        });
+
+        expect(glossary.glossaryId).toBe('g-1');
+    });
+});
+
+describe('DeepLClient.replaceMultilingualGlossaryDictionary', () => {
+    it('sends the dictionary with PUT and parses the dictionary info', async () => {
+        nock(serverUrl)
+            .put('/v3/glossaries/g-1/dictionaries', {
+                source_lang: 'en',
+                target_lang: 'de',
+                entries: 'Apple\tApfel',
+                entries_format: 'tsv',
+            })
+            .reply(200, { source_lang: 'en', target_lang: 'de', entry_count: 1 });
+
+        const dictionary = await makeDeeplClient().replaceMultilingualGlossaryDictionary('g-1', {
+            sourceLangCode: 'en',
+            targetLangCode: 'de',
+            entries: new deepl.GlossaryEntries({ entries: { Apple: 'Apfel' } }),
+        });
+
+        expect(dictionary).toEqual({ sourceLangCode: 'en', targetLangCode: 'de', entryCount: 1 });
+    });
+});
 
 describe('DeepLClient.createMultilingualGlossaryWithCsv', () => {
     it('sends the CSV content with entries_format csv and parses the glossary', async () => {
