@@ -15,7 +15,9 @@ const exampleTmx =
     '<body><tu><tuv xml:lang="en"><seg>Segment number 1</seg></tuv>' +
     '<tuv xml:lang="de"><seg>Segment Nummer 1</seg></tuv></tu></body></tmx>\n';
 
-// The import appears as a translation memory only after about a minute
+// The import appears as a translation memory only after about a minute. The two job waits must
+// together stay below the test timeout, or jest abandons the test before it deletes the memory.
+const jobTimeout = 120000;
 const importFlowTimeout = 300000;
 
 describe('DeepLClient translation memories', () => {
@@ -39,7 +41,7 @@ describe('DeepLClient translation memories', () => {
 
                 const importJob = await client.isTranslationMemoryJobComplete(
                     created.jobId,
-                    240000,
+                    jobTimeout,
                 );
                 translationMemoryId = importJob.results[0].translationMemoryId;
                 expect(importJob.operation).toBe('import');
@@ -68,7 +70,7 @@ describe('DeepLClient translation memories', () => {
                 expect(exported.jobId).toEqual(expect.any(String));
                 const exportJob = await client.isTranslationMemoryJobComplete(
                     exported.jobId,
-                    240000,
+                    jobTimeout,
                 );
                 const outputPath = path.join(tempDir, 'export.tmx');
                 await client.downloadTranslationMemoryExport(exportJob, outputPath);
