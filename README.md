@@ -985,52 +985,41 @@ There are multiple ways to manage your own environment variables. You can choose
 **Using a global .rc file (such as ~/.bashrc):**
 
 ```sh
-# Local
-export DEEPL_MOCK_SERVER_PORT=3000
-export DEEPL_AUTH_KEY=ANY_VALUE
-export DEEPL_SERVER_URL=http://localhost:3000
-```
-
-```sh
-# Prod
-# (Make sure to run `unset DEEPL_MOCK_SERVER_PORT` if it was previously assigned a value)
 export DEEPL_AUTH_KEY={YOUR_API_KEY}
 export DEEPL_SERVER_URL=https://api.deepl.com
 ```
 
 **Using .env file**:
 
-(Benefits include: No need to refresh terminal when changing stages, no need to call `unset` to clear vars, can be used to isolate vars between multiple projects)
+(Benefits include: No need to refresh terminal when changing stages, can be used to isolate vars between multiple projects)
 
 - Copy `.env.example` file to a `.env` file 
     - The `.env` file will never be stored in git, so your local credentials will not be shared
 - Edit `.env` file to your own desired variables
-    - If using local mock server, then point to local ports
 
 ### Tests
 
-Execute the tests using `npm test`. The tests communicate with the DeepL API
-using the authentication key defined by the `DEEPL_AUTH_KEY` environment
-variable.
+The tests are split into two groups, selected by `npm` script:
 
-Be aware that the tests make DeepL API requests that contribute toward your API
-usage.
+- `npm run test:offline` runs `tests/offline`. These tests intercept all HTTP
+  traffic with [nock][nock], so they need no network and no authentication key.
+  They check the requests that the library sends for every option, and how it
+  handles errors, retries and polling.
+- `npm run test:real-api` runs `tests/realApi`. These tests send one request per
+  API endpoint to the DeepL API, using the authentication key and server URL
+  defined by the `DEEPL_AUTH_KEY` and `DEEPL_SERVER_URL` environment variables.
+  They create and delete glossaries, style rules and translation memories named
+  `sdktest-node-...`.
 
-The test suite may instead be configured to communicate with the mock-server
-provided by [deepl-mock][deepl-mock]. Although most test cases work for either,
-some test cases work only with the DeepL API or the mock-server and will be
-otherwise skipped. The test cases that require the mock-server trigger server
-errors and test the client error-handling. To execute the tests using
-deepl-mock, run it in another terminal while executing the tests. Execute the
-tests using `npm test` with the `DEEPL_MOCK_SERVER_PORT` and `DEEPL_SERVER_URL`
-environment variables defined referring to the mock-server.
+`npm test` runs both groups. Be aware that the real-API tests make DeepL API
+requests that contribute toward your API usage.
 
 [api-docs]: https://www.deepl.com/docs-api?utm_source=github&utm_medium=github-nodejs-readme
 [api-docs-context-param]: https://www.deepl.com/docs-api/translating-text/?utm_source=github&utm_medium=github-nodejs-readme
 [api-docs-csv-format]: https://www.deepl.com/docs-api/managing-glossaries/supported-glossary-formats/?utm_source=github&utm_medium=github-nodejs-readme
 [axios-proxy-docs]: https://axios-http.com/docs/req_config
 [create-account]: https://www.deepl.com/pro?utm_source=github&utm_medium=github-nodejs-readme#developer
-[deepl-mock]: https://www.github.com/DeepLcom/deepl-mock
 [issues]: https://www.github.com/DeepLcom/deepl-node/issues
+[nock]: https://github.com/nock/nock
 [node-version-list]: https://nodejs.dev/en/about/releases/
 [pro-account]: https://www.deepl.com/pro-account/?utm_source=github&utm_medium=github-nodejs-readme
