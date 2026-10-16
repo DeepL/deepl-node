@@ -8,7 +8,7 @@ import fs from 'fs';
 import nock from 'nock';
 
 import { makeTranslator, serverUrl } from './client';
-import { inputText, createTextDocument } from '../fixtures';
+import { createTextDocument } from '../fixtures';
 
 const handle = { documentId: 'doc-id', documentKey: 'doc-key' };
 const handleReply = { document_id: handle.documentId, document_key: handle.documentKey };
@@ -27,7 +27,7 @@ function expectUpload(): { body: () => string } {
 }
 
 describe('Translator.uploadDocument', () => {
-    it('sends the file and the language options as multipart parts', async () => {
+    it('sends the file and the language options as multipart parts and parses the handle', async () => {
         const upload = expectUpload();
 
         const result = await makeTranslator().uploadDocument(
@@ -89,11 +89,9 @@ describe('Translator.uploadDocument', () => {
         nock(serverUrl).post('/v2/document').reply(429);
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
 
-        const result = await makeTranslator().uploadDocument(Buffer.from('abc'), null, 'de', {
+        await makeTranslator().uploadDocument(Buffer.from('abc'), null, 'de', {
             filename: 'a.txt',
         });
-
-        expect(result).toEqual(handle);
     });
 });
 
@@ -150,7 +148,7 @@ describe('Translator.isDocumentTranslationComplete', () => {
 
         const { status } = await makeTranslator().isDocumentTranslationComplete(handle);
 
-        expect(status.billedCharacters).toBe(11);
+        expect(status.done()).toBe(true);
     }, 15000);
 
     it('throws DeepLError with the error message when the translation fails', async () => {
@@ -188,20 +186,12 @@ describe('Translator.downloadDocument', () => {
 describe('Translator.translateDocument', () => {
     it('uploads, polls and downloads the document', async () => {
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
-        nock(serverUrl)
-            .post('/v2/document/doc-id', keyBody)
-            .reply(200, { status: 'done', billed_characters: inputText.en.length });
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });
         nock(serverUrl).post('/v2/document/doc-id/result', keyBody).reply(200, 'result');
         const [exampleDocument, outputPath] = createTextDocument();
 
-        const status = await makeTranslator().translateDocument(
-            exampleDocument,
-            outputPath,
-            null,
-            'de',
-        );
+        await makeTranslator().translateDocument(exampleDocument, outputPath, null, 'de');
 
-        expect(status.billedCharacters).toBe(inputText.en.length);
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
     });
 

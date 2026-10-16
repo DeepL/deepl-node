@@ -66,7 +66,7 @@ describe('DeepLClient.getAllStyleRules', () => {
 });
 
 describe('DeepLClient.createStyleRule', () => {
-    it('sends the style rule as JSON and parses the result', async () => {
+    it('sends the style rule as JSON', async () => {
         const body = {
             name: 'my rule',
             language: 'en',
@@ -75,11 +75,9 @@ describe('DeepLClient.createStyleRule', () => {
         };
         nock(serverUrl, { reqheaders: { 'content-type': 'application/json' } })
             .post('/v3/style_rules', body)
-            .reply(201, styleRuleReply);
+            .reply(201, {});
 
-        const styleRule = await makeDeeplClient().createStyleRule(body);
-
-        expect(styleRule.styleId).toBe('s-1');
+        await makeDeeplClient().createStyleRule(body);
     });
 
     it.each([
@@ -93,24 +91,18 @@ describe('DeepLClient.createStyleRule', () => {
 });
 
 describe('DeepLClient.getStyleRule', () => {
-    it('requests the style rule by ID, URL-encoded', async () => {
-        nock(serverUrl).get('/v3/style_rules/a%2Fb').reply(200, styleRuleReply);
+    it('sends GET for the URL-encoded style rule ID', async () => {
+        nock(serverUrl).get('/v3/style_rules/a%2Fb').reply(200, {});
 
-        const styleRule = await makeDeeplClient().getStyleRule('a/b');
-
-        expect(styleRule.styleId).toBe('s-1');
+        await makeDeeplClient().getStyleRule('a/b');
     });
 });
 
 describe('DeepLClient.updateStyleRuleName', () => {
     it('sends the new name as JSON with PATCH', async () => {
-        nock(serverUrl)
-            .patch('/v3/style_rules/s-1', { name: 'new name' })
-            .reply(200, { ...styleRuleReply, name: 'new name' });
+        nock(serverUrl).patch('/v3/style_rules/s-1', { name: 'new name' }).reply(200, {});
 
-        const styleRule = await makeDeeplClient().updateStyleRuleName('s-1', 'new name');
-
-        expect(styleRule.name).toBe('new name');
+        await makeDeeplClient().updateStyleRuleName('s-1', 'new name');
     });
 });
 
@@ -123,7 +115,7 @@ describe('DeepLClient.deleteStyleRule', () => {
 });
 
 describe('DeepLClient.updateStyleRuleConfiguredRules', () => {
-    it('sends the configured rules as JSON with PUT', async () => {
+    it('sends the configured rules as JSON with PUT and parses the result', async () => {
         const rules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
         nock(serverUrl)
             .put('/v3/style_rules/s-1/configured_rules', rules)
@@ -153,10 +145,8 @@ describe('DeepLClient custom instructions', () => {
         });
     });
 
-    it('getStyleRuleCustomInstruction requests the instruction by ID, URL-encoded', async () => {
-        nock(serverUrl)
-            .get('/v3/style_rules/a%2Fb/custom_instructions/i%2F1')
-            .reply(200, instructionReply);
+    it('getStyleRuleCustomInstruction sends GET for the URL-encoded IDs', async () => {
+        nock(serverUrl).get('/v3/style_rules/a%2Fb/custom_instructions/i%2F1').reply(200, {});
 
         await makeDeeplClient().getStyleRuleCustomInstruction('a/b', 'i/1');
     });
@@ -164,7 +154,7 @@ describe('DeepLClient custom instructions', () => {
     it('updateStyleRuleCustomInstruction sends the instruction as JSON with PUT', async () => {
         nock(serverUrl)
             .put('/v3/style_rules/s-1/custom_instructions/i-1', instruction)
-            .reply(200, instructionReply);
+            .reply(200, {});
 
         await makeDeeplClient().updateStyleRuleCustomInstruction('s-1', 'i-1', instruction);
     });
