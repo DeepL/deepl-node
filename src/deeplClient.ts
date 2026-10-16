@@ -61,6 +61,7 @@ import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
 import { IncomingMessage } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as util from 'util';
 export type CustomInstructionRequestBody = {
     label: string;
     prompt: string;
@@ -1026,38 +1027,52 @@ export class DeepLClient extends Translator {
             );
         }
 
-        // Streamed rather than buffered as text, mirroring downloadDocument(): a TMX export can
-        // be large, and decoding it to a string would both hold it all in memory and risk
-        // corrupting bytes that are not valid UTF-8.
-        const { statusCode, content } =
-            await this.storageHttpClient.sendRequestWithBackoff<IncomingMessage>(
-                'GET',
-                downloadUrl,
-                {},
-                true,
-            );
-        // Routed through checkStatusCode so the storage service's error body ends up in the
-        // message and the response stream is drained rather than left holding the socket.
-        await checkStatusCode(statusCode, content, false, true);
-
+        // The file is created before the request, so that an existing file is rejected with
+        // EEXIST at once on every Node version, and nothing is downloaded. Node 16 and 17 never
+        // call back from close() on a write stream that failed to open, so this cannot be left
+        // to the stream.
+        let fd: number | undefined;
         if (typeof outputFile === 'string') {
-            const fileStream = fs.createWriteStream(outputFile, { flags: 'wx' });
-            try {
-                await DeepLClient.pipeToStream(content, fileStream);
-            } catch (e) {
-                await new Promise((resolve) => fileStream.close(resolve));
-                // Never leave a truncated TMX behind: a caller that logs and continues would
-                // otherwise see a file that looks like a successful export. But 'wx' fails with
-                // EEXIST precisely to protect a file that was already there, so deleting on that
-                // error would destroy the very file the flag exists to guard.
-                if ((e as NodeJS.ErrnoException)?.code !== 'EEXIST') {
-                    await fs.promises.unlink(outputFile).catch(() => undefined);
-                }
-                throw e;
-            }
-            return;
+            fd = await util.promisify(fs.open)(outputFile, 'wx');
         }
-        return DeepLClient.pipeToStream(content, outputFile);
+        try {
+            // Streamed rather than buffered as text, mirroring downloadDocument(): a TMX export
+            // can be large, and decoding it to a string would both hold it all in memory and
+            // risk corrupting bytes that are not valid UTF-8.
+            const { statusCode, content } =
+                await this.storageHttpClient.sendRequestWithBackoff<IncomingMessage>(
+                    'GET',
+                    downloadUrl,
+                    {},
+                    true,
+                );
+            // Routed through checkStatusCode so the storage service's error body ends up in the
+            // message and the response stream is drained rather than left holding the socket.
+            await checkStatusCode(statusCode, content, false, true);
+
+            if (fd === undefined) {
+                return await DeepLClient.pipeToStream(content, outputFile as fs.WriteStream);
+            }
+            await DeepLClient.pipeToStream(
+                content,
+                fs.createWriteStream(outputFile as string, { fd, autoClose: false }),
+            );
+        } catch (e) {
+            if (fd !== undefined) {
+                await util
+                    .promisify(fs.close)(fd)
+                    .catch(() => undefined);
+                fd = undefined;
+                // Never leave a truncated TMX behind: a caller that logs and continues would
+                // otherwise see a file that looks like a successful export.
+                await fs.promises.unlink(outputFile as string).catch(() => undefined);
+            }
+            throw e;
+        } finally {
+            if (fd !== undefined) {
+                await util.promisify(fs.close)(fd);
+            }
+        }
     }
 
     /**

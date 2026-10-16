@@ -384,8 +384,7 @@ describe('DeepLClient.downloadTranslationMemoryExport', () => {
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
     });
 
-    it('keeps an existing output file', async () => {
-        nock(storageUrl).get('/download').reply(200, tmx);
+    it('rejects an existing output file before it downloads anything', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         fs.writeFileSync(outputPath, 'existing');
 

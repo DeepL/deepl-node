@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the DeepL API translates them as `en-US` and `pt-PT`. `TargetLanguageCode` now
   includes `en` and `pt`.
 
+### Fixed
+- `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
+  already exists. It now rejects with `EEXIST` before downloading anything, on every Node
+  version, and leaves the existing file unchanged.
+
 ## [1.28.1] - 2026-10-09
 ### Security
 - Bumped `axios` to `^1.20.0` and `adm-zip` to `^0.6.1` to resolve
