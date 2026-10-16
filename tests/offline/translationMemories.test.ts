@@ -1,0 +1,459 @@
+// Copyright 2025 DeepL SE (https://www.deepl.com)
+// Use of this source code is governed by an MIT
+// license that can be found in the LICENSE file.
+
+import * as deepl from 'deepl-node';
+
+import fs from 'fs';
+import nock from 'nock';
+import os from 'os';
+import path from 'path';
+
+import { makeOfflineDeeplClient, offlineServerUrl } from '../core';
+
+const storageUrl = 'https://storage.example';
+const tmx = '<tmx version="1.4"><body/></tmx>';
+
+const tmReply = {
+    translation_memory_id: 'tm-1',
+    name: 'my tm',
+    source_language: 'de',
+    target_languages: ['en'],
+    segment_count: 3,
+    creation_time: '2025-01-02T03:04:05Z',
+    updated_time: '2025-01-03T03:04:05Z',
+};
+
+function jobReply(status: string, extra: Record<string, unknown> = {}) {
+    return {
+        job_id: 'job-1',
+        operation: 'import',
+        product: 'translation_memory',
+        results: [{ status, ...extra }],
+    };
+}
+
+function tempDir(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-node-tm-test-'));
+}
+
+describe('DeepLClient.listTranslationMemories', () => {
+    it('sends no query by default and parses the translation memories', async () => {
+        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+            .get('/v3/translation_memories')
+            .query({})
+            .reply(200, { translation_memories: [tmReply] });
+
+        const result = await makeOfflineDeeplClient().listTranslationMemories();
+
+        expect(result).toEqual([
+            {
+                translationMemoryId: 'tm-1',
+                name: 'my tm',
+                sourceLanguage: 'de',
+                targetLanguages: ['en'],
+                segmentCount: 3,
+                creationTime: new Date('2025-01-02T03:04:05Z'),
+                updatedTime: new Date('2025-01-03T03:04:05Z'),
+            },
+        ]);
+    });
+
+    it('sends page and page_size', async () => {
+        nock(offlineServerUrl)
+            .get('/v3/translation_memories')
+            .query({ page: '1', page_size: '5' })
+            .reply(200, { translation_memories: [] });
+
+        await makeOfflineDeeplClient().listTranslationMemories(1, 5);
+    });
+});
+
+describe('DeepLClient.getTranslationMemory', () => {
+    it.each([
+        ['an ID', 'tm-1'],
+        ['a TranslationMemoryInfo', <deepl.TranslationMemoryInfo>{ translationMemoryId: 'tm-1' }],
+    ])('requests the translation memory by %s', async (_, translationMemory) => {
+        nock(offlineServerUrl).get('/v3/translation_memories/tm-1').reply(200, tmReply);
+
+        const result = await makeOfflineDeeplClient().getTranslationMemory(translationMemory);
+
+        expect(result.translationMemoryId).toBe('tm-1');
+    });
+
+    it('throws DeepLError when the translation memory has no ID', async () => {
+        await expect(
+            makeOfflineDeeplClient().getTranslationMemory(<deepl.TranslationMemoryInfo>{}),
+        ).rejects.toThrow(/should be a TranslationMemoryId/);
+    });
+
+    it('throws DeepLError when the translation memory does not exist', async () => {
+        nock(offlineServerUrl).get('/v3/translation_memories/tm-1').reply(404, { message: 'm' });
+
+        await expect(makeOfflineDeeplClient().getTranslationMemory('tm-1')).rejects.toThrow(
+            'Not found',
+        );
+    });
+});
+
+describe('DeepLClient.listTranslationMemorySegments', () => {
+    it('sends no query by default and parses the segments', async () => {
+        nock(offlineServerUrl)
+            .get('/v3/translation_memories/tm-1/segments')
+            .query({})
+            .reply(200, {
+                segments: [
+                    {
+                        source_segment_id: 'seg-1',
+                        source_text: 'Hallo',
+                        creation_time: '2025-01-02T03:04:05Z',
+                        targets: [
+                            {
+                                target_segment_id: 'tgt-1',
+                                target_language: 'en',
+                                target_text: 'Hello',
+                            },
+                        ],
+                    },
+                ],
+                segment_count: 1,
+                next_page_cursor: 'cursor-2',
+            });
+
+        const result = await makeOfflineDeeplClient().listTranslationMemorySegments('tm-1');
+
+        expect(result.segmentCount).toBe(1);
+        expect(result.nextPageCursor).toBe('cursor-2');
+        expect(result.segments[0]).toMatchObject({
+            sourceSegmentId: 'seg-1',
+            sourceText: 'Hallo',
+            creationTime: new Date('2025-01-02T03:04:05Z'),
+            targets: [{ targetSegmentId: 'tgt-1', targetLanguage: 'en', targetText: 'Hello' }],
+        });
+    });
+
+    it('sends the paging and filter options, with spaces encoded as %20', async () => {
+        nock(offlineServerUrl)
+            .get(
+                '/v3/translation_memories/tm-1/segments?page_size=5&page_cursor=c1' +
+                    '&filter_text=Nummer%207&filter_case_sensitive=true',
+            )
+            .reply(200, { segments: [], segment_count: 0 });
+
+        await makeOfflineDeeplClient().listTranslationMemorySegments('tm-1', {
+            pageSize: 5,
+            pageCursor: 'c1',
+            filterText: 'Nummer 7',
+            filterCaseSensitive: true,
+        });
+    });
+});
+
+describe('DeepLClient.deleteTranslationMemory', () => {
+    it('sends DELETE for the translation memory ID', async () => {
+        nock(offlineServerUrl).delete('/v3/translation_memories/tm-1').reply(204);
+
+        await makeOfflineDeeplClient().deleteTranslationMemory('tm-1');
+    });
+});
+
+describe('DeepLClient.createTranslationMemoryImport', () => {
+    it('sends the source file and display name as JSON and parses the import', async () => {
+        nock(offlineServerUrl, { reqheaders: { 'content-type': 'application/json' } })
+            .post('/v3/translation_memories/import', {
+                source_file: {
+                    file_name: 'a.tmx',
+                    content_length: 10,
+                    content_type: 'application/xml',
+                },
+                parameters: { display_name: 'my tm' },
+            })
+            .reply(202, {
+                job_id: 'job-1',
+                upload_url: `${storageUrl}/upload`,
+                expires_at: '2025-01-02T03:04:05Z',
+            });
+
+        const result = await makeOfflineDeeplClient().createTranslationMemoryImport('a.tmx', 10, {
+            contentType: 'application/xml',
+            displayName: 'my tm',
+        });
+
+        expect(result).toEqual({
+            jobId: 'job-1',
+            uploadUrl: `${storageUrl}/upload`,
+            expiresAt: new Date('2025-01-02T03:04:05Z'),
+        });
+    });
+
+    it('sends only the file name and length when there are no options', async () => {
+        nock(offlineServerUrl)
+            .post('/v3/translation_memories/import', {
+                source_file: { file_name: 'a.tmx', content_length: 10 },
+            })
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+
+        await makeOfflineDeeplClient().createTranslationMemoryImport('a.tmx', 10);
+    });
+
+    it.each([
+        ['file name', '', 10],
+        ['content length', 'a.tmx', 0],
+    ])('throws ArgumentError when the %s is invalid', async (_, fileName, contentLength) => {
+        await expect(
+            makeOfflineDeeplClient().createTranslationMemoryImport(fileName, contentLength),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient.uploadTranslationMemoryFile', () => {
+    it('puts the file to the upload URL with the content type, and without credentials', async () => {
+        let received = '';
+        nock(storageUrl, {
+            reqheaders: { 'content-type': 'text/xml', 'user-agent': /^deepl-node\// },
+            badheaders: ['authorization', 'x-corp-token'],
+        })
+            .put('/upload?sig=1', (body) => {
+                received = body;
+                return true;
+            })
+            .reply(200);
+
+        await makeOfflineDeeplClient({
+            headers: { 'X-Corp-Token': 't' },
+        }).uploadTranslationMemoryFile(
+            { jobId: 'job-1', uploadUrl: `${storageUrl}/upload?sig=1` },
+            Buffer.from(tmx),
+            'text/xml',
+        );
+
+        expect(received).toBe(tmx);
+    });
+
+    it('sends application/xml by default', async () => {
+        nock(storageUrl, { reqheaders: { 'content-type': 'application/xml' } })
+            .put('/upload')
+            .reply(200);
+
+        await makeOfflineDeeplClient().uploadTranslationMemoryFile(
+            `${storageUrl}/upload`,
+            Buffer.from(tmx),
+        );
+    });
+
+    it('throws DeepLError with the status when the storage rejects the upload', async () => {
+        nock(storageUrl).put('/upload').reply(403, 'expired');
+
+        await expect(
+            makeOfflineDeeplClient().uploadTranslationMemoryFile(
+                `${storageUrl}/upload`,
+                Buffer.from(tmx),
+            ),
+        ).rejects.toThrow('HTTP status: 403, content: expired');
+    });
+
+    it('throws ArgumentError when the upload URL is empty', async () => {
+        await expect(
+            makeOfflineDeeplClient().uploadTranslationMemoryFile('', Buffer.from(tmx)),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient.getTranslationMemoryJob', () => {
+    it('requests the job and parses its result', async () => {
+        nock(offlineServerUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(
+                200,
+                jobReply('completed', {
+                    translation_memory_id: 'tm-1',
+                    skipped_segment_count: 2,
+                    download_url: `${storageUrl}/download`,
+                }),
+            );
+
+        const job = await makeOfflineDeeplClient().getTranslationMemoryJob('job-1');
+
+        expect(job).toMatchObject({ jobId: 'job-1', operation: 'import' });
+        expect(job.results).toEqual([
+            {
+                status: 'completed',
+                requiredAction: undefined,
+                downloadUrl: `${storageUrl}/download`,
+                expiresAt: undefined,
+                errorMessage: undefined,
+                translationMemoryId: 'tm-1',
+                skippedSegmentCount: 2,
+            },
+        ]);
+    });
+
+    it('throws ArgumentError when the job ID is empty', async () => {
+        await expect(makeOfflineDeeplClient().getTranslationMemoryJob('')).rejects.toThrow(
+            deepl.ArgumentError,
+        );
+    });
+});
+
+describe('DeepLClient.isTranslationMemoryJobComplete', () => {
+    const jobPath = '/v3/translation_memories/jobs/job-1';
+
+    it('polls through awaiting_input until the job is completed', async () => {
+        nock(offlineServerUrl).get(jobPath).reply(200, jobReply('awaiting_input'));
+        nock(offlineServerUrl)
+            .get(jobPath)
+            .reply(200, jobReply('completed', { translation_memory_id: 'tm-1' }));
+
+        const job = await makeOfflineDeeplClient().isTranslationMemoryJobComplete('job-1');
+
+        expect(job.results[0].translationMemoryId).toBe('tm-1');
+    }, 15000);
+
+    it.each([
+        ['failed', { error: { message: 'bad tmx' } }, 'bad tmx'],
+        ['expired', {}, 'Job expired'],
+    ])('throws DeepLError when the job is %s', async (status, extra, message) => {
+        nock(offlineServerUrl).get(jobPath).reply(200, jobReply(status, extra));
+
+        await expect(
+            makeOfflineDeeplClient().isTranslationMemoryJobComplete('job-1'),
+        ).rejects.toThrow(message);
+    });
+
+    it('throws DeepLError when the status is unknown', async () => {
+        nock(offlineServerUrl).get(jobPath).reply(200, jobReply('something_new'));
+
+        await expect(
+            makeOfflineDeeplClient().isTranslationMemoryJobComplete('job-1'),
+        ).rejects.toThrow(/unusable status: something_new/);
+    });
+
+    it('throws DeepLError when the job has no result', async () => {
+        nock(offlineServerUrl)
+            .get(jobPath)
+            .reply(200, { job_id: 'job-1', operation: 'import', results: [] });
+
+        await expect(
+            makeOfflineDeeplClient().isTranslationMemoryJobComplete('job-1'),
+        ).rejects.toThrow(/unusable status: none/);
+    });
+
+    it('throws DeepLError when timeoutMs is exceeded', async () => {
+        nock(offlineServerUrl).get(jobPath).times(2).reply(200, jobReply('processing'));
+
+        await expect(
+            makeOfflineDeeplClient().isTranslationMemoryJobComplete('job-1', 1),
+        ).rejects.toThrow('Timeout of 1ms exceeded');
+    }, 15000);
+});
+
+describe('DeepLClient.createTranslationMemoryExport', () => {
+    it.each([
+        [202, false],
+        [200, true],
+    ])('answered with %i parses reusedExisting as %s', async (status, reusedExisting) => {
+        nock(offlineServerUrl)
+            .post('/v3/translation_memories/tm-1/export')
+            .reply(status, { job_id: 'job-2', parameters: { translation_memory_id: 'tm-1' } });
+
+        const result = await makeOfflineDeeplClient().createTranslationMemoryExport('tm-1');
+
+        expect(result).toEqual({ jobId: 'job-2', translationMemoryId: 'tm-1', reusedExisting });
+    });
+});
+
+describe('DeepLClient.downloadTranslationMemoryExport', () => {
+    const job = (downloadUrl?: string): deepl.TranslationMemoryJob => ({
+        jobId: 'job-2',
+        operation: 'export',
+        product: 'translation_memory',
+        results: [{ status: 'completed', downloadUrl }],
+    });
+
+    it('streams the download URL to a file, without credentials', async () => {
+        nock(storageUrl, { badheaders: ['authorization'] })
+            .get('/download?sig=1')
+            .reply(200, tmx);
+        const outputPath = path.join(tempDir(), 'out.tmx');
+
+        await makeOfflineDeeplClient().downloadTranslationMemoryExport(
+            job(`${storageUrl}/download?sig=1`),
+            outputPath,
+        );
+
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
+    });
+
+    it('keeps an existing output file', async () => {
+        nock(storageUrl).get('/download').reply(200, tmx);
+        const outputPath = path.join(tempDir(), 'out.tmx');
+        fs.writeFileSync(outputPath, 'existing');
+
+        await expect(
+            makeOfflineDeeplClient().downloadTranslationMemoryExport(
+                job(`${storageUrl}/download`),
+                outputPath,
+            ),
+        ).rejects.toMatchObject({ code: 'EEXIST' });
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
+    });
+
+    it('throws DeepLError and leaves no file when the storage answers an error', async () => {
+        nock(storageUrl).get('/download').reply(403, 'expired');
+        const outputPath = path.join(tempDir(), 'out.tmx');
+
+        await expect(
+            makeOfflineDeeplClient({ maxRetries: 0 }).downloadTranslationMemoryExport(
+                job(`${storageUrl}/download`),
+                outputPath,
+            ),
+        ).rejects.toThrow(deepl.DeepLError);
+        expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('throws ArgumentError when the job has no download URL', async () => {
+        await expect(
+            makeOfflineDeeplClient().downloadTranslationMemoryExport(job(), 'unused.tmx'),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
+    it('creates the import, uploads the file and waits for the job', async () => {
+        const inputPath = path.join(tempDir(), 'example.tmx');
+        fs.writeFileSync(inputPath, tmx);
+        nock(offlineServerUrl)
+            .post('/v3/translation_memories/import', {
+                source_file: { file_name: 'example.tmx', content_length: tmx.length },
+                parameters: { display_name: 'my tm' },
+            })
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+        nock(storageUrl).put('/upload', tmx).reply(200);
+        nock(offlineServerUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, jobReply('completed', { translation_memory_id: 'tm-1' }));
+
+        const job = await makeOfflineDeeplClient().importTranslationMemoryFromFilepath(inputPath, {
+            displayName: 'my tm',
+        });
+
+        expect(job.results[0].translationMemoryId).toBe('tm-1');
+    });
+});
+
+describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
+    it('creates the export, waits for the job and downloads the file', async () => {
+        const outputPath = path.join(tempDir(), 'out.tmx');
+        nock(offlineServerUrl)
+            .post('/v3/translation_memories/tm-1/export')
+            .reply(202, { job_id: 'job-2' });
+        nock(offlineServerUrl)
+            .get('/v3/translation_memories/jobs/job-2')
+            .reply(200, jobReply('completed', { download_url: `${storageUrl}/download` }));
+        nock(storageUrl).get('/download').reply(200, tmx);
+
+        await makeOfflineDeeplClient().exportTranslationMemoryToFilepath('tm-1', outputPath);
+
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
+    });
+});

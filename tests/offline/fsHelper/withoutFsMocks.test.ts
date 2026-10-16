@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { FsHelper } from '../../src/fsHelper';
+import { FsHelper } from '../../../src/fsHelper';
 import mock from 'mock-fs';
 
 describe('FsHelper (without mocks)', () => {

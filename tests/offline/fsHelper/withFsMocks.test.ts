@@ -1,4 +1,4 @@
-import { FsHelper } from '../../src/fsHelper';
+import { FsHelper } from '../../../src/fsHelper';
 import * as fs from 'fs';
 import * as path from 'path';
 jest.mock('fs');

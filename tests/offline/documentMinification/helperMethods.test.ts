@@ -1,10 +1,10 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { DocumentMinifier } from '../../src/documentMinifier';
+import { DocumentMinifier } from '../../../src/documentMinifier';
 import AdmZip from 'adm-zip';
-import { DocumentMinificationError } from '../../src';
-import { FsHelper } from '../../src/fsHelper';
+import { DocumentMinificationError } from '../../../src';
+import { FsHelper } from '../../../src/fsHelper';
 import { randomUUID } from 'crypto';
 import mock from 'mock-fs';
 

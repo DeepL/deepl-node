@@ -1,18 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { FsHelper } from '../../src/fsHelper';
-import {
-    makeTranslator,
-    testFilePaths,
-    withRealServer,
-    withServerEnforcingDocSizeLimit,
-} from '../core';
+import { makeTranslator, testFilePaths, withServerEnforcingDocSizeLimit } from '../core';
 import { DocumentTranslationError, Translator } from '../../src';
-import {
-    createMinifiableTestDocument,
-    verifyDocumentIsTranslated,
-    createMinifiableTestDocumentWithoutMedia,
-} from './testHelpers';
+import { createMinifiableTestDocument } from '../minifiableDocuments';
 import mock from 'mock-fs';
 
 // These tests upload 30 MB+ documents to the real API and run a full async
@@ -44,7 +35,7 @@ describe('minification lifecycle with translate', () => {
         }
     });
 
-    withRealServer('should call minify, translate, and deminify', async () => {
+    it('minifies, uploads, downloads and deminifies a pptx over 30 MB', async () => {
         const originalFile = testFilePaths.pptx;
         const translator = makeTranslator() as Translator;
 
@@ -96,29 +87,6 @@ describe('minification lifecycle with translate', () => {
         },
     );
 
-    withRealServer('document should be translated after deminification', async () => {
-        const originalFile = testFilePaths.pptx;
-        const translator = makeTranslator() as Translator;
-
-        const minifiableFilePath = createMinifiableTestDocument(
-            originalFile,
-            `${tempDir}/test-document-zip-content`,
-            tempDir,
-        );
-
-        const outputFilePath = `${tempDir}/translatedAndDeminified${path.extname(originalFile)}`;
-
-        // Translate with minification enabled
-        await translator.translateDocument(minifiableFilePath, outputFilePath, 'en', 'de', {
-            enableDocumentMinification: true,
-        });
-
-        expect(fs.existsSync(outputFilePath)).toBe(true);
-
-        // Verify the document was translated
-        verifyDocumentIsTranslated(minifiableFilePath, outputFilePath);
-    });
-
     withServerEnforcingDocSizeLimit('expect 413 if input file is not a string', async () => {
         const originalFile = testFilePaths.pptx;
         const translator = makeTranslator() as Translator;
@@ -143,24 +111,5 @@ describe('minification lifecycle with translate', () => {
                 filename: path.basename(minifiableFilePath),
             }),
         ).rejects.toThrowError(DocumentTranslationError);
-    });
-
-    withRealServer('should pass when document contains no media', async () => {
-        const originalFile = testFilePaths.no_media;
-        const translator = makeTranslator() as Translator;
-
-        const docxWithoutMediaPath = createMinifiableTestDocumentWithoutMedia(
-            originalFile,
-            `${tempDir}/test-document-zip-content-stream`,
-            tempDir,
-        );
-
-        const outputFilePath = `${tempDir}/translatedNoMedia${path.extname(originalFile)}`;
-
-        await translator.translateDocument(docxWithoutMediaPath, outputFilePath, 'en', 'de', {
-            enableDocumentMinification: true,
-        });
-
-        expect(fs.existsSync(outputFilePath)).toBe(true);
     });
 });

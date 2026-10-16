@@ -1,0 +1,208 @@
+// Copyright 2025 DeepL SE (https://www.deepl.com)
+// Use of this source code is governed by an MIT
+// license that can be found in the LICENSE file.
+
+import * as deepl from 'deepl-node';
+
+import nock from 'nock';
+
+import { makeOfflineDeeplClient, offlineServerUrl } from '../core';
+
+// Request bodies of v3 glossary create, update and replace are asserted against the real API
+// (tests/realApi) until they are sent as JSON.
+
+const glossaryReply = {
+    glossary_id: 'g-1',
+    name: 'my glossary',
+    creation_time: '2021-08-03T14:16:18.329Z',
+    dictionaries: [
+        { source_lang: 'en', target_lang: 'de', entry_count: 2 },
+        { source_lang: 'en', target_lang: 'fr', entry_count: 1 },
+    ],
+};
+
+const parsedDictionaries = [
+    { sourceLangCode: 'en', targetLangCode: 'de', entryCount: 2 },
+    { sourceLangCode: 'en', targetLangCode: 'fr', entryCount: 1 },
+];
+
+const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
+
+describe('DeepLClient.getMultilingualGlossary', () => {
+    it('requests the glossary by ID and parses its dictionaries', async () => {
+        nock(offlineServerUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+            .get('/v3/glossaries/g-1')
+            .reply(200, glossaryReply);
+
+        const glossary = await makeOfflineDeeplClient().getMultilingualGlossary('g-1');
+
+        expect(glossary).toEqual({
+            glossaryId: 'g-1',
+            name: 'my glossary',
+            creationTime: new Date('2021-08-03T14:16:18.329Z'),
+            dictionaries: parsedDictionaries,
+        });
+    });
+
+    it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
+        nock(offlineServerUrl).get('/v3/glossaries/g-1').reply(404, { message: 'not found' });
+
+        await expect(makeOfflineDeeplClient().getMultilingualGlossary('g-1')).rejects.toThrow(
+            deepl.GlossaryNotFoundError,
+        );
+    });
+
+    it('throws ArgumentError when the glossary ID is empty', async () => {
+        await expect(makeOfflineDeeplClient().getMultilingualGlossary('')).rejects.toThrow(
+            deepl.ArgumentError,
+        );
+    });
+});
+
+describe('DeepLClient.listMultilingualGlossaries', () => {
+    it('parses every glossary of the response', async () => {
+        nock(offlineServerUrl)
+            .get('/v3/glossaries')
+            .reply(200, {
+                glossaries: [
+                    glossaryReply,
+                    { ...glossaryReply, glossary_id: 'g-2', dictionaries: [] },
+                ],
+            });
+
+        const glossaries = await makeOfflineDeeplClient().listMultilingualGlossaries();
+
+        expect(glossaries.map((glossary) => glossary.glossaryId)).toEqual(['g-1', 'g-2']);
+        expect(glossaries[0].dictionaries).toEqual(parsedDictionaries);
+        expect(glossaries[1].dictionaries).toEqual([]);
+    });
+});
+
+describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
+    it.each([
+        ['a glossary ID', 'g-1'],
+        ['a MultilingualGlossaryInfo', <deepl.MultilingualGlossaryInfo>{ glossaryId: 'g-1' }],
+    ])('sends the language pair as query for %s and parses the entries', async (_, glossary) => {
+        nock(offlineServerUrl)
+            .get('/v3/glossaries/g-1/entries')
+            .query({ source_lang: 'en', target_lang: 'de' })
+            .reply(200, {
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'Apple\tApfel\nBanana\tBanane',
+                        entries_format: 'tsv',
+                    },
+                ],
+            });
+
+        const dictionary = await makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries(
+            glossary,
+            'en',
+            'de',
+        );
+
+        expect(dictionary.sourceLangCode).toBe('en');
+        expect(dictionary.targetLangCode).toBe('de');
+        expect(dictionary.entries.entries()).toEqual({ Apple: 'Apfel', Banana: 'Banane' });
+    });
+
+    it('throws GlossaryNotFoundError when the response has no dictionary', async () => {
+        nock(offlineServerUrl)
+            .get('/v3/glossaries/g-1/entries')
+            .query(true)
+            .reply(200, { dictionaries: [] });
+
+        await expect(
+            makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries('g-1', 'en', 'de'),
+        ).rejects.toThrow(deepl.GlossaryNotFoundError);
+    });
+
+    it.each([
+        ['glossary', ['', 'en', 'de']],
+        ['sourceLanguageCode', ['g-1', '', 'de']],
+        ['targetLanguageCode', ['g-1', 'en', '']],
+    ])('throws ArgumentError when %s is empty', async (_, [glossary, source, target]) => {
+        await expect(
+            makeOfflineDeeplClient().getMultilingualGlossaryDictionaryEntries(
+                glossary,
+                source,
+                target,
+            ),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient.deleteMultilingualGlossary', () => {
+    it.each([
+        ['a glossary ID', 'g-1'],
+        ['a MultilingualGlossaryInfo', <deepl.MultilingualGlossaryInfo>{ glossaryId: 'g-1' }],
+    ])('sends DELETE for %s', async (_, glossary) => {
+        nock(offlineServerUrl).delete('/v3/glossaries/g-1').reply(204);
+
+        await makeOfflineDeeplClient().deleteMultilingualGlossary(glossary);
+    });
+
+    it('throws Error when the glossary ID is empty', async () => {
+        await expect(makeOfflineDeeplClient().deleteMultilingualGlossary('')).rejects.toThrow(
+            'glossaryId must not be empty',
+        );
+    });
+});
+
+describe('DeepLClient.deleteMultilingualGlossaryDictionary', () => {
+    it('sends DELETE with the language pair as query', async () => {
+        nock(offlineServerUrl)
+            .delete('/v3/glossaries/g-1/dictionaries')
+            .query({ source_lang: 'en', target_lang: 'de' })
+            .reply(204);
+
+        await makeOfflineDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'en', 'de');
+    });
+
+    it.each([
+        ['glossary', ['', 'en', 'de']],
+        ['sourceLanguageCode', ['g-1', '', 'de']],
+        ['targetLanguageCode', ['g-1', 'en', '']],
+    ])('throws ArgumentError when %s is empty', async (_, [glossary, source, target]) => {
+        await expect(
+            makeOfflineDeeplClient().deleteMultilingualGlossaryDictionary(glossary, source, target),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient glossary methods that validate their arguments', () => {
+    const dictionary = { sourceLangCode: 'en', targetLangCode: 'de', entries };
+    const client = () => makeOfflineDeeplClient();
+
+    it.each([
+        ['createMultilingualGlossary', () => client().createMultilingualGlossary('', [dictionary])],
+        [
+            'createMultilingualGlossaryWithCsv',
+            () => client().createMultilingualGlossaryWithCsv('n', 'en', 'de', ''),
+        ],
+        [
+            'updateMultilingualGlossaryName',
+            () => client().updateMultilingualGlossaryName('g-1', ''),
+        ],
+        [
+            'updateMultilingualGlossaryDictionary',
+            () => client().updateMultilingualGlossaryDictionary('', dictionary),
+        ],
+        [
+            'updateMultilingualGlossaryDictionaryWithCsv',
+            () => client().updateMultilingualGlossaryDictionaryWithCsv('g-1', 'en', '', 'a,b'),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionary',
+            () => client().replaceMultilingualGlossaryDictionary('', dictionary),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionaryWithCsv',
+            () => client().replaceMultilingualGlossaryDictionaryWithCsv('g-1', 'en', 'de', ''),
+        ],
+    ])('%s throws ArgumentError for an empty argument', async (_, call) => {
+        await expect(call()).rejects.toThrow(deepl.ArgumentError);
+    });
+});

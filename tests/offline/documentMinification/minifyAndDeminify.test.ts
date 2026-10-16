@@ -1,9 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { DocumentMinifier } from '../../src/documentMinifier';
-import { FsHelper } from '../../src/fsHelper';
-import { testFilePaths } from '../core';
-import { createMinifiableTestDocument } from './testHelpers';
+import { DocumentMinifier } from '../../../src/documentMinifier';
+import { FsHelper } from '../../../src/fsHelper';
+import { testFilePaths } from '../../core';
+import { createMinifiableTestDocument } from '../../minifiableDocuments';
 import mock from 'mock-fs';
 
 describe('DocumentMinifier', () => {
