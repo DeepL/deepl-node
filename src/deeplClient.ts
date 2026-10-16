@@ -1032,6 +1032,8 @@ export class DeepLClient extends Translator {
         // call back from close() on a write stream that failed to open, so this cannot be left
         // to the stream.
         let fd: number | undefined;
+        let fileStream: fs.WriteStream | undefined;
+        let streamClosed: Promise<void> | undefined;
         if (typeof outputFile === 'string') {
             fd = await util.promisify(fs.open)(outputFile, 'wx');
         }
@@ -1053,25 +1055,26 @@ export class DeepLClient extends Translator {
             if (fd === undefined) {
                 return await DeepLClient.pipeToStream(content, outputFile as fs.WriteStream);
             }
-            await DeepLClient.pipeToStream(
-                content,
-                fs.createWriteStream(outputFile as string, { fd, autoClose: false }),
-            );
+            // The stream owns the descriptor from here on and closes it when it finishes or is
+            // destroyed, so it must not be closed a second time.
+            fileStream = fs.createWriteStream(outputFile as string, { fd });
+            streamClosed = new Promise<void>((resolve) => fileStream?.once('close', resolve));
+            await DeepLClient.pipeToStream(content, fileStream);
+            await streamClosed;
         } catch (e) {
             if (fd !== undefined) {
-                await util
-                    .promisify(fs.close)(fd)
-                    .catch(() => undefined);
-                fd = undefined;
+                if (streamClosed !== undefined) {
+                    await streamClosed;
+                } else {
+                    await util
+                        .promisify(fs.close)(fd)
+                        .catch(() => undefined);
+                }
                 // Never leave a truncated TMX behind: a caller that logs and continues would
                 // otherwise see a file that looks like a successful export.
                 await fs.promises.unlink(outputFile as string).catch(() => undefined);
             }
             throw e;
-        } finally {
-            if (fd !== undefined) {
-                await util.promisify(fs.close)(fd);
-            }
         }
     }
 
