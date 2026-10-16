@@ -4,6 +4,8 @@ import { DocumentMinifier } from '../../../src/documentMinifier';
 import { FsHelper } from '../../../src/fsHelper';
 import { testFilePaths } from '../../core';
 import { createMinifiableTestDocument } from '../../minifiableDocuments';
+import AdmZip from 'adm-zip';
+import { createHash } from 'crypto';
 import mock from 'mock-fs';
 
 describe('DocumentMinifier', () => {
@@ -233,6 +235,59 @@ describe('DocumentMinifier', () => {
             expect(() => {
                 documentMinifier.deminifyDocument(inputFilePath, outputFilePath);
             }).toThrowError(/Failed creating a zip file/);
+        });
+    });
+
+    describe('minify and deminify round trip', () => {
+        let tempDir: string;
+
+        beforeEach(() => {
+            tempDir = fs.mkdtempSync('test-doc-minifier-');
+        });
+
+        afterEach(() => {
+            FsHelper.removeSyncRecursive(tempDir);
+        });
+
+        /** Maps the name of every file in the zip to a hash of its content. */
+        function contentOf(zipPath: string): Record<string, string> {
+            const content: Record<string, string> = {};
+            for (const entry of new AdmZip(zipPath).getEntries()) {
+                if (!entry.isDirectory) {
+                    content[entry.entryName] = createHash('sha1')
+                        .update(entry.getData())
+                        .digest('hex');
+                }
+            }
+            return content;
+        }
+
+        it('restores the original media of a document', () => {
+            const original = createMinifiableTestDocument(
+                testFilePaths.docx,
+                path.join(tempDir, 'content'),
+                tempDir,
+                200000,
+            );
+            const minifier = new DocumentMinifier(tempDir);
+            const minified = minifier.minifyDocument(original);
+            const output = path.join(tempDir, 'restored.docx');
+
+            minifier.deminifyDocument(minified, output);
+
+            expect(contentOf(minified)).not.toEqual(contentOf(original));
+            expect(contentOf(output)).toEqual(contentOf(original));
+        });
+
+        it('minifies and deminifies a document without media', () => {
+            const minifier = new DocumentMinifier(tempDir);
+            const minified = minifier.minifyDocument(testFilePaths.no_media);
+            const output = path.join(tempDir, 'restored.docx');
+
+            minifier.deminifyDocument(minified, output);
+
+            expect(fs.existsSync(output)).toBe(true);
+            expect(contentOf(output)).toEqual(contentOf(testFilePaths.no_media));
         });
     });
 });

@@ -9,6 +9,7 @@ export const createMinifiableTestDocument = (
     testFilePath: string,
     tempZipContentDirectory: string,
     outputDirectory: string,
+    mediaSize = MINIFIABLE_FILE_SIZE,
 ): string => {
     if (!fs.existsSync(testFilePath)) {
         throw new Error(`Test file does not exist: ${testFilePath}`);
@@ -17,7 +18,7 @@ export const createMinifiableTestDocument = (
     zipExtractor.extractAllTo(tempZipContentDirectory);
 
     // Create a placeholder file of size 90 MB filled with random data to avoid compression
-    const buffer = new Uint8Array(MINIFIABLE_FILE_SIZE);
+    const buffer = new Uint8Array(mediaSize);
     randomFillSync(buffer);
     fs.writeFileSync(path.join(tempZipContentDirectory, 'placeholder_image.png'), buffer);
 

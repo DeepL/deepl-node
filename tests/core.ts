@@ -98,14 +98,10 @@ export function runName(label: string): string {
     return `sdktest-node-${runId}-${label}`;
 }
 
-// Opt-in: the dev/test API does not enforce the 30 MB document limit. Run these tests against
-// a limit-enforcing server (e.g. production) with DEEPL_TEST_DOC_SIZE_LIMIT=1.
-export const withServerEnforcingDocSizeLimit =
-    process.env.DEEPL_TEST_DOC_SIZE_LIMIT === '1' ? it : it.skip;
-
 export const testFilePaths = {
     pptx: 'tests/resources/example_presentation_template.pptx',
     docx: 'tests/resources/example_document_template.docx',
+    no_media: 'tests/resources/example_document_template_no_media.docx',
     zip: 'tests/resources/example_zip_template.zip',
 };
 
