@@ -180,8 +180,6 @@ test_offline_manual:
 .test_real_api_base:
     stage: test
     extends: .test
-    # Replaces the deepl-mock service of .test
-    services: []
     variables:
         KUBERNETES_MEMORY_LIMIT: 8Gi
     image: node:24-alpine
@@ -209,8 +207,6 @@ test_real_api_manual:
 .examples_base:
     stage: test
     extends: .test
-    # Replaces the deepl-mock service of .test
-    services: []
     image: node:24-alpine
     before_script: # Note: replaces global before_script
         - npm install --production
