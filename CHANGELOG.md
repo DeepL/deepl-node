@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `correctText()` to `DeepLClient`, which corrects grammar, spelling and punctuation
   of a string or an array of strings via `POST /v2/write/correct`. Takes an optional
   target language and returns `WriteResult` objects, like `rephraseText()`.
+- Added the `outputFormat` option to `DocumentTranslateOptions`, which requests the file
+  format of the translated document, for example `'docx'`. By default the translated
+  document has the same format as the input document.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the

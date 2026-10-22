@@ -644,6 +644,9 @@ export class Translator {
             options?.glossaryIds,
         );
         appendStyleAndTranslationMemoryOptions(data, options ?? {});
+        if (options?.outputFormat !== undefined) {
+            data.append('output_format', options.outputFormat);
+        }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/document',

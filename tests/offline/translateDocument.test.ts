@@ -41,6 +41,7 @@ describe('Translator.uploadDocument', () => {
                 styleRule: 'style-1',
                 translationMemory: 'tm-1',
                 translationMemoryThreshold: 80,
+                outputFormat: 'docx',
                 extraRequestParameters: { 'my-extra-parameter': 'my-extra-value' },
             },
         );
@@ -56,6 +57,7 @@ describe('Translator.uploadDocument', () => {
             ['style_id', 'style-1'],
             ['translation_memory_id', 'tm-1'],
             ['translation_memory_threshold', '80'],
+            ['output_format', 'docx'],
             ['my-extra-parameter', 'my-extra-value'],
         ]) {
             expect(body).toContain(`name="${name}"\r\n\r\n${value}\r\n`);
@@ -71,6 +73,7 @@ describe('Translator.uploadDocument', () => {
 
         expect(upload.body()).toContain('filename="example_document.txt"');
         expect(upload.body()).not.toContain('name="source_lang"');
+        expect(upload.body()).not.toContain('name="output_format"');
     });
 
     it.each([

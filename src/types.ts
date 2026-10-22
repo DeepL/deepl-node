@@ -261,6 +261,12 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
 
     /** Controls whether to use Document Minification for translation, if available. */
     enableDocumentMinification?: boolean;
+
+    /**
+     * File extension of the desired format of the translated document, for example `'docx'`.
+     * If unspecified, the translated document has the same format as the input document.
+     */
+    outputFormat?: string;
 }
 
 /**

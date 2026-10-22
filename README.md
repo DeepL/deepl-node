@@ -290,6 +290,9 @@ directly:
 -   `translationMemoryThreshold`: same as in [Text translation options](#text-translation-options).
 -   `filename`: if the input file is not provided as file path, this option is
     needed to specify the file extension.
+-   `outputFormat`: file extension of the desired format of the translated
+    document, for example `'docx'`. If unspecified, the translated document has
+    the same format as the input document.
 -   `extraRequestParameters`: same as in [Text translation options](#text-translation-options).
 -   `enableDocumentMinification`: A `bool` value. If set to `true`, the library will try to minify a document 
 before translating it through the API, sending a smaller document if the file contains a lot of media. This is 
