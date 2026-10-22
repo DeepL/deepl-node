@@ -53,7 +53,6 @@ import {
     streamToBuffer,
     streamToString,
     timeout,
-    toBoolString,
 } from './utils';
 
 import * as fs from 'fs';
@@ -652,7 +651,8 @@ export class Translator {
             data.append('output_format', options.outputFormat);
         }
         if (options?.enableWatermark !== undefined) {
-            data.append('enable_watermark', toBoolString(options.enableWatermark));
+            // The API ignores '1'/'0' for this parameter; only 'true'/'false' take effect.
+            data.append('enable_watermark', String(options.enableWatermark));
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
