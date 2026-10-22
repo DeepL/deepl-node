@@ -340,11 +340,14 @@ export class Translator {
         const { outputHandle, onError } = await getOutputHandleAndOnError();
 
         const documentMinifier = new DocumentMinifier();
+        const inputExt = isString(inputFile) ? path.extname(inputFile).slice(1).toLowerCase() : '';
         const willMinify =
             (options?.enableDocumentMinification ?? false) &&
             isString(inputFile) &&
             DocumentMinifier.canMinifyFile(inputFile) &&
-            isString(outputFile);
+            isString(outputFile) &&
+            (options?.outputFormat === undefined ||
+                options.outputFormat.toLowerCase() === inputExt);
 
         const fileToUpload = willMinify
             ? documentMinifier.minifyDocument(inputFile, true)

@@ -71,6 +71,19 @@ describe('Translator.translateDocument with enableDocumentMinification', () => {
         expect(entryHashes(output)).toEqual(entryHashes(original));
     });
 
+    it('uploads and preserves the translated output when requesting a different format', async () => {
+        const uploadedBytes = expectTranslation(() => [200, 'translated PDF']);
+        const output = path.join(tempDir, 'output.pdf');
+
+        await makeTranslator().translateDocument(original, output, 'en', 'de', {
+            enableDocumentMinification: true,
+            outputFormat: 'pdf',
+        });
+
+        expect(uploadedBytes()).toBeGreaterThan(fs.statSync(original).size / 10);
+        expect(fs.readFileSync(output, 'utf8')).toBe('translated PDF');
+    });
+
     it('uploads a stream unminified', async () => {
         const uploadedBytes = expectTranslation(() => [200, 'result']);
         const output = path.join(tempDir, 'output.docx');
