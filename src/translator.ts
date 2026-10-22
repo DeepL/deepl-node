@@ -53,6 +53,7 @@ import {
     streamToBuffer,
     streamToString,
     timeout,
+    toBoolString,
 } from './utils';
 
 import * as fs from 'fs';
@@ -649,6 +650,9 @@ export class Translator {
         appendStyleAndTranslationMemoryOptions(data, options ?? {});
         if (options?.outputFormat !== undefined) {
             data.append('output_format', options.outputFormat);
+        }
+        if (options?.enableWatermark !== undefined) {
+            data.append('enable_watermark', toBoolString(options.enableWatermark));
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',

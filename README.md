@@ -293,6 +293,9 @@ directly:
 -   `outputFormat`: file extension of the desired format of the translated
     document, for example `'docx'`. If unspecified, the translated document has
     the same format as the input document.
+-   `enableWatermark`: set to `true` to add a "Translated by DeepL" watermark to
+    the translated document. Only supported for `docx` and `pdf` output; for
+    other output formats the API ignores this option.
 -   `extraRequestParameters`: same as in [Text translation options](#text-translation-options).
 -   `enableDocumentMinification`: A `bool` value. If set to `true`, the library will try to minify a document 
 before translating it through the API, sending a smaller document if the file contains a lot of media. This is 

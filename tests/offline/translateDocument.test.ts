@@ -42,6 +42,7 @@ describe('Translator.uploadDocument', () => {
                 translationMemory: 'tm-1',
                 translationMemoryThreshold: 80,
                 outputFormat: 'docx',
+                enableWatermark: true,
                 extraRequestParameters: { 'my-extra-parameter': 'my-extra-value' },
             },
         );
@@ -58,6 +59,7 @@ describe('Translator.uploadDocument', () => {
             ['translation_memory_id', 'tm-1'],
             ['translation_memory_threshold', '80'],
             ['output_format', 'docx'],
+            ['enable_watermark', '1'],
             ['my-extra-parameter', 'my-extra-value'],
         ]) {
             expect(body).toContain(`name="${name}"\r\n\r\n${value}\r\n`);
@@ -74,6 +76,18 @@ describe('Translator.uploadDocument', () => {
         expect(upload.body()).toContain('filename="example_document.txt"');
         expect(upload.body()).not.toContain('name="source_lang"');
         expect(upload.body()).not.toContain('name="output_format"');
+        expect(upload.body()).not.toContain('name="enable_watermark"');
+    });
+
+    it('sends enable_watermark=0 when enableWatermark is false', async () => {
+        const upload = expectUpload();
+
+        await makeTranslator().uploadDocument(Buffer.from('abc'), null, 'de', {
+            filename: 'a.txt',
+            enableWatermark: false,
+        });
+
+        expect(upload.body()).toContain('name="enable_watermark"\r\n\r\n0\r\n');
     });
 
     it.each([

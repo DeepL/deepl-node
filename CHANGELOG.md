@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `outputFormat` option to `DocumentTranslateOptions`, which requests the file
   format of the translated document, for example `'docx'`. By default the translated
   document has the same format as the input document.
+- Added the `enableWatermark` option to `DocumentTranslateOptions`, which adds a
+  "Translated by DeepL" watermark to the translated document. Only supported for
+  `docx` and `pdf` output.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the

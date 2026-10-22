@@ -267,6 +267,12 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
      * If unspecified, the translated document has the same format as the input document.
      */
     outputFormat?: string;
+
+    /**
+     * Set to `true` to add a "Translated by DeepL" watermark to the translated document. Only
+     * supported for `docx` and `pdf` output; the API ignores it for other output formats.
+     */
+    enableWatermark?: boolean;
 }
 
 /**
