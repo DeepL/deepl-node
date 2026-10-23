@@ -21,6 +21,9 @@ import {
     WriteResult,
     MultilingualGlossaryInfo,
     MultilingualGlossaryDictionaryInfo,
+    SpokenTerms,
+    SpokenTermsEntries,
+    SpokenTermsList,
     MultilingualGlossaryDictionaryEntries,
     MultilingualGlossaryDictionaryApiResponse,
     MultilingualGlossaryDictionaryEntriesApiResponse,
@@ -375,6 +378,86 @@ export function parseListMultilingualGlossaries(
         ),
         creationTime: new Date(glossary.creation_time),
     }));
+}
+
+/**
+ * Types used during JSON parsing of spoken terms API responses.
+ * @private
+ */
+interface SpokenTermsListApiResponse {
+    lang: string;
+    entry_count: number;
+}
+
+interface SpokenTermsApiResponse {
+    spoken_terms_id: string;
+    name: string;
+    creation_time: string;
+    term_lists?: SpokenTermsListApiResponse[];
+}
+
+interface SpokenTermsEntriesApiResponse {
+    lang: string;
+    entries: string;
+}
+
+function parseRawSpokenTermsList(obj: SpokenTermsListApiResponse): SpokenTermsList {
+    return { lang: obj.lang, entryCount: obj.entry_count };
+}
+
+function parseRawSpokenTerms(obj: SpokenTermsApiResponse): SpokenTerms {
+    return {
+        spokenTermsId: obj.spoken_terms_id,
+        name: obj.name,
+        creationTime: new Date(obj.creation_time),
+        termLists: (obj.term_lists ?? []).map(parseRawSpokenTermsList),
+    };
+}
+
+function parseJson<T>(json: string): T {
+    try {
+        return JSON.parse(json) as T;
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Parses the given JSON string to a SpokenTerms object.
+ * @private
+ */
+export function parseSpokenTerms(json: string): SpokenTerms {
+    return parseRawSpokenTerms(parseJson<SpokenTermsApiResponse>(json));
+}
+
+/**
+ * Parses the given list spoken terms JSON string to an array of SpokenTerms objects.
+ * @private
+ */
+export function parseSpokenTermsArray(json: string): SpokenTerms[] {
+    const obj = parseJson<{ spoken_terms?: SpokenTermsApiResponse[] }>(json);
+    return (obj.spoken_terms ?? []).map(parseRawSpokenTerms);
+}
+
+/**
+ * Parses the given JSON string to a SpokenTermsList object.
+ * @private
+ */
+export function parseSpokenTermsList(json: string): SpokenTermsList {
+    return parseRawSpokenTermsList(parseJson<SpokenTermsListApiResponse>(json));
+}
+
+/**
+ * Parses the given JSON string to a SpokenTermsEntries object; the newline-separated
+ * entries are split into terms, dropping empty lines.
+ * @private
+ */
+export function parseSpokenTermsEntries(json: string): SpokenTermsEntries {
+    const obj = parseJson<SpokenTermsEntriesApiResponse>(json);
+    return {
+        lang: obj.lang,
+        entries: (obj.entries ?? '').split('\n').filter((term) => term.length > 0),
+    };
 }
 
 /**

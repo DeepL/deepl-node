@@ -605,6 +605,40 @@ export interface MultilingualGlossaryInfo {
 }
 
 /**
+ * Information about one language's list in a spoken terms collection, excluding the terms.
+ */
+export interface SpokenTermsList {
+    /** Language code of the list, for example 'en'. */
+    readonly lang: string;
+    /** Number of terms in the list. */
+    readonly entryCount: number;
+}
+
+/**
+ * Information about a spoken terms collection, excluding the terms.
+ */
+export interface SpokenTerms {
+    /** ID of the spoken terms collection. */
+    readonly spokenTermsId: string;
+    /** Name of the spoken terms collection chosen during creation. */
+    readonly name: string;
+    /** Time when the spoken terms collection was created. */
+    readonly creationTime: Date;
+    /** The term lists of the collection, one per language. */
+    readonly termLists: SpokenTermsList[];
+}
+
+/**
+ * The terms of one language in a spoken terms collection.
+ */
+export interface SpokenTermsEntries {
+    /** Language code of the terms, for example 'en'. */
+    readonly lang: string;
+    /** The terms, one string per term. */
+    readonly entries: string[];
+}
+
+/**
  * Information about a glossary dictionary, including the entry list
  */
 export interface MultilingualGlossaryDictionaryEntries {

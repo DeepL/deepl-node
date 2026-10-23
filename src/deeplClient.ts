@@ -13,6 +13,9 @@ import {
     MultilingualGlossaryDictionaryEntriesApiResponse,
     GlossaryId,
     ListMultilingualGlossaryApiResponse,
+    SpokenTerms,
+    SpokenTermsEntries,
+    SpokenTermsList,
     StyleRuleInfo,
     StyleRuleInfoApiResponse,
     StyleId,
@@ -36,6 +39,10 @@ import {
     parseWriteResultArray,
     parseMultilingualGlossaryDictionaryEntries,
     parseListMultilingualGlossaries,
+    parseSpokenTerms,
+    parseSpokenTermsArray,
+    parseSpokenTermsEntries,
+    parseSpokenTermsList,
     parseStyleRuleInfoList,
     parseStyleRuleInfo,
     parseCustomInstruction,
@@ -53,6 +60,7 @@ import {
     appendDictionaryEntries,
     appendTextsAndReturnIsSingular,
     extractGlossaryId,
+    extractSpokenTermsId,
     extractTranslationMemoryId,
     logInfo,
     timeout,
@@ -62,6 +70,11 @@ import { IncomingMessage } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as util from 'util';
+
+function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
+    return { lang: entries.lang, entries: entries.entries.join('\n') };
+}
+
 export type CustomInstructionRequestBody = {
     label: string;
     prompt: string;
@@ -610,6 +623,174 @@ export class DeepLClient extends Translator {
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
+    }
+
+    /**
+     * Creates a spoken terms collection with the given name and term lists. Spoken terms
+     * improve the transcription of the given terms in speech recognition.
+     *
+     * @param name User-defined name of the collection.
+     * @param termLists The term lists of the collection, one per language,
+     *     see {@link SpokenTermsEntries}.
+     * @returns {Promise<SpokenTerms>} Object with details about the new collection.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async createSpokenTerms(name: string, termLists: SpokenTermsEntries[]): Promise<SpokenTerms> {
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            '/v3/spoken-terms',
+            { jsonBody: { name, term_lists: termLists.map(spokenTermsEntriesToJson) } },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTerms(content);
+    }
+
+    /**
+     * Lists all spoken terms collections of the account.
+     *
+     * @returns {Promise<SpokenTerms[]>} Details about each collection, excluding the terms.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async listSpokenTerms(): Promise<SpokenTerms[]> {
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            '/v3/spoken-terms',
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTermsArray(content);
+    }
+
+    /**
+     * Retrieves details about a spoken terms collection, excluding the terms.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @returns {Promise<SpokenTerms>} Object with details about the collection.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getSpokenTerms(spokenTerms: string | SpokenTerms): Promise<SpokenTerms> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTerms(content);
+    }
+
+    /**
+     * Updates the name and/or term lists of a spoken terms collection. The terms of each given
+     * list are merged into the existing list of that language; fields left unset are not changed.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @param options.name New name of the collection.
+     * @param options.termLists Term lists to merge into the collection.
+     * @returns {Promise<SpokenTerms>} Object with details about the updated collection.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async updateSpokenTerms(
+        spokenTerms: string | SpokenTerms,
+        options: { name?: string; termLists?: SpokenTermsEntries[] },
+    ): Promise<SpokenTerms> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const body: Record<string, unknown> = {};
+        if (options.name !== undefined) {
+            body.name = options.name;
+        }
+        if (options.termLists !== undefined) {
+            body.term_lists = options.termLists.map(spokenTermsEntriesToJson);
+        }
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'PATCH',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
+            { jsonBody: body },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTerms(content);
+    }
+
+    /**
+     * Retrieves the terms of one language in a spoken terms collection.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @param lang Language code of the term list, for example 'en'.
+     * @returns {Promise<SpokenTermsEntries>} The terms of the list.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getSpokenTermsEntries(
+        spokenTerms: string | SpokenTerms,
+        lang: string,
+    ): Promise<SpokenTermsEntries> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/entries`,
+            { data: new URLSearchParams({ lang }) },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTermsEntries(content);
+    }
+
+    /**
+     * Replaces the term list of one language in a spoken terms collection, or adds it if the
+     * collection has no list for that language.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @param entries The language and its new terms.
+     * @returns {Promise<SpokenTermsList>} Details about the new term list.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async replaceSpokenTermsList(
+        spokenTerms: string | SpokenTerms,
+        entries: SpokenTermsEntries,
+    ): Promise<SpokenTermsList> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'PUT',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists`,
+            { jsonBody: spokenTermsEntriesToJson(entries) },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseSpokenTermsList(content);
+    }
+
+    /**
+     * Deletes a spoken terms collection.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async deleteSpokenTerms(spokenTerms: string | SpokenTerms): Promise<void> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'DELETE',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
+        );
+        await checkStatusCode(statusCode, content);
+    }
+
+    /**
+     * Deletes the term list of one language from a spoken terms collection.
+     *
+     * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @param lang Language code of the term list to delete, for example 'de'.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async deleteSpokenTermsList(spokenTerms: string | SpokenTerms, lang: string): Promise<void> {
+        const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const query = new URLSearchParams({ lang }).toString();
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'DELETE',
+            `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists?${query}`,
+        );
+        await checkStatusCode(statusCode, content);
     }
 
     /**

@@ -515,6 +515,50 @@ console.log(entriesObj.entries.toTsv()); // {'artist': 'Maler', 'hello': 'hallo'
 
 For examples for the other methods please see [this migration guide](upgrade_to_multilingual_glossaries.md)
 
+### Spoken terms
+
+Spoken terms collections improve the speech recognition of names, brands and other
+terms. A collection has a name and one term list per language (for example `'en'`).
+Terms are passed and returned as arrays of strings. The API validates the terms (for
+example, at most 300 characters per list); invalid terms are rejected with a `DeepLError`.
+
+Every method that takes a collection accepts its ID or a `SpokenTerms` object.
+
+```javascript
+// Create a collection; returns a SpokenTerms object
+const spokenTerms = await deeplClient.createSpokenTerms('My terms', [
+    { lang: 'en', entries: ['DeepL', 'webhook'] },
+]);
+console.log(spokenTerms.spokenTermsId, spokenTerms.name, spokenTerms.creationTime);
+console.log(spokenTerms.termLists); // [{ lang: 'en', entryCount: 2 }]
+
+// List all collections, or retrieve one; neither includes the terms
+const allSpokenTerms = await deeplClient.listSpokenTerms();
+const fetched = await deeplClient.getSpokenTerms(spokenTerms.spokenTermsId);
+
+// Rename the collection and/or merge terms into existing term lists
+await deeplClient.updateSpokenTerms(spokenTerms, {
+    name: 'My renamed terms',
+    termLists: [{ lang: 'en', entries: ['authentication'] }],
+});
+
+// Read the terms of one language
+const entries = await deeplClient.getSpokenTermsEntries(spokenTerms, 'en');
+console.log(entries.entries); // ['DeepL', 'authentication', 'webhook']
+
+// Replace the term list of one language, or add it if the language is new;
+// returns a SpokenTermsList
+const termList = await deeplClient.replaceSpokenTermsList(spokenTerms, {
+    lang: 'de',
+    entries: ['Schnittstelle'],
+});
+console.log(termList); // { lang: 'de', entryCount: 1 }
+
+// Delete the term list of one language, then the whole collection
+await deeplClient.deleteSpokenTermsList(spokenTerms, 'de');
+await deeplClient.deleteSpokenTerms(spokenTerms);
+```
+
 ### Style Rules
 
 Style rules allow you to customize your translations using a managed, shared list
@@ -1048,7 +1092,8 @@ The tests are split into two groups, selected by `npm` script:
 - `npm run test:real-api` runs `tests/realApi`. These tests send one request per
   API endpoint to the DeepL API, using the authentication key and server URL
   defined by the `DEEPL_AUTH_KEY` and `DEEPL_SERVER_URL` environment variables.
-  They create and delete glossaries, style rules and translation memories named
+  They create and delete glossaries, style rules, translation memories and
+  spoken terms collections named
   `sdktest-node-...`.
 
 `npm test` runs both groups. Be aware that the real-API tests make DeepL API

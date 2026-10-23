@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added spoken terms collections (`/v3/spoken-terms`) to `DeepLClient`:
+  `createSpokenTerms()`, `listSpokenTerms()`, `getSpokenTerms()`,
+  `updateSpokenTerms()`, `getSpokenTermsEntries()`, `replaceSpokenTermsList()`,
+  `deleteSpokenTerms()` and `deleteSpokenTermsList()`. Added the `SpokenTerms`,
+  `SpokenTermsList` and `SpokenTermsEntries` types.
 - Added the API Pro fields of `GET /v2/usage` to `Usage`: `apiKeyCharacter`,
   `speechToTextMinutes` and `speechToSpeechMinutes` (`UsageDetail`), `products`
   (array of the new `UsageProduct` type), and `startTime` and `endTime`

@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 import loglevel from 'loglevel';
-import { DeepLError } from './errors';
+import { ArgumentError, DeepLError } from './errors';
 import {
     Formality,
     GlossaryInfo,
@@ -16,6 +16,7 @@ import {
     TagList,
     TranslateTextOptions,
     MultilingualGlossaryInfo,
+    SpokenTerms,
     MultilingualGlossaryDictionaryEntries,
     StyleRuleInfo,
     TranslationMemoryId,
@@ -418,6 +419,19 @@ export function appendCsvDictionaryEntries(
  */
 export function extractGlossaryId(glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo) {
     return typeof glossary === 'string' ? glossary : glossary.glossaryId;
+}
+
+/**
+ * Extract the spoken terms ID from the argument.
+ * @param spokenTerms The spoken terms collection as an ID string or SpokenTerms object.
+ * @private
+ */
+export function extractSpokenTermsId(spokenTerms: string | SpokenTerms): string {
+    const spokenTermsId = isString(spokenTerms) ? spokenTerms : spokenTerms?.spokenTermsId;
+    if (!spokenTermsId) {
+        throw new ArgumentError('Parameter "spokenTerms" must not be empty');
+    }
+    return spokenTermsId;
 }
 
 /**
