@@ -774,7 +774,24 @@ your account type: `character`, `document` and `teamDocument`. For API accounts
 Each usage subtypes (if defined) have `count` and `limit` properties giving the
 amount used and maximum amount respectively, and the `limitReached()` function
 that checks if the usage has reached the limit. The top level `Usage` object has
-the `anyLimitReached()` function to check all usage subtypes.
+the `anyLimitReached()` function to check the `character`, `document` and
+`teamDocument` usage.
+
+For API Pro accounts, the `Usage` object also contains:
+
+- `apiKeyCharacter`: characters translated with this API key, as opposed to
+  `character`, which covers the whole account.
+- `speechToTextMinutes` and `speechToSpeechMinutes`: speech usage in minutes.
+- `startTime` and `endTime`: the current billing period, as `Date` objects.
+- `products`: an array of per-product usage, each with `productType` (for
+  example `'translate'`, `'write'`, `'speechToText'`), `billingUnit` (for
+  example `'characters'`, `'minutes'`), `apiKeyUnitCount` (this API key) and
+  `accountUnitCount` (the whole account).
+
+These fields are `undefined` when the response does not contain them, for
+example for API Free accounts. `anyLimitReached()` does not check
+`apiKeyCharacter`, `speechToTextMinutes` or `speechToSpeechMinutes`; call their
+`limitReached()` function yourself.
 
 ```javascript
 const usage = await deeplClient.getUsage();
@@ -782,10 +799,27 @@ if (usage.anyLimitReached()) {
     console.log('Translation limit exceeded.');
 }
 if (usage.character) {
-    console.log(`Characters: ${usage.character.count} of ${usage.character.limit}`);
+    console.log(`Characters (account): ${usage.character.count} of ${usage.character.limit}`);
+}
+if (usage.apiKeyCharacter) {
+    console.log(
+        `Characters (this API key): ${usage.apiKeyCharacter.count} of ${usage.apiKeyCharacter.limit}`,
+    );
+    if (usage.apiKeyCharacter.limitReached()) {
+        console.log('API key character limit exceeded.');
+    }
 }
 if (usage.document) {
     console.log(`Documents: ${usage.document.count} of ${usage.document.limit}`);
+}
+if (usage.startTime && usage.endTime) {
+    console.log(`Billing period: ${usage.startTime.toISOString()} to ${usage.endTime.toISOString()}`);
+}
+for (const product of usage.products ?? []) {
+    console.log(
+        `${product.productType}: ${product.apiKeyUnitCount} ${product.billingUnit} (this API key), ` +
+            `${product.accountUnitCount} ${product.billingUnit} (account)`,
+    );
 }
 ```
 

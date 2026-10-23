@@ -490,7 +490,9 @@ export type TargetGlossaryLanguageCode = SourceGlossaryLanguageCode;
  *
  * Depending on the account type, different usage types are included: the character, document and
  * teamDocument fields provide details about each corresponding usage type, allowing each usage type
- * to be checked individually. The anyLimitReached() function checks if any usage type is exceeded.
+ * to be checked individually. API Pro accounts also get per-key, speech and per-product usage and the
+ * billing period. The anyLimitReached() function checks the character, document and teamDocument
+ * usage only.
  */
 export interface Usage {
     /** Usage details for characters, for example due to the translateText() function. */
@@ -499,8 +501,27 @@ export interface Usage {
     readonly document?: UsageDetail;
     /** Usage details for documents shared among your team. */
     readonly teamDocument?: UsageDetail;
+    /**
+     * Usage details for characters translated with this API key, as opposed to `character`, which
+     * covers the whole account. Only present for API Pro accounts.
+     */
+    readonly apiKeyCharacter?: UsageDetail;
+    /** Usage details for speech-to-text, in minutes. Only present for API Pro accounts. */
+    readonly speechToTextMinutes?: UsageDetail;
+    /** Usage details for speech-to-speech, in minutes. Only present for API Pro accounts. */
+    readonly speechToSpeechMinutes?: UsageDetail;
+    /** Per-product usage in the current billing period. Only present for API Pro accounts. */
+    readonly products?: UsageProduct[];
+    /** Start of the current billing period. Only present for API Pro accounts. */
+    readonly startTime?: Date;
+    /** End of the current billing period. Only present for API Pro accounts. */
+    readonly endTime?: Date;
 
-    /** Returns true if any usage type limit has been reached or passed, otherwise false. */
+    /**
+     * Returns true if the character, document or team document usage has reached or passed its
+     * limit, otherwise false. It does not check apiKeyCharacter, speechToTextMinutes or
+     * speechToSpeechMinutes: call limitReached() on those details yourself.
+     */
     anyLimitReached(): boolean;
 
     /** Converts the usage details to a human-readable string. */
@@ -520,6 +541,20 @@ export interface UsageDetail {
      * Returns true if the amount used has already reached or passed the allowable amount.
      */
     limitReached(): boolean;
+}
+
+/**
+ * Usage of one product in the current billing period, part of the Usage object.
+ */
+export interface UsageProduct {
+    /** The product, for example 'translate', 'write', 'speechToText' or 'speechToSpeech'. */
+    readonly productType: string;
+    /** The unit the product is billed in, for example 'characters' or 'minutes'. */
+    readonly billingUnit: string;
+    /** Units used for this product by this API key. */
+    readonly apiKeyUnitCount: number;
+    /** Units used for this product by the whole account. */
+    readonly accountUnitCount: number;
 }
 
 /**

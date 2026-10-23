@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added the API Pro fields of `GET /v2/usage` to `Usage`: `apiKeyCharacter`,
+  `speechToTextMinutes` and `speechToSpeechMinutes` (`UsageDetail`), `products`
+  (array of the new `UsageProduct` type), and `startTime` and `endTime`
+  (`Date`). They are `undefined` when the response does not contain them.
+  `anyLimitReached()` still checks only the character, document and team
+  document usage.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and

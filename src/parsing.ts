@@ -15,6 +15,7 @@ import {
     TargetGlossaryLanguageCode,
     UsageDetail,
     Usage,
+    UsageProduct,
     GlossaryInfo,
     SourceLanguageCode,
     WriteResult,
@@ -94,6 +95,15 @@ interface UsageApiResponse {
     document_limit?: number;
     team_document_count?: number;
     team_document_limit?: number;
+    api_key_character_count?: number;
+    api_key_character_limit?: number;
+    speech_to_text_minutes_count?: number;
+    speech_to_text_minutes_limit?: number;
+    speech_to_speech_minutes_count?: number;
+    speech_to_speech_minutes_limit?: number;
+    products?: unknown;
+    start_time?: unknown;
+    end_time?: unknown;
 }
 
 /**
@@ -198,17 +208,44 @@ class UsageImpl implements Usage {
     public character?: UsageDetail;
     public document?: UsageDetail;
     public teamDocument?: UsageDetail;
+    public apiKeyCharacter?: UsageDetail;
+    public speechToTextMinutes?: UsageDetail;
+    public speechToSpeechMinutes?: UsageDetail;
+    public products?: UsageProduct[];
+    public startTime?: Date;
+    public endTime?: Date;
 
     /**
      * @private Package users should not need to construct this class.
      */
-    constructor(character?: UsageDetail, document?: UsageDetail, teamDocument?: UsageDetail) {
+    constructor(
+        character?: UsageDetail,
+        document?: UsageDetail,
+        teamDocument?: UsageDetail,
+        proUsage?: {
+            apiKeyCharacter?: UsageDetail;
+            speechToTextMinutes?: UsageDetail;
+            speechToSpeechMinutes?: UsageDetail;
+            products?: UsageProduct[];
+            startTime?: Date;
+            endTime?: Date;
+        },
+    ) {
         this.character = character;
         this.document = document;
         this.teamDocument = teamDocument;
+        this.apiKeyCharacter = proUsage?.apiKeyCharacter;
+        this.speechToTextMinutes = proUsage?.speechToTextMinutes;
+        this.speechToSpeechMinutes = proUsage?.speechToSpeechMinutes;
+        this.products = proUsage?.products;
+        this.startTime = proUsage?.startTime;
+        this.endTime = proUsage?.endTime;
     }
 
-    /** Returns true if any usage type limit has been reached or passed, otherwise false. */
+    /**
+     * Returns true if the character, document or team document usage has reached or passed its
+     * limit, otherwise false. Does not check apiKeyCharacter or the speech usage.
+     */
     anyLimitReached(): boolean {
         return (
             this.character?.limitReached() ||
@@ -414,6 +451,49 @@ function parseUsageDetail(
 }
 
 /**
+ * Like parseUsageDetail() for the API Pro fields; values that are not numbers are left out.
+ * @private
+ */
+function parseProUsageDetail(
+    obj: UsageApiResponse,
+    prefix: 'api_key_character' | 'speech_to_text_minutes' | 'speech_to_speech_minutes',
+): UsageDetail | undefined {
+    const count = obj[`${prefix}_count`];
+    const limit = obj[`${prefix}_limit`];
+    if (typeof count !== 'number' || typeof limit !== 'number') return undefined;
+    return new UsageDetailImpl(count, limit);
+}
+
+/**
+ * Parses an ISO 8601 timestamp, returning undefined if it is missing or unparseable.
+ * @private
+ */
+function parseOptionalDate(value: unknown): Date | undefined {
+    if (typeof value !== 'string') return undefined;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * Parses the products array of the usage API response; missing or malformed values get defaults.
+ * @private
+ */
+function parseUsageProducts(products: unknown): UsageProduct[] | undefined {
+    if (!Array.isArray(products)) return undefined;
+    const str = (value: unknown) => (typeof value === 'string' ? value : '');
+    const num = (value: unknown) => (typeof value === 'number' ? value : 0);
+    return products.map((product) => {
+        const p = (product ?? {}) as Record<string, unknown>;
+        return {
+            productType: str(p.product_type),
+            billingUnit: str(p.billing_unit),
+            apiKeyUnitCount: num(p.api_key_unit_count),
+            accountUnitCount: num(p.account_unit_count),
+        };
+    });
+}
+
+/**
  * Parses the given JSON string to a Usage object.
  * @private
  */
@@ -424,6 +504,14 @@ export function parseUsage(json: string): Usage {
             parseUsageDetail(obj, 'character'),
             parseUsageDetail(obj, 'document'),
             parseUsageDetail(obj, 'team_document'),
+            {
+                apiKeyCharacter: parseProUsageDetail(obj, 'api_key_character'),
+                speechToTextMinutes: parseProUsageDetail(obj, 'speech_to_text_minutes'),
+                speechToSpeechMinutes: parseProUsageDetail(obj, 'speech_to_speech_minutes'),
+                products: parseUsageProducts(obj.products),
+                startTime: parseOptionalDate(obj.start_time),
+                endTime: parseOptionalDate(obj.end_time),
+            },
         );
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
