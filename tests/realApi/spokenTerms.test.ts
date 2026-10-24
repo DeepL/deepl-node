@@ -4,8 +4,12 @@
 
 import * as deepl from 'deepl-node';
 
+import { timeout } from '../../src/utils';
 import { makeDeeplClient } from './client';
 import { getUniqueName, testTimeout } from './helpers';
+
+// The SDK raises a DeepLError whose message starts with 'Not found' for a 404
+const notFound = /^Not found/;
 
 describe('DeepLClient spoken terms', () => {
     it(
@@ -24,7 +28,18 @@ describe('DeepLClient spoken terms', () => {
                 expect(Number.isNaN(spokenTerms.creationTime.getTime())).toBe(false);
                 expect(spokenTerms.termLists).toEqual([{ lang: 'en', entryCount: 2 }]);
 
-                const fetched = await client.getSpokenTerms(spokenTermsId);
+                // A new collection can be briefly invisible
+                let fetched: deepl.SpokenTerms | undefined;
+                for (let attempt = 0; fetched === undefined; attempt++) {
+                    try {
+                        fetched = await client.getSpokenTerms(spokenTermsId);
+                    } catch (e) {
+                        const isNotFound =
+                            e instanceof deepl.DeepLError && notFound.test(e.message);
+                        if (!isNotFound || attempt >= 9) throw e;
+                        await timeout(1000);
+                    }
+                }
                 expect(fetched.spokenTermsId).toBe(spokenTermsId);
                 const listed = await client.listSpokenTerms();
                 expect(listed.some((item) => item.spokenTermsId === spokenTermsId)).toBe(true);
@@ -55,9 +70,9 @@ describe('DeepLClient spoken terms', () => {
                 expect(afterListDelete.termLists).toEqual([{ lang: 'en', entryCount: 1 }]);
 
                 await client.deleteSpokenTerms(spokenTermsId);
-                await expect(client.getSpokenTerms(spokenTermsId)).rejects.toThrow(
-                    deepl.DeepLError,
-                );
+                const afterDelete = client.getSpokenTerms(spokenTermsId);
+                await expect(afterDelete).rejects.toThrow(deepl.DeepLError);
+                await expect(afterDelete).rejects.toThrow(notFound);
             } finally {
                 await client.deleteSpokenTerms(spokenTermsId).catch(() => undefined);
             }
