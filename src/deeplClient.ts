@@ -66,12 +66,15 @@ import {
     timeout,
 } from './utils';
 import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
+import { GlossaryEntries } from './glossaryEntries';
 import { IncomingMessage } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as util from 'util';
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
+    // Terms are sent newline-separated, so a newline inside a term would split it
+    entries.entries.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang: entries.lang, entries: entries.entries.join('\n') };
 }
 

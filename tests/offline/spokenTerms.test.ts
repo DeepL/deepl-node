@@ -2,6 +2,8 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
+import * as deepl from 'deepl-node';
+
 import nock from 'nock';
 
 import { makeDeeplClient, serverUrl } from './client';
@@ -37,5 +39,14 @@ describe('DeepLClient spoken terms', () => {
             termLists: [{ lang: 'en', entryCount: 2 }],
         });
         expect(entries).toEqual({ lang: 'en', entries: ['a', 'b'] });
+    });
+
+    it('rejects a term containing a newline before sending a request', async () => {
+        // No nock interceptor: any request fails with a network error instead
+        await expect(
+            makeDeeplClient().createSpokenTerms('my terms', [{ lang: 'en', entries: ['a\nb'] }]),
+        ).rejects.toThrow(
+            new deepl.DeepLError("Term 'a\nb' contains invalid character: '\n' (10)"),
+        );
     });
 });
