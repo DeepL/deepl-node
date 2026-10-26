@@ -24,6 +24,7 @@ import {
     SpokenTerms,
     SpokenTermsEntries,
     SpokenTermsList,
+    StyleProfile,
     MultilingualGlossaryDictionaryEntries,
     MultilingualGlossaryDictionaryApiResponse,
     MultilingualGlossaryDictionaryEntriesApiResponse,
@@ -833,6 +834,70 @@ function parseOptionalTimestamp(value?: string | null): Date | undefined {
     }
     const date = new Date(value);
     return isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * Types used during JSON parsing of style profile API responses. Every field is treated as
+ * possibly missing or malformed.
+ * @private
+ */
+interface StyleProfileApiResponse {
+    style_profile_id?: string;
+    name?: string;
+    description?: unknown;
+    industry?: unknown;
+    glossary_ids?: unknown;
+    style_rule_ids?: unknown;
+    translation_memory_ids?: unknown;
+    glossary_priority_order_enabled?: unknown;
+    creation_time?: unknown;
+    updated_time?: unknown;
+}
+
+function parseIdList(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+}
+
+function parseOptionalString(value: unknown): string | undefined {
+    return typeof value === 'string' ? value : undefined;
+}
+
+function parseRawStyleProfile(obj: StyleProfileApiResponse): StyleProfile {
+    return {
+        styleProfileId: obj.style_profile_id ?? '',
+        name: obj.name ?? '',
+        description: parseOptionalString(obj.description),
+        industry: parseOptionalString(obj.industry),
+        glossaryIds: parseIdList(obj.glossary_ids),
+        styleRuleIds: parseIdList(obj.style_rule_ids),
+        translationMemoryIds: parseIdList(obj.translation_memory_ids),
+        glossaryPriorityOrderEnabled: obj.glossary_priority_order_enabled === true,
+        creationTime: parseOptionalTimestamp(parseOptionalString(obj.creation_time)),
+        updatedTime: parseOptionalTimestamp(parseOptionalString(obj.updated_time)),
+    };
+}
+
+/**
+ * Parses the given JSON string to a StyleProfile object.
+ * @private
+ */
+export function parseStyleProfile(json: string): StyleProfile {
+    return parseRawStyleProfile(parseJson<StyleProfileApiResponse>(json));
+}
+
+/**
+ * Parses the given list style profiles JSON string to an array of StyleProfile objects,
+ * skipping entries that are not objects.
+ * @private
+ */
+export function parseStyleProfileList(json: string): StyleProfile[] {
+    const obj = parseJson<{ style_profiles?: unknown }>(json);
+    if (!Array.isArray(obj?.style_profiles)) {
+        return [];
+    }
+    return obj.style_profiles
+        .filter((item) => typeof item === 'object' && item !== null && !Array.isArray(item))
+        .map((item) => parseRawStyleProfile(item as StyleProfileApiResponse));
 }
 
 /**

@@ -17,6 +17,7 @@ import {
     TranslateTextOptions,
     MultilingualGlossaryInfo,
     SpokenTerms,
+    StyleProfile,
     MultilingualGlossaryDictionaryEntries,
     StyleRuleInfo,
     TranslationMemoryId,
@@ -432,6 +433,19 @@ export function extractSpokenTermsId(spokenTerms: string | SpokenTerms): string 
         throw new ArgumentError('Parameter "spokenTerms" must not be empty');
     }
     return spokenTermsId;
+}
+
+/**
+ * Extract the style profile ID from the argument.
+ * @param styleProfile The style profile as an ID string or StyleProfile object.
+ * @private
+ */
+export function extractStyleProfileId(styleProfile: string | StyleProfile): string {
+    const styleProfileId = isString(styleProfile) ? styleProfile : styleProfile?.styleProfileId;
+    if (!styleProfileId) {
+        throw new ArgumentError('Parameter "styleProfile" must not be empty');
+    }
+    return styleProfileId;
 }
 
 /**

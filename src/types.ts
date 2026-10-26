@@ -901,6 +901,69 @@ export interface ListStyleRuleApiResponse {
 }
 
 /**
+ * Information about a style profile: a named set of linked glossaries, style rule lists and
+ * translation memories.
+ */
+export interface StyleProfile {
+    /** Unique ID assigned to the style profile. */
+    readonly styleProfileId: string;
+    /** User-defined name of the style profile. */
+    readonly name: string;
+    /** Free-text description; undefined if the style profile has none. */
+    readonly description?: string;
+    /** The industry the style profile is written for; undefined if the style profile has none. */
+    readonly industry?: string;
+    /** IDs of the linked glossaries, highest priority first. */
+    readonly glossaryIds: string[];
+    /** IDs of the linked style rule lists. */
+    readonly styleRuleIds: string[];
+    /** IDs of the linked translation memories. */
+    readonly translationMemoryIds: string[];
+    /** Whether the order of glossaryIds sets the priority of the glossaries. */
+    readonly glossaryPriorityOrderEnabled: boolean;
+    /** Time when the style profile was created; undefined if the API returned no valid time. */
+    readonly creationTime?: Date;
+    /** Time of the last update; undefined if the API returned no valid time. */
+    readonly updatedTime?: Date;
+}
+
+/**
+ * Options for createStyleProfile(). An option left undefined is not sent. An empty string or
+ * empty array is sent as given.
+ */
+export interface StyleProfileOptions {
+    /** Free-text description of the style profile. In an update, '' clears it. */
+    description?: string;
+    /** The industry the style profile is written for. In an update, '' clears it. */
+    industry?: string;
+    /**
+     * IDs of the glossaries to link, highest priority first. In an update, the array replaces the
+     * linked glossaries in full; [] unlinks all of them.
+     */
+    glossaryIds?: string[];
+    /**
+     * IDs of the style rule lists to link. In an update, the array replaces the linked style rule
+     * lists in full; [] unlinks all of them.
+     */
+    styleRuleIds?: string[];
+    /**
+     * IDs of the translation memories to link. In an update, the array replaces the linked
+     * translation memories in full; [] unlinks all of them.
+     */
+    translationMemoryIds?: string[];
+    /** Whether the order of glossaryIds sets the priority of the glossaries. */
+    glossaryPriorityOrderEnabled?: boolean;
+}
+
+/**
+ * Options for updateStyleProfile(). Options left undefined are not changed.
+ */
+export interface StyleProfileUpdateOptions extends StyleProfileOptions {
+    /** New name of the style profile. */
+    name?: string;
+}
+
+/**
  * Information about a translation memory.
  */
 export interface TranslationMemoryInfo {

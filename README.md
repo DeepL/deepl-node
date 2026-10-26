@@ -660,6 +660,50 @@ Use `deleteStyleRule()` to delete a style rule by ID.
 await deeplClient.deleteStyleRule('YOUR_STYLE_ID');
 ```
 
+### Style profiles
+
+A style profile is a named set of linked glossaries, style rule lists and translation
+memories, with an optional description and industry. Every method that takes a style
+profile accepts its ID or a `StyleProfile` object.
+
+Options left `undefined` are not sent. When updating, they are not changed; an empty
+string `''` clears `description` or `industry`, and an ID array replaces the linked
+components of that kind in full, so an empty array `[]` unlinks all of them.
+
+```javascript
+// Create a style profile with only a name; the component ID arrays are empty
+const minimal = await deeplClient.createStyleProfile('My profile');
+
+// Create a style profile linking components
+const styleProfile = await deeplClient.createStyleProfile('Legal, German', {
+    description: 'Contract wording for the German market.',
+    industry: 'Legal',
+    glossaryIds: ['YOUR_GLOSSARY_ID'],
+    styleRuleIds: ['YOUR_STYLE_ID'],
+    translationMemoryIds: ['YOUR_TRANSLATION_MEMORY_ID'],
+    glossaryPriorityOrderEnabled: true,
+});
+console.log(styleProfile.styleProfileId, styleProfile.name, styleProfile.styleRuleIds);
+
+// Retrieve a style profile
+const fetched = await deeplClient.getStyleProfile(styleProfile.styleProfileId);
+
+// List style profiles page by page: page is 0-indexed, pageSize defaults to 10 (max 100)
+const firstPage = await deeplClient.listStyleProfiles();
+const secondPage = await deeplClient.listStyleProfiles(1, 100);
+
+// Rename, clear the description and unlink all style rule lists; other fields stay unchanged
+const updated = await deeplClient.updateStyleProfile(styleProfile, {
+    name: 'Legal, German (v2)',
+    description: '',
+    styleRuleIds: [],
+});
+console.log(updated.description); // undefined
+
+// Delete the style profile; the linked components are not deleted
+await deeplClient.deleteStyleProfile(styleProfile);
+```
+
 ### Translation Memories
 
 Translation memories store and reuse previously created translations, helping to

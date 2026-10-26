@@ -16,6 +16,9 @@ import {
     SpokenTerms,
     SpokenTermsEntries,
     SpokenTermsList,
+    StyleProfile,
+    StyleProfileOptions,
+    StyleProfileUpdateOptions,
     StyleRuleInfo,
     StyleRuleInfoApiResponse,
     StyleId,
@@ -43,6 +46,8 @@ import {
     parseSpokenTermsArray,
     parseSpokenTermsEntries,
     parseSpokenTermsList,
+    parseStyleProfile,
+    parseStyleProfileList,
     parseStyleRuleInfoList,
     parseStyleRuleInfo,
     parseCustomInstruction,
@@ -61,6 +66,7 @@ import {
     appendTextsAndReturnIsSingular,
     extractGlossaryId,
     extractSpokenTermsId,
+    extractStyleProfileId,
     extractTranslationMemoryId,
     logInfo,
     timeout,
@@ -76,6 +82,25 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
     // Terms are sent newline-separated, so a newline inside a term would split it
     entries.entries.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang: entries.lang, entries: entries.entries.join('\n') };
+}
+
+function styleProfileOptionsToJson(
+    options: StyleProfileOptions | undefined,
+): Record<string, unknown> {
+    const body: Record<string, unknown> = {};
+    if (options === undefined) return body;
+    // Unset fields are not sent; '' and [] are sent, as they clear or unlink in an update
+    if (options.description !== undefined) body.description = options.description;
+    if (options.industry !== undefined) body.industry = options.industry;
+    if (options.glossaryIds !== undefined) body.glossary_ids = options.glossaryIds;
+    if (options.styleRuleIds !== undefined) body.style_rule_ids = options.styleRuleIds;
+    if (options.translationMemoryIds !== undefined) {
+        body.translation_memory_ids = options.translationMemoryIds;
+    }
+    if (options.glossaryPriorityOrderEnabled !== undefined) {
+        body.glossary_priority_order_enabled = options.glossaryPriorityOrderEnabled;
+    }
+    return body;
 }
 
 export type CustomInstructionRequestBody = {
@@ -1593,6 +1618,118 @@ export class DeepLClient extends Translator {
             `/v3/style_rules/${encodeURIComponent(
                 styleId,
             )}/custom_instructions/${encodeURIComponent(instructionId)}`,
+        );
+        await checkStatusCode(statusCode, content);
+    }
+
+    /**
+     * Retrieves a page of the style profiles of the account.
+     *
+     * @param page: Page number for pagination, 0-indexed (optional, API default 0).
+     * @param pageSize: Number of items per page (optional, API default 10, at most 100).
+     * @returns {Promise<StyleProfile[]>} The style profiles on the page.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async listStyleProfiles(page?: number, pageSize?: number): Promise<StyleProfile[]> {
+        const queryParams = new URLSearchParams();
+        if (page !== undefined) {
+            queryParams.append('page', String(page));
+        }
+        if (pageSize !== undefined) {
+            queryParams.append('page_size', String(pageSize));
+        }
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            '/v3/style_profiles',
+            { data: queryParams },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseStyleProfileList(content);
+    }
+
+    /**
+     * Creates a style profile. Only the name is required; options left undefined are not sent.
+     * If any of the linked IDs cannot be used, the API rejects the request and creates nothing.
+     *
+     * @param name: Name of the style profile.
+     * @param options: Description, industry and the IDs of the glossaries, style rule lists and
+     *     translation memories to link, see {@link StyleProfileOptions}.
+     * @returns {Promise<StyleProfile>} The created style profile.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async createStyleProfile(name: string, options?: StyleProfileOptions): Promise<StyleProfile> {
+        const body = { name, ...styleProfileOptionsToJson(options) };
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            '/v3/style_profiles',
+            { jsonBody: body },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseStyleProfile(content);
+    }
+
+    /**
+     * Retrieves a style profile.
+     *
+     * @param styleProfile: ID of the style profile, or a StyleProfile object.
+     * @returns {Promise<StyleProfile>} The style profile.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async getStyleProfile(styleProfile: string | StyleProfile): Promise<StyleProfile> {
+        const styleProfileId = extractStyleProfileId(styleProfile);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'GET',
+            `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
+        );
+        await checkStatusCode(statusCode, content);
+        return parseStyleProfile(content);
+    }
+
+    /**
+     * Updates a style profile. Options left undefined are not changed. An empty string clears
+     * the description or industry; an ID array replaces the linked components of that kind in
+     * full, and an empty array unlinks all of them. With no options set, nothing changes.
+     *
+     * @param styleProfile: ID of the style profile, or a StyleProfile object.
+     * @param options: The fields to change, see {@link StyleProfileUpdateOptions}.
+     * @returns {Promise<StyleProfile>} The updated style profile.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async updateStyleProfile(
+        styleProfile: string | StyleProfile,
+        options: StyleProfileUpdateOptions,
+    ): Promise<StyleProfile> {
+        const styleProfileId = extractStyleProfileId(styleProfile);
+        const body = styleProfileOptionsToJson(options);
+        if (options.name !== undefined) {
+            body.name = options.name;
+        }
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'PATCH',
+            `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
+            { jsonBody: body },
+        );
+        await checkStatusCode(statusCode, content);
+        return parseStyleProfile(content);
+    }
+
+    /**
+     * Deletes a style profile. The linked glossaries, style rule lists and translation memories
+     * are not deleted.
+     *
+     * @param styleProfile: ID of the style profile, or a StyleProfile object.
+     *
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async deleteStyleProfile(styleProfile: string | StyleProfile): Promise<void> {
+        const styleProfileId = extractStyleProfileId(styleProfile);
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'DELETE',
+            `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
         );
         await checkStatusCode(statusCode, content);
     }
