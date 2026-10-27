@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added the `styleProfile` option to `TranslateTextOptions` and
+  `DocumentTranslateOptions` to translate text and documents with a style
+  profile, given as its ID or a `StyleProfile` object. It is sent as
+  `style_profile_id`.
 - Added style profiles (`/v3/style_profiles`) to `DeepLClient`:
   `listStyleProfiles()`, `createStyleProfile()`, `getStyleProfile()`,
   `updateStyleProfile()` and `deleteStyleProfile()`. Added the `StyleProfile`,

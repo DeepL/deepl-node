@@ -178,6 +178,14 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      */
     styleRule?: StyleId | StyleRuleInfo;
 
+    /** Specifies the ID of a style profile to use with translation, or a StyleProfile object
+     * as returned by getStyleProfile(). The style profile applies its linked glossaries, style
+     * rule lists and translation memories; a component that does not fit the language pair is
+     * left out. Cannot be combined with the glossary, style rule, translation memory or custom
+     * instructions options; the API rejects such requests.
+     */
+    styleProfile?: string | StyleProfile;
+
     /** Specifies the ID of a translation memory to use with translation, or
      * a TranslationMemoryInfo object as returned by listTranslationMemories().
      */
@@ -251,6 +259,15 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
      * a StyleRuleInfo object as returned by getAllStyleRules().
      */
     styleRule?: StyleId | StyleRuleInfo;
+
+    /** Specifies the ID of a style profile to use with translation, or a StyleProfile object
+     * as returned by getStyleProfile(). The style profile applies its linked glossaries, style
+     * rule lists and translation memories; a component that does not fit the language pair is
+     * left out. Cannot be combined with the glossary, style rule or translation memory options;
+     * the API rejects such requests. A style profile that does not exist fails the document
+     * translation with a DocumentTranslationError.
+     */
+    styleProfile?: string | StyleProfile;
 
     /** Specifies the ID of a translation memory to use with translation, or
      * a TranslationMemoryInfo object as returned by listTranslationMemories().

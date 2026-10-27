@@ -267,7 +267,7 @@ export function appendTextsAndReturnIsSingular(
 }
 
 /**
- * Validates and appends style-rule and translation-memory options to HTTP request parameters.
+ * Validates and appends style-rule, style-profile and translation-memory options to HTTP request parameters.
  * These options are shared between text and document translation requests.
  * @param data Parameters for HTTP request.
  * @param options Options containing style-rule and translation-memory fields.
@@ -277,6 +277,7 @@ export function appendStyleAndTranslationMemoryOptions(
     data: URLSearchParams,
     options: {
         styleRule?: StyleId | StyleRuleInfo;
+        styleProfile?: string | StyleProfile;
         translationMemory?: TranslationMemoryId | TranslationMemoryInfo;
         translationMemoryThreshold?: number;
     },
@@ -291,6 +292,18 @@ export function appendStyleAndTranslationMemoryOptions(
             data.append('style_id', options.styleRule.styleId);
         } else {
             data.append('style_id', options.styleRule);
+        }
+    }
+    if (options.styleProfile !== undefined) {
+        if (!isString(options.styleProfile)) {
+            if (options.styleProfile.styleProfileId === undefined) {
+                throw new DeepLError(
+                    'styleProfile option should be a string containing the style profile ID or a StyleProfile object.',
+                );
+            }
+            data.append('style_profile_id', options.styleProfile.styleProfileId);
+        } else {
+            data.append('style_profile_id', options.styleProfile);
         }
     }
     if (options.translationMemory !== undefined) {

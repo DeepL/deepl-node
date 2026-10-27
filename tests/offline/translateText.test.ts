@@ -169,6 +169,39 @@ describe('Translator.translateText', () => {
         });
     });
 
+    it('sends the style profile ID of a string and of a StyleProfile', async () => {
+        expectTranslateBody({ ...baseBody, style_profile_id: 'sp-1' });
+        expectTranslateBody({ ...baseBody, style_profile_id: 'sp-2' });
+        const translator = makeTranslator();
+
+        await translator.translateText('abc', null, 'de', { styleProfile: 'sp-1' });
+        await translator.translateText('abc', null, 'de', {
+            styleProfile: <deepl.StyleProfile>{ styleProfileId: 'sp-2' },
+        });
+    });
+
+    it('sends no style_profile_id when styleProfile is unset', async () => {
+        let sent: Record<string, unknown> = {};
+        nock(serverUrl)
+            .post('/v2/translate', (body) => {
+                sent = body;
+                return true;
+            })
+            .reply(200, translation);
+
+        await makeTranslator().translateText('abc', null, 'de', { styleRule: 'style-1' });
+
+        expect(sent).toEqual({ ...baseBody, style_id: 'style-1' });
+    });
+
+    it('throws for a styleProfile object without an ID', async () => {
+        await expect(
+            makeTranslator().translateText('abc', null, 'de', {
+                styleProfile: <deepl.StyleProfile>{},
+            }),
+        ).rejects.toThrow(deepl.DeepLError);
+    });
+
     it('sends the translation memory ID and threshold', async () => {
         expectTranslateBody({
             ...baseBody,

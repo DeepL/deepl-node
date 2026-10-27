@@ -67,6 +67,35 @@ describe('Translator.uploadDocument', () => {
         expect(result).toEqual(handle);
     });
 
+    it('sends the style profile ID of a string and of a StyleProfile as one part', async () => {
+        const translator = makeTranslator();
+        for (const [styleProfile, id] of <Array<[string | deepl.StyleProfile, string]>>[
+            ['sp-1', 'sp-1'],
+            [<deepl.StyleProfile>{ styleProfileId: 'sp-2' }, 'sp-2'],
+        ]) {
+            const upload = expectUpload();
+
+            await translator.uploadDocument(Buffer.from('x'), null, 'de', {
+                filename: 'example.txt',
+                styleProfile,
+            });
+
+            const body = upload.body();
+            expect(body).toContain(`name="style_profile_id"\r\n\r\n${id}\r\n`);
+            expect(body.split('name="style_profile_id"').length).toBe(2);
+        }
+    });
+
+    it('sends no style_profile_id part when styleProfile is unset', async () => {
+        const upload = expectUpload();
+
+        await makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+            filename: 'example.txt',
+        });
+
+        expect(upload.body()).not.toContain('name="style_profile_id"');
+    });
+
     it('sends the base name of a file path as the filename', async () => {
         const upload = expectUpload();
         const [exampleDocument] = createTextDocument();

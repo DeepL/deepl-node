@@ -183,6 +183,13 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
     `sourceLang` to be set, and cannot be combined with the singular `glossary` option.
 -   `styleRule`: specifies a style rule to use with translation, either as a string
     containing the style rule ID, or a `StyleRuleInfo` as returned by `getAllStyleRules()`.
+-   `styleProfile`: specifies a style profile to use with translation, either as a
+    string containing the style profile ID, or a `StyleProfile` as returned by
+    `getStyleProfile()`. The profile applies its linked glossaries, style rule lists and
+    translation memories; a component that does not fit the language pair is left out.
+    Does not require `sourceLang`. Cannot be combined with `glossary`, `glossaryIds`,
+    `styleRule`, `translationMemory`, `translationMemoryThreshold` or
+    `customInstructions`; the API rejects such requests.
 -   `translationMemory`: specifies a translation memory to use with translation,
     either as a string containing the translation memory ID, or a
     `TranslationMemoryInfo` as returned by `listTranslationMemories()`.
@@ -286,6 +293,9 @@ directly:
 -   `glossary`: same as in [Text translation options](#text-translation-options).
 -   `glossaryIds`: same as in [Text translation options](#text-translation-options).
 -   `styleRule`: same as in [Text translation options](#text-translation-options).
+-   `styleProfile`: same as in [Text translation options](#text-translation-options).
+    A style profile that does not exist fails the translation with a
+    `DocumentTranslationError` whose message contains `Style profile not found.`.
 -   `translationMemory`: same as in [Text translation options](#text-translation-options).
 -   `translationMemoryThreshold`: same as in [Text translation options](#text-translation-options).
 -   `filename`: if the input file is not provided as file path, this option is
@@ -702,6 +712,18 @@ console.log(updated.description); // undefined
 
 // Delete the style profile; the linked components are not deleted
 await deeplClient.deleteStyleProfile(styleProfile);
+```
+
+To translate with a style profile, pass it as the `styleProfile` option of text or
+document translation:
+
+```javascript
+const result = await deeplClient.translateText('The artist is here.', null, 'de', {
+    styleProfile: 'YOUR_STYLE_PROFILE_ID',
+});
+await deeplClient.translateDocument('input.docx', 'output.docx', null, 'de', {
+    styleProfile: styleProfile,
+});
 ```
 
 ### Translation Memories
