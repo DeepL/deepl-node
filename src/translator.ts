@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { HttpClient } from './client';
+import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
 import {
     AuthorizationError,
     DeepLError,
@@ -26,7 +26,6 @@ import {
     parseUsage,
 } from './parsing';
 import {
-    AppInfo,
     DocumentStatus,
     DocumentHandle,
     DocumentTranslateOptions,
@@ -58,7 +57,6 @@ import {
 import * as fs from 'fs';
 import { IncomingMessage, STATUS_CODES } from 'http';
 import path from 'path';
-import * as os from 'os';
 import { URLSearchParams } from 'url';
 import * as util from 'util';
 import { DocumentMinifier } from './documentMinifier';
@@ -152,35 +150,17 @@ export class Translator {
         } else {
             serverUrl = 'https://api.deepl.com';
         }
-        const headers = {
-            Authorization: `DeepL-Auth-Key ${authKey}`,
-            'User-Agent': this.constructUserAgentString(
-                options?.sendPlatformInfo === false ? false : true,
-                options?.appInfo,
-            ),
-            ...(options?.headers ?? {}),
-        };
-
-        const maxRetries = options?.maxRetries !== undefined ? options.maxRetries : 5;
-        const minTimeout = options?.minTimeout !== undefined ? options.minTimeout : 5000;
-        this.httpClient = new HttpClient(
-            serverUrl,
-            headers,
-            maxRetries,
-            minTimeout,
-            options?.proxy,
-        );
+        const headers = buildRequestHeaders(authKey, options);
+        this.httpClient = createHttpClient(serverUrl, headers, options);
         // Deliberately built from scratch rather than by subtracting Authorization from the
         // headers above: uploads and downloads of translation memory files go to pre-signed
         // Asset Store URLs outside the DeepL API, and a client that never holds the auth key
         // cannot leak it. Only the User-Agent is carried over; per-request headers such as
         // Content-Type are still supplied by the caller.
-        this.storageHttpClient = new HttpClient(
+        this.storageHttpClient = createHttpClient(
             serverUrl,
             { 'User-Agent': headers['User-Agent'] },
-            maxRetries,
-            minTimeout,
-            options?.proxy,
+            options,
         );
     }
 
@@ -726,23 +706,6 @@ export class Translator {
         );
         await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfo(content);
-    }
-
-    private constructUserAgentString(
-        sendPlatformInfo: boolean,
-        appInfo: AppInfo | undefined,
-    ): string {
-        let libraryInfoString = 'deepl-node/1.28.1';
-        if (sendPlatformInfo) {
-            const systemType = os.type();
-            const systemVersion = os.version();
-            const nodeVersion = process.version.substring(1); // Drop the v in the version number
-            libraryInfoString += ` (${systemType} ${systemVersion}) node/${nodeVersion}`;
-        }
-        if (appInfo) {
-            libraryInfoString += ` ${appInfo.appName}/${appInfo.appVersion}`;
-        }
-        return libraryInfoString;
     }
 
     /**

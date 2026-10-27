@@ -51,8 +51,15 @@ import {
     ResourceFeature,
     LanguageSupport,
     LanguageFeature,
+    AdminUsageBreakdown,
+    AdminUsageReport,
+    CustomTagUsage,
+    CustomTagUsageBreakdown,
+    CustomTagUsageReport,
+    DeveloperKey,
+    KeyUsage,
 } from './types';
-import { standardizeLanguageCode } from './utils';
+import { isString, standardizeLanguageCode } from './utils';
 
 /**
  * Type used during JSON parsing of API response for glossary info.
@@ -820,7 +827,7 @@ export function parseStyleRuleInfoList(json: string): StyleRuleInfo[] {
  * Parses an optional API timestamp, returning undefined if it is absent or unparseable.
  * @private
  */
-function parseOptionalTimestamp(value?: string): Date | undefined {
+function parseOptionalTimestamp(value?: string | null): Date | undefined {
     if (!value) {
         return undefined;
     }
@@ -1019,6 +1026,264 @@ export function parseLanguageSupportList(json: string): LanguageSupport[] {
             };
         });
     } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+/**
+ * Types used during JSON parsing of Admin API responses.
+ * @private
+ */
+interface DeveloperKeyApiResponse {
+    key_id?: string;
+    label?: string;
+    creation_time?: string;
+    deactivated_time?: string | null;
+    is_deactivated?: boolean;
+    usage_limits?: {
+        characters?: number | null;
+        speech_to_text_milliseconds?: number | null;
+        speech_to_speech_milliseconds?: number | null;
+    };
+}
+
+interface AdminUsageBreakdownApiResponse {
+    total_characters?: number;
+    text_translation_characters?: number;
+    document_translation_characters?: number;
+    text_improvement_characters?: number;
+    speech_to_text_minutes?: number;
+    speech_to_speech_minutes?: number;
+}
+
+interface KeyUsageApiResponse {
+    api_key?: string;
+    api_key_label?: string;
+    usage_date?: string;
+    usage?: AdminUsageBreakdownApiResponse;
+}
+
+interface AdminUsageReportApiResponse {
+    usage_report?: {
+        total_usage?: AdminUsageBreakdownApiResponse;
+        start_date?: string;
+        end_date?: string;
+        group_by?: string;
+        key_usages?: KeyUsageApiResponse[];
+        key_and_day_usages?: KeyUsageApiResponse[];
+    };
+}
+
+interface CustomTagUsageBreakdownApiResponse {
+    total_characters?: number;
+    text_translation_characters?: number;
+    text_improvement_characters?: number;
+    speech_to_text_minutes?: number;
+    speech_to_speech_minutes?: number;
+}
+
+interface CustomTagUsageApiResponse {
+    custom_tag?: string;
+    usage_date?: string;
+    breakdown?: CustomTagUsageBreakdownApiResponse;
+}
+
+interface CustomTagUsageReportApiResponse {
+    custom_tag_usage_report?: {
+        aggregate_by?: string;
+        start_date?: string;
+        end_date?: string;
+        next_page?: number | null;
+        usage?: CustomTagUsageApiResponse[];
+    };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function recordList<T>(value: unknown): T[] {
+    return Array.isArray(value) ? (value.filter(isRecord) as T[]) : [];
+}
+
+function numberOr<T extends number | null>(value: unknown, fallback: T): number | T {
+    return typeof value === 'number' && isFinite(value) ? value : fallback;
+}
+
+function stringOr(value: unknown, fallback: string): string {
+    return isString(value) ? value : fallback;
+}
+
+/**
+ * Parses an optional Admin API timestamp, treating timestamps without a time zone as UTC.
+ * @private
+ */
+function parseOptionalUtcTimestamp(value?: unknown): Date | undefined {
+    if (!isString(value)) {
+        return undefined;
+    }
+    if (/T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(value)) {
+        return parseOptionalTimestamp(`${value}Z`);
+    }
+    return parseOptionalTimestamp(value);
+}
+
+function parseRawDeveloperKey(value: unknown): DeveloperKey | undefined {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+    const obj = value as DeveloperKeyApiResponse;
+    if (!isString(obj.key_id) || obj.key_id.length === 0) {
+        return undefined;
+    }
+    const limits = isRecord(obj.usage_limits) ? obj.usage_limits : undefined;
+    return {
+        keyId: obj.key_id,
+        label: stringOr(obj.label, ''),
+        creationTime: parseOptionalUtcTimestamp(obj.creation_time),
+        deactivatedTime: parseOptionalUtcTimestamp(obj.deactivated_time),
+        isDeactivated: obj.is_deactivated === true,
+        usageLimits: {
+            characters: numberOr(limits?.characters, null),
+            speechToTextMilliseconds: numberOr(limits?.speech_to_text_milliseconds, null),
+            speechToSpeechMilliseconds: numberOr(limits?.speech_to_speech_milliseconds, null),
+        },
+    };
+}
+
+/**
+ * Parses the given JSON string to a DeveloperKey object.
+ * @private
+ */
+export function parseDeveloperKey(json: string): DeveloperKey {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(json);
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+    const key = parseRawDeveloperKey(parsed);
+    if (key === undefined) {
+        throw new DeepLError('Developer key response is missing key_id');
+    }
+    return key;
+}
+
+/**
+ * Parses the given JSON string to an array of DeveloperKey objects.
+ * @private
+ */
+export function parseDeveloperKeyList(json: string): DeveloperKey[] {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(json);
+    } catch (error) {
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+    if (!Array.isArray(parsed)) {
+        throw new DeepLError('Developer keys response is not a list');
+    }
+    return parsed.map(parseRawDeveloperKey).filter((key): key is DeveloperKey => key !== undefined);
+}
+
+function parseAdminUsageBreakdown(obj?: AdminUsageBreakdownApiResponse): AdminUsageBreakdown {
+    const b = isRecord(obj) ? obj : undefined;
+    return {
+        totalCharacters: numberOr(b?.total_characters, 0),
+        textTranslationCharacters: numberOr(b?.text_translation_characters, 0),
+        documentTranslationCharacters: numberOr(b?.document_translation_characters, 0),
+        textImprovementCharacters: numberOr(b?.text_improvement_characters, 0),
+        speechToTextMinutes: numberOr(b?.speech_to_text_minutes, 0),
+        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, 0),
+    };
+}
+
+function parseKeyUsage(obj: KeyUsageApiResponse): KeyUsage {
+    return {
+        apiKey: stringOr(obj.api_key, ''),
+        apiKeyLabel: stringOr(obj.api_key_label, ''),
+        usage: parseAdminUsageBreakdown(obj.usage),
+        usageDate: parseOptionalUtcTimestamp(obj.usage_date),
+    };
+}
+
+/**
+ * Parses the given JSON string to an AdminUsageReport object.
+ * @private
+ */
+export function parseAdminUsageReport(json: string): AdminUsageReport {
+    try {
+        const top: unknown = JSON.parse(json);
+        if (!isRecord(top)) {
+            throw new DeepLError('Usage analytics response is not a JSON object');
+        }
+        const parsed = (top as AdminUsageReportApiResponse).usage_report;
+        const report: NonNullable<AdminUsageReportApiResponse['usage_report']> = isRecord(parsed)
+            ? parsed
+            : {};
+        return {
+            totalUsage: parseAdminUsageBreakdown(report.total_usage),
+            startDate: parseOptionalUtcTimestamp(report.start_date),
+            endDate: parseOptionalUtcTimestamp(report.end_date),
+            groupBy: isString(report.group_by) ? report.group_by : undefined,
+            keyUsages: recordList<KeyUsageApiResponse>(report.key_usages).map(parseKeyUsage),
+            keyAndDayUsages: recordList<KeyUsageApiResponse>(report.key_and_day_usages).map(
+                parseKeyUsage,
+            ),
+        };
+    } catch (error) {
+        if (error instanceof DeepLError) {
+            throw error;
+        }
+        throw new DeepLError(`Error parsing response JSON: ${error}`);
+    }
+}
+
+function parseCustomTagUsageBreakdown(
+    obj?: CustomTagUsageBreakdownApiResponse,
+): CustomTagUsageBreakdown {
+    const b = isRecord(obj) ? obj : undefined;
+    return {
+        totalCharacters: numberOr(b?.total_characters, 0),
+        textTranslationCharacters: numberOr(b?.text_translation_characters, 0),
+        textImprovementCharacters: numberOr(b?.text_improvement_characters, 0),
+        speechToTextMinutes: numberOr(b?.speech_to_text_minutes, 0),
+        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, 0),
+    };
+}
+
+function parseCustomTagUsage(obj: CustomTagUsageApiResponse): CustomTagUsage {
+    return {
+        customTag: stringOr(obj.custom_tag, ''),
+        breakdown: parseCustomTagUsageBreakdown(obj.breakdown),
+        usageDate: parseOptionalUtcTimestamp(obj.usage_date),
+    };
+}
+
+/**
+ * Parses the given JSON string to a CustomTagUsageReport object.
+ * @private
+ */
+export function parseCustomTagUsageReport(json: string): CustomTagUsageReport {
+    try {
+        const top: unknown = JSON.parse(json);
+        if (!isRecord(top)) {
+            throw new DeepLError('Usage analytics response is not a JSON object');
+        }
+        const parsed = (top as CustomTagUsageReportApiResponse).custom_tag_usage_report;
+        const report: NonNullable<CustomTagUsageReportApiResponse['custom_tag_usage_report']> =
+            isRecord(parsed) ? parsed : {};
+        return {
+            aggregateBy: isString(report.aggregate_by) ? report.aggregate_by : undefined,
+            startDate: parseOptionalUtcTimestamp(report.start_date),
+            endDate: parseOptionalUtcTimestamp(report.end_date),
+            nextPage: typeof report.next_page === 'number' ? report.next_page : undefined,
+            usage: recordList<CustomTagUsageApiResponse>(report.usage).map(parseCustomTagUsage),
+        };
+    } catch (error) {
+        if (error instanceof DeepLError) {
+            throw error;
+        }
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }
 }

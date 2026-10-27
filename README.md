@@ -913,6 +913,101 @@ for (let i = 0; i < glossaryLanguages.length; i++) {
 }
 ```
 
+### Admin API
+
+The Admin API lets you manage the developer keys of your organization and
+retrieve usage analytics. It requires an admin API key, which you can create in
+the "Admin API Keys" tab of your DeepL account. Admin keys cannot be used for
+translation; developer keys cannot access the Admin API.
+
+Create a `DeepLAdminClient` with your admin key. It uses the
+`https://api.deepl.com` server by default, and accepts the same connection
+options as `DeepLClient`, see [Configuration](#configuration).
+
+```javascript
+import * as deepl from 'deepl-node';
+
+const adminClient = new deepl.DeepLAdminClient('YOUR_ADMIN_KEY');
+```
+
+#### Managing developer keys
+
+```javascript
+let key = await adminClient.createDeveloperKey('Staging Team Key');
+console.log(`Created ${key.label} (${key.keyId})`);
+
+for (const k of await adminClient.getDeveloperKeys()) {
+    console.log(`${k.label}: deactivated=${k.isDeactivated}`);
+}
+
+key = await adminClient.renameDeveloperKey(key, 'Production Team Key');
+
+// Limits 500000 characters and removes the speech-to-text limit. Other limits
+// keep their current value.
+key = await adminClient.setDeveloperKeyUsageLimits(key, {
+    characters: 500000,
+    speechToTextMilliseconds: null,
+});
+
+// Deactivation is permanent.
+await adminClient.deactivateDeveloperKey(key);
+```
+
+`renameDeveloperKey()`, `setDeveloperKeyUsageLimits()` and
+`deactivateDeveloperKey()` accept either a key ID or a `DeveloperKey` object.
+These three and `createDeveloperKey()` return the resulting `DeveloperKey`.
+
+`setDeveloperKeyUsageLimits()` changes only the limits you pass:
+`characters`, `speechToTextMilliseconds` and `speechToSpeechMilliseconds`.
+Omitted limits keep their current value, `null` removes a limit and `0` blocks
+that usage.
+
+#### Retrieving usage analytics
+
+`getUsageAnalytics()` returns an `AdminUsageReport` for a date range. Dates are
+UTC calendar days, and both the start day and the end day are included. The API
+requires the end date to be after the start date, so a report covers at least
+two days, and at most 366 days after it; otherwise it responds with an error.
+Dates can be `'YYYY-MM-DD'` strings or `Date` objects. For a `Date`, the library
+sends the UTC date of that moment: local midnight in UTC+2
+(`2026-10-20T00:00+02:00`) is sent as `2026-10-19`. Use a string to send an
+exact date. Invalid dates throw an `ArgumentError` before any request is sent.
+Use the optional `groupBy` option
+to break the usage down by key (`'key'`, see `keyUsages`) or by key and day
+(`'key_and_day'`, see `keyAndDayUsages`). The `groupBy` of the returned report
+is the raw string the API reports, for example `'keyAndDay'`. Usage breakdowns
+contain the characters per product plus `speechToTextMinutes` and
+`speechToSpeechMinutes`.
+
+```javascript
+const report = await adminClient.getUsageAnalytics('2026-06-01', '2026-07-01', {
+    groupBy: 'key',
+});
+console.log(`Total characters: ${report.totalUsage.totalCharacters}`);
+for (const keyUsage of report.keyUsages) {
+    console.log(`${keyUsage.apiKeyLabel}: ${keyUsage.usage.totalCharacters}`);
+}
+```
+
+`getCustomTagUsageAnalytics()` returns a `CustomTagUsageReport` with the usage
+per custom tag. Use the optional `aggregateBy` option to choose between the
+whole period (`'period'`, the default) and per-day usage (`'day'`). The results
+are paginated: pass the `nextPage` value of a report as the `page` option to get
+the next page.
+
+```javascript
+let page;
+do {
+    const report = await adminClient.getCustomTagUsageAnalytics('2026-06-01', '2026-07-01', {
+        page,
+    });
+    for (const tagUsage of report.usage) {
+        console.log(`${tagUsage.customTag}: ${tagUsage.breakdown.totalCharacters}`);
+    }
+    page = report.nextPage;
+} while (page !== undefined);
+```
+
 ### Writing a Plugin
 
 If you use this library in an application, please identify the application with
@@ -942,7 +1037,7 @@ The available options are:
     function call. By default, 5 retries are made. See
     [Request retries](#request-retries).
 -   `minTimeout`: the `Number` of milliseconds used as connection timeout for each
-    HTTP request retry. The default value is 10000 (10 seconds).
+    HTTP request retry. The default value is 5000 (5 seconds).
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
     for example for testing purposes. By default, the URL is selected based on the
     user account type (free or paid).
@@ -1054,6 +1149,10 @@ retries can be configured when constructing the `DeepLClient` object using the
 `maxRetries` option. The timeout for each request attempt may be controlled
 using the `minTimeout` option. An exponential-backoff strategy is used, so
 requests that fail multiple times will incur delays.
+
+`DeepLAdminClient.createDeveloperKey()` is retried only after rate limiting
+(HTTP 429) and DNS failures, as repeating it after other failures could create
+a second key.
 
 ## Issues
 

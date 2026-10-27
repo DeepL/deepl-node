@@ -18,3 +18,9 @@ export function makeDeeplClient(
 ): deepl.DeepLClient {
     return new deepl.DeepLClient(options?.authKey ?? 'k', { serverUrl, ...options });
 }
+
+export function makeAdminClient(
+    options?: deepl.DeepLAdminClientOptions & { adminKey?: string },
+): deepl.DeepLAdminClient {
+    return new deepl.DeepLAdminClient(options?.adminKey ?? 'k:adm', { serverUrl, ...options });
+}

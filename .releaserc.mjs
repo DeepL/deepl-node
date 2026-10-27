@@ -84,7 +84,7 @@ export default {
                     '.bumpversion.toml',
                     'package.json',
                     'package-lock.json',
-                    'src/translator.ts',
+                    'src/client.ts',
                 ],
                 // The body is what .github/workflows/release.yml reads to fill the
                 // GitHub release, so it must stay the changelog section.

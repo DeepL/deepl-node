@@ -5,8 +5,8 @@
 import { GlossaryEntries } from './glossaryEntries';
 
 /**
- * Optional proxy configuration, may be specified as proxy in TranslatorOptions.
- * @see TranslatorOptions.proxy
+ * Optional proxy configuration, may be specified as proxy in HttpClientOptions.
+ * @see HttpClientOptions.proxy
  */
 export interface ProxyConfig {
     host: string;
@@ -20,8 +20,8 @@ export interface ProxyConfig {
 
 /**
  * Optional identifier for the app that is using this library, may be specified
- * as appInfo in TranslatorOptions.
- * @see TranslatorOptions.appInfo
+ * as appInfo in HttpClientOptions.
+ * @see HttpClientOptions.appInfo
  */
 export interface AppInfo {
     appName: string;
@@ -29,31 +29,25 @@ export interface AppInfo {
 }
 
 /**
- * Options that can be specified when constructing a Translator.
+ * Connection options shared by all clients.
  */
-export interface TranslatorOptions {
-    /**
-     * Base URL of DeepL API, can be overridden for example for testing purposes. By default, the
-     * correct DeepL API URL is selected based on the user account type (free or paid).
-     */
-    serverUrl?: string;
-
+export interface HttpClientOptions {
     /**
      * HTTP headers attached to every HTTP request. By default, no extra headers are used. Note that
-     * during Translator initialization headers for Authorization and User-Agent are added, unless
+     * during client initialization headers for Authorization and User-Agent are added, unless
      * they are overridden in this option.
      */
     headers?: Record<string, string>;
 
     /**
-     * The maximum number of failed attempts that Translator will retry, per request. By default, 5
+     * The maximum number of failed attempts that the client will retry, per request. By default, 5
      * retries are made. Note: only errors due to transient conditions are retried.
      */
     maxRetries?: number;
 
     /**
      * Connection timeout used for each HTTP request retry, in milliseconds. The default timeout
-     * if this value is unspecified is 10 seconds (10000).
+     * if this value is unspecified is 5 seconds (5000).
      */
     minTimeout?: number;
 
@@ -64,8 +58,7 @@ export interface TranslatorOptions {
 
     /**
      * Define if the library is allowed to send more detailed information about which platform
-     * it is running on with each API call. Defaults to true if undefined. Overriden by
-     * the `customUserAgent` option.
+     * it is running on with each API call. Defaults to true if undefined.
      */
     sendPlatformInfo?: boolean;
 
@@ -73,6 +66,17 @@ export interface TranslatorOptions {
      * Identifies the application using this client library, will be sent in the `User-Agent` header
      */
     appInfo?: AppInfo;
+}
+
+/**
+ * Options that can be specified when constructing a Translator.
+ */
+export interface TranslatorOptions extends HttpClientOptions {
+    /**
+     * Base URL of DeepL API, can be overridden for example for testing purposes. By default, the
+     * correct DeepL API URL is selected based on the user account type (free or paid).
+     */
+    serverUrl?: string;
 }
 
 /**
@@ -1223,4 +1227,176 @@ export interface LanguageSupport {
     readonly usableAsTarget: boolean;
     /** Features supported for this language with the queried resource, keyed by feature name. */
     readonly features: Record<string, LanguageFeature>;
+}
+
+/**
+ * Options that can be specified when constructing a DeepLAdminClient.
+ */
+export interface DeepLAdminClientOptions extends HttpClientOptions {
+    /**
+     * Base URL of the DeepL API, can be overridden for example for testing purposes. Defaults to
+     * https://api.deepl.com, as the Admin API is only available there.
+     */
+    serverUrl?: string;
+}
+
+/**
+ * Grouping of the `DeepLAdminClient.getUsageAnalytics()` report:
+ * - 'key': usage per API key, see {@link AdminUsageReport.keyUsages}.
+ * - 'key_and_day': usage per API key and day, see {@link AdminUsageReport.keyAndDayUsages}.
+ */
+export type AdminUsageGroupBy = 'key' | 'key_and_day';
+
+/**
+ * Options for `DeepLAdminClient.getUsageAnalytics()`.
+ */
+export interface AdminUsageAnalyticsOptions {
+    /** Group the usage by key or by key and day. */
+    groupBy?: AdminUsageGroupBy;
+}
+
+/**
+ * Aggregation of the `DeepLAdminClient.getCustomTagUsageAnalytics()` report:
+ * - 'period': usage over the entire date range.
+ * - 'day': usage per day.
+ */
+export type CustomTagUsageAggregateBy = 'period' | 'day';
+
+/**
+ * Options for `DeepLAdminClient.getCustomTagUsageAnalytics()`.
+ */
+export interface CustomTagUsageAnalyticsOptions {
+    /** Aggregate the usage over the whole period (the default) or by day. */
+    aggregateBy?: CustomTagUsageAggregateBy;
+    /** Page number to retrieve, from the `nextPage` value of a previous report. */
+    page?: number;
+}
+
+/**
+ * Usage limits of a developer key. A null limit means unlimited.
+ */
+export interface DeveloperKeyUsageLimits {
+    /** Maximum number of characters per usage period, or null if unlimited. */
+    readonly characters: number | null;
+    /** Maximum number of speech-to-text milliseconds per usage period, or null if unlimited. */
+    readonly speechToTextMilliseconds: number | null;
+    /** Maximum number of speech-to-speech milliseconds per usage period, or null if unlimited. */
+    readonly speechToSpeechMilliseconds: number | null;
+}
+
+/**
+ * Usage limits to change with `DeepLAdminClient.setDeveloperKeyUsageLimits()`. Omitted limits keep
+ * their current value, null removes a limit and 0 blocks that usage.
+ */
+export interface DeveloperKeyUsageLimitsUpdate {
+    /**
+     * Maximum number of characters per usage period across text translation, document translation
+     * and text improvement.
+     */
+    characters?: number | null;
+    /** Maximum number of speech-to-text milliseconds per usage period. */
+    speechToTextMilliseconds?: number | null;
+    /** Maximum number of speech-to-speech milliseconds per usage period. */
+    speechToSpeechMilliseconds?: number | null;
+}
+
+/**
+ * Information about a developer API key, as returned by the Admin API.
+ */
+export interface DeveloperKey {
+    /** Unique ID of the key. */
+    readonly keyId: string;
+    /** Label assigned to the key. */
+    readonly label: string;
+    /** Time when the key was created. */
+    readonly creationTime?: Date;
+    /** Time when the key was deactivated, undefined if the key is active. */
+    readonly deactivatedTime?: Date;
+    /** True if the key is deactivated. */
+    readonly isDeactivated: boolean;
+    /** Usage limits configured for the key. */
+    readonly usageLimits: DeveloperKeyUsageLimits;
+}
+
+/**
+ * Usage totals in an admin usage analytics report.
+ */
+export interface AdminUsageBreakdown {
+    readonly totalCharacters: number;
+    readonly textTranslationCharacters: number;
+    readonly documentTranslationCharacters: number;
+    readonly textImprovementCharacters: number;
+    readonly speechToTextMinutes: number;
+    readonly speechToSpeechMinutes: number;
+}
+
+/**
+ * Usage of a single API key in an admin usage analytics report.
+ */
+export interface KeyUsage {
+    /** Masked API key. */
+    readonly apiKey: string;
+    /** Label of the API key. */
+    readonly apiKeyLabel: string;
+    /** Usage of the API key. */
+    readonly usage: AdminUsageBreakdown;
+    /** Day of the usage, defined only when grouped by key and day. */
+    readonly usageDate?: Date;
+}
+
+/**
+ * Admin usage analytics report for a date range, as returned by
+ * `DeepLAdminClient.getUsageAnalytics()`.
+ */
+export interface AdminUsageReport {
+    /** Usage totals over the whole date range. */
+    readonly totalUsage: AdminUsageBreakdown;
+    /** Start of the report period. */
+    readonly startDate?: Date;
+    /** End of the report period. */
+    readonly endDate?: Date;
+    /** Grouping as reported by the API, if any: the raw string, for example 'keyAndDay'. */
+    readonly groupBy?: string;
+    /** Usage per key when grouped by 'key', otherwise empty. */
+    readonly keyUsages: KeyUsage[];
+    /** Usage per key and day when grouped by 'key_and_day', otherwise empty. */
+    readonly keyAndDayUsages: KeyUsage[];
+}
+
+/**
+ * Usage totals for a custom tag.
+ */
+export interface CustomTagUsageBreakdown {
+    readonly totalCharacters: number;
+    readonly textTranslationCharacters: number;
+    readonly textImprovementCharacters: number;
+    readonly speechToTextMinutes: number;
+    readonly speechToSpeechMinutes: number;
+}
+
+/**
+ * Usage of a single custom tag.
+ */
+export interface CustomTagUsage {
+    readonly customTag: string;
+    readonly breakdown: CustomTagUsageBreakdown;
+    /** Day of the usage, defined only when aggregated by 'day'. */
+    readonly usageDate?: Date;
+}
+
+/**
+ * Custom tag usage analytics report for a date range, as returned by
+ * `DeepLAdminClient.getCustomTagUsageAnalytics()`.
+ */
+export interface CustomTagUsageReport {
+    /** Aggregation reported by the API. */
+    readonly aggregateBy?: string;
+    /** Start of the report period. */
+    readonly startDate?: Date;
+    /** End of the report period. */
+    readonly endDate?: Date;
+    /** Page number to request the next page, or undefined if this is the last page. */
+    readonly nextPage?: number;
+    /** Usage entries per custom tag. */
+    readonly usage: CustomTagUsage[];
 }

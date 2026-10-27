@@ -9,9 +9,10 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { URLSearchParams } from 'url';
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
-import { ProxyConfig } from './types';
+import { AppInfo, HttpClientOptions, ProxyConfig } from './types';
 import * as https from 'https';
 import * as http from 'http';
+import * as os from 'os';
 
 type HttpMethod = 'GET' | 'DELETE' | 'POST' | 'PUT' | 'PATCH';
 
@@ -27,6 +28,11 @@ export const RETRYABLE_AXIOS_ERROR_CODES = new Set([
     'EPIPE',
     'EAI_AGAIN',
 ]);
+
+/**
+ * Axios error codes for failures that happen before the request is sent.
+ */
+const UNSENT_AXIOS_ERROR_CODES = new Set(['EAI_AGAIN']);
 
 const axiosInstance = axios.create({
     httpAgent: new http.Agent({ keepAlive: true }),
@@ -60,6 +66,11 @@ interface SendRequestOptions {
      * URLs handed out by the API. Cannot be used together with data, jsonBody or fileBuffer.
      */
     rawBody?: Buffer;
+    /**
+     * Retry only failures that show the request was not processed (HTTP 429 and DNS errors), for
+     * requests that are unsafe to repeat.
+     */
+    retryOnlyUnprocessed?: boolean;
 }
 
 /**
@@ -227,7 +238,11 @@ export class HttpClient {
             }
 
             if (
-                !HttpClient.shouldRetry(response?.statusCode, error) ||
+                !HttpClient.shouldRetry(
+                    response?.statusCode,
+                    error,
+                    options.retryOnlyUnprocessed,
+                ) ||
                 backoff.getNumRetries() + 1 >= this.maxRetries
             ) {
                 break;
@@ -294,16 +309,78 @@ export class HttpClient {
                 logDebug('Unrecognized axios error', axiosError);
                 error.shouldRetry = false;
             }
+            error.requestNotSent =
+                axiosError.code !== undefined && UNSENT_AXIOS_ERROR_CODES.has(axiosError.code);
             throw error;
         }
     }
 
-    private static shouldRetry(statusCode?: number, error?: ConnectionError): boolean {
+    private static shouldRetry(
+        statusCode?: number,
+        error?: ConnectionError,
+        onlyUnprocessed?: boolean,
+    ): boolean {
         if (statusCode === undefined) {
-            return (error as ConnectionError).shouldRetry;
+            const connectionError = error as ConnectionError;
+            return onlyUnprocessed ? connectionError.requestNotSent : connectionError.shouldRetry;
         }
 
         // Retry on Too-Many-Requests error and internal errors
-        return statusCode === 429 || statusCode >= 500;
+        return statusCode === 429 || (!onlyUnprocessed && statusCode >= 500);
     }
+}
+
+/**
+ * Builds the User-Agent header value sent with every request.
+ * @private
+ */
+function constructUserAgentString(sendPlatformInfo: boolean, appInfo: AppInfo | undefined): string {
+    let libraryInfoString = 'deepl-node/1.28.1';
+    if (sendPlatformInfo) {
+        const systemType = os.type();
+        const systemVersion = os.version();
+        const nodeVersion = process.version.substring(1); // Drop the v in the version number
+        libraryInfoString += ` (${systemType} ${systemVersion}) node/${nodeVersion}`;
+    }
+    if (appInfo) {
+        libraryInfoString += ` ${appInfo.appName}/${appInfo.appVersion}`;
+    }
+    return libraryInfoString;
+}
+
+/**
+ * Builds the headers sent with every DeepL API request: authorization, User-Agent and any
+ * custom headers from the options, which take precedence.
+ * @private
+ */
+export function buildRequestHeaders(
+    authKey: string,
+    options?: HttpClientOptions,
+): Record<string, string> {
+    return {
+        Authorization: `DeepL-Auth-Key ${authKey}`,
+        'User-Agent': constructUserAgentString(
+            options?.sendPlatformInfo !== false,
+            options?.appInfo,
+        ),
+        ...(options?.headers ?? {}),
+    };
+}
+
+/**
+ * Creates an HttpClient with the retry and proxy settings from the options.
+ * @private
+ */
+export function createHttpClient(
+    serverUrl: string,
+    headers: Record<string, string>,
+    options?: HttpClientOptions,
+): HttpClient {
+    return new HttpClient(
+        serverUrl,
+        headers,
+        options?.maxRetries ?? 5,
+        options?.minTimeout ?? 5000,
+        options?.proxy,
+    );
 }

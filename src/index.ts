@@ -52,5 +52,6 @@ import * as util from 'util';
 export * from './errors';
 export * from './glossaryEntries';
 export * from './types';
+export * from './adminClient';
 export * from './deeplClient';
 export * from './translator';

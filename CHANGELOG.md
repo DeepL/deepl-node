@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`Date`). They are `undefined` when the response does not contain them.
   `anyLimitReached()` still checks only the character, document and team
   document usage.
+- Added the `DeepLAdminClient` class for the Admin API. It must be created with
+  an admin API key and supports managing developer keys
+  (`createDeveloperKey()`, `getDeveloperKeys()`, `deactivateDeveloperKey()`,
+  `renameDeveloperKey()`, `setDeveloperKeyUsageLimits()`) and retrieving usage
+  analytics (`getUsageAnalytics()`, `getCustomTagUsageAnalytics()`). Added the
+  `HttpClientOptions`, `DeepLAdminClientOptions`, `DeveloperKey`,
+  `DeveloperKeyUsageLimits`, `DeveloperKeyUsageLimitsUpdate`, `AdminUsageReport`,
+  `AdminUsageBreakdown`, `KeyUsage`, `AdminUsageGroupBy`, `CustomTagUsageReport`,
+  `CustomTagUsage`, `CustomTagUsageBreakdown`, `CustomTagUsageAggregateBy`,
+  `CustomTagUsageAnalyticsOptions` and `AdminUsageAnalyticsOptions` types.
+  `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
+- Added `ConnectionError.requestNotSent`, which is true when the request
+  failed before it was sent, so the server cannot have processed it.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and

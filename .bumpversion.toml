@@ -13,7 +13,7 @@ allow_dirty = false
 commit = false
 
 [[tool.bumpversion.files]]
-filename = "src/translator.ts"
+filename = "src/client.ts"
 search = "deepl-node/{current_version}"
 replace = "deepl-node/{new_version}"
 

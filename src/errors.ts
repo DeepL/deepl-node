@@ -22,6 +22,8 @@ export class TooManyRequestsError extends DeepLError {}
 
 export class ConnectionError extends DeepLError {
     shouldRetry: boolean;
+    /** True if the request failed before it was sent, so the server cannot have processed it. */
+    requestNotSent = false;
 
     constructor(message: string, shouldRetry?: boolean, error?: Error) {
         super(message, error);
