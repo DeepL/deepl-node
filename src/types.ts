@@ -227,7 +227,10 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      */
     customInstructions?: string[];
 
-    /** (internal only) Override path to send translate request to. */
+    /**
+     * (internal only) Override path to send translate request to.
+     * @deprecated For internal use only; will be removed in the next major version.
+     */
     __path?: string;
 }
 

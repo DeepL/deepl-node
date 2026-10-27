@@ -68,6 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the DeepL API translates them as `en-US` and `pt-PT`. `TargetLanguageCode` now
   includes `en` and `pt`.
 
+### Deprecated
+- `TranslateTextOptions.__path` is deprecated. It is for internal use only
+  and will be removed in the next major version.
+
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
   already exists. It now rejects with `EEXIST` before downloading anything, on every Node
