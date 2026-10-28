@@ -422,11 +422,25 @@ function parseRawSpokenTerms(obj: SpokenTermsApiResponse): SpokenTerms {
     };
 }
 
-function parseJson<T>(json: string): T {
+/**
+ * Parses the given JSON response body and converts it with the given function. JSON syntax errors
+ * and errors raised while reading fields (for example of a null or non-object body) are thrown as
+ * DeepLError.
+ * @private
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function parseResponse<T>(json: string, convert: (obj: any) => T): T {
+    let obj: unknown;
     try {
-        return JSON.parse(json) as T;
+        obj = JSON.parse(json);
     } catch (error) {
-        throw new DeepLError(`Error parsing response JSON: ${error}`);
+        throw new DeepLError(`Error parsing response JSON: ${error}`, error as Error);
+    }
+    try {
+        return convert(obj);
+    } catch (error) {
+        if (error instanceof DeepLError) throw error;
+        throw new DeepLError(`Error parsing response JSON: ${error}`, error as Error);
     }
 }
 
@@ -435,7 +449,7 @@ function parseJson<T>(json: string): T {
  * @private
  */
 export function parseSpokenTerms(json: string): SpokenTerms {
-    return parseRawSpokenTerms(parseJson<SpokenTermsApiResponse>(json));
+    return parseResponse(json, parseRawSpokenTerms);
 }
 
 /**
@@ -443,8 +457,9 @@ export function parseSpokenTerms(json: string): SpokenTerms {
  * @private
  */
 export function parseSpokenTermsArray(json: string): SpokenTerms[] {
-    const obj = parseJson<{ spoken_terms?: SpokenTermsApiResponse[] }>(json);
-    return (obj.spoken_terms ?? []).map(parseRawSpokenTerms);
+    return parseResponse(json, (obj: { spoken_terms?: SpokenTermsApiResponse[] }) =>
+        (obj.spoken_terms ?? []).map(parseRawSpokenTerms),
+    );
 }
 
 /**
@@ -452,7 +467,7 @@ export function parseSpokenTermsArray(json: string): SpokenTerms[] {
  * @private
  */
 export function parseSpokenTermsList(json: string): SpokenTermsList {
-    return parseRawSpokenTermsList(parseJson<SpokenTermsListApiResponse>(json));
+    return parseResponse(json, parseRawSpokenTermsList);
 }
 
 /**
@@ -461,11 +476,10 @@ export function parseSpokenTermsList(json: string): SpokenTermsList {
  * @private
  */
 export function parseSpokenTermsEntries(json: string): SpokenTermsEntries {
-    const obj = parseJson<SpokenTermsEntriesApiResponse>(json);
-    return {
+    return parseResponse(json, (obj: SpokenTermsEntriesApiResponse) => ({
         lang: obj.lang,
         entries: (obj.entries ?? '').split('\n').filter((term) => term.length > 0),
-    };
+    }));
 }
 
 /**
@@ -689,8 +703,9 @@ function parseTargetLanguageV3(lang: LanguageApiResponseV3): Language {
  * @private
  */
 export function parseSourceLanguageArrayV3(json: string): Language[] {
-    const obj = JSON.parse(json) as LanguageApiResponseV3[];
-    return obj.filter((lang) => lang.usable_as_source).map((lang) => parseSourceLanguageV3(lang));
+    return parseResponse(json, (obj: LanguageApiResponseV3[]) =>
+        obj.filter((lang) => lang.usable_as_source).map((lang) => parseSourceLanguageV3(lang)),
+    );
 }
 
 /**
@@ -699,8 +714,9 @@ export function parseSourceLanguageArrayV3(json: string): Language[] {
  * @private
  */
 export function parseTargetLanguageArrayV3(json: string): Language[] {
-    const obj = JSON.parse(json) as LanguageApiResponseV3[];
-    return obj.filter((lang) => lang.usable_as_target).map((lang) => parseTargetLanguageV3(lang));
+    return parseResponse(json, (obj: LanguageApiResponseV3[]) =>
+        obj.filter((lang) => lang.usable_as_target).map((lang) => parseTargetLanguageV3(lang)),
+    );
 }
 
 /**
@@ -882,7 +898,7 @@ function parseRawStyleProfile(obj: StyleProfileApiResponse): StyleProfile {
  * @private
  */
 export function parseStyleProfile(json: string): StyleProfile {
-    return parseRawStyleProfile(parseJson<StyleProfileApiResponse>(json));
+    return parseResponse(json, parseRawStyleProfile);
 }
 
 /**
@@ -891,13 +907,15 @@ export function parseStyleProfile(json: string): StyleProfile {
  * @private
  */
 export function parseStyleProfileList(json: string): StyleProfile[] {
-    const obj = parseJson<{ style_profiles?: unknown }>(json);
-    if (!Array.isArray(obj?.style_profiles)) {
-        return [];
-    }
-    return obj.style_profiles
-        .filter((item) => typeof item === 'object' && item !== null && !Array.isArray(item))
-        .map((item) => parseRawStyleProfile(item as StyleProfileApiResponse));
+    return parseResponse(json, (obj: { style_profiles?: unknown } | null) => {
+        const list = obj?.style_profiles;
+        if (!Array.isArray(list)) {
+            return [];
+        }
+        return list
+            .filter((item) => typeof item === 'object' && item !== null && !Array.isArray(item))
+            .map((item) => parseRawStyleProfile(item as StyleProfileApiResponse));
+    });
 }
 
 /**

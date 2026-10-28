@@ -9,10 +9,7 @@ import {
     MultilingualGlossaryDictionaryEntries,
     MultilingualGlossaryInfo,
     MultilingualGlossaryDictionaryInfo,
-    MultilingualGlossaryDictionaryApiResponse,
-    MultilingualGlossaryDictionaryEntriesApiResponse,
     GlossaryId,
-    ListMultilingualGlossaryApiResponse,
     SpokenTerms,
     SpokenTermsEntries,
     SpokenTermsList,
@@ -20,7 +17,6 @@ import {
     StyleProfileOptions,
     StyleProfileUpdateOptions,
     StyleRuleInfo,
-    StyleRuleInfoApiResponse,
     StyleId,
     CustomInstruction,
     TranslationMemoryId,
@@ -61,6 +57,7 @@ import {
     parseTranslationMemorySegments,
     parseLanguageResourceList,
     parseLanguageSupportList,
+    parseResponse,
 } from './parsing';
 import {
     appendCsvDictionaryEntries,
@@ -433,8 +430,10 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        const response = JSON.parse(content) as MultilingualGlossaryDictionaryEntriesApiResponse;
-        const dictionaryEntriesList = parseMultilingualGlossaryDictionaryEntries(response);
+        const dictionaryEntriesList = parseResponse(
+            content,
+            parseMultilingualGlossaryDictionaryEntries,
+        );
 
         if (!dictionaryEntriesList || dictionaryEntriesList.length === 0) {
             throw new GlossaryNotFoundError('Glossary dictionary not found');
@@ -456,8 +455,7 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content);
-        const response = JSON.parse(content) as ListMultilingualGlossaryApiResponse;
-        return parseListMultilingualGlossaries(response);
+        return parseResponse(content, parseListMultilingualGlossaries);
     }
 
     /**
@@ -555,8 +553,7 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        const response = JSON.parse(content) as MultilingualGlossaryDictionaryApiResponse;
-        return parseMultilingualGlossaryDictionaryInfo(response);
+        return parseResponse(content, parseMultilingualGlossaryDictionaryInfo);
     }
 
     /**
@@ -606,8 +603,7 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        const response = JSON.parse(content) as MultilingualGlossaryDictionaryApiResponse;
-        return parseMultilingualGlossaryDictionaryInfo(response);
+        return parseResponse(content, parseMultilingualGlossaryDictionaryInfo);
     }
 
     /**
@@ -1511,7 +1507,7 @@ export class DeepLClient extends Translator {
             { jsonBody: body },
         );
         await checkStatusCode(statusCode, content);
-        return parseStyleRuleInfo(JSON.parse(content) as StyleRuleInfoApiResponse);
+        return parseResponse(content, parseStyleRuleInfo);
     }
 
     /**
@@ -1531,7 +1527,7 @@ export class DeepLClient extends Translator {
             `/v3/style_rules/${encodeURIComponent(styleId)}`,
         );
         await checkStatusCode(statusCode, content);
-        return parseStyleRuleInfo(JSON.parse(content) as StyleRuleInfoApiResponse);
+        return parseResponse(content, parseStyleRuleInfo);
     }
 
     /**
@@ -1556,7 +1552,7 @@ export class DeepLClient extends Translator {
             { jsonBody: { name } },
         );
         await checkStatusCode(statusCode, content);
-        return parseStyleRuleInfo(JSON.parse(content) as StyleRuleInfoApiResponse);
+        return parseResponse(content, parseStyleRuleInfo);
     }
 
     /**
@@ -1599,7 +1595,7 @@ export class DeepLClient extends Translator {
             { jsonBody: configuredRules },
         );
         await checkStatusCode(statusCode, content);
-        return parseStyleRuleInfo(JSON.parse(content) as StyleRuleInfoApiResponse);
+        return parseResponse(content, parseStyleRuleInfo);
     }
 
     /**
@@ -1652,7 +1648,7 @@ export class DeepLClient extends Translator {
             { jsonBody: instruction },
         );
         await checkStatusCode(statusCode, content);
-        return parseCustomInstruction(JSON.parse(content));
+        return parseResponse(content, parseCustomInstruction);
     }
 
     /**
@@ -1681,7 +1677,7 @@ export class DeepLClient extends Translator {
             )}/custom_instructions/${encodeURIComponent(instructionId)}`,
         );
         await checkStatusCode(statusCode, content);
-        return parseCustomInstruction(JSON.parse(content));
+        return parseResponse(content, parseCustomInstruction);
     }
 
     /**
@@ -1743,7 +1739,7 @@ export class DeepLClient extends Translator {
             { jsonBody: instruction },
         );
         await checkStatusCode(statusCode, content);
-        return parseCustomInstruction(JSON.parse(content));
+        return parseResponse(content, parseCustomInstruction);
     }
 
     /**
