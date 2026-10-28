@@ -9,6 +9,7 @@ import {
     GlossaryInfo,
     GlossaryId,
     LanguageCode,
+    LanguageCodeInput,
     NonRegionalLanguageCode,
     RequestParameters,
     SentenceSplittingMode,
@@ -160,8 +161,8 @@ function joinTagList(tagList: TagList): string {
  * @private
  */
 export function buildURLSearchParams(
-    sourceLang: LanguageCode | null,
-    targetLang: LanguageCode,
+    sourceLang: LanguageCodeInput | null,
+    targetLang: LanguageCodeInput,
     formality: Formality | undefined,
     glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo | undefined,
     extraRequestParameters: RequestParameters | undefined,

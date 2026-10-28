@@ -457,6 +457,24 @@ export type TargetLanguageCode =
 export type LanguageCode = SourceLanguageCode | TargetLanguageCode;
 
 /**
+ * Accepted for source-language parameters: any {@link SourceLanguageCode}, or any other language
+ * code string (e.g. one returned by getSourceLanguages() that this package does not list yet).
+ */
+export type SourceLanguageCodeInput = SourceLanguageCode | (string & Record<never, never>);
+
+/**
+ * Accepted for target-language parameters: any {@link TargetLanguageCode}, or any other language
+ * code string (e.g. one returned by getTargetLanguages() that this package does not list yet).
+ */
+export type TargetLanguageCodeInput = TargetLanguageCode | (string & Record<never, never>);
+
+/**
+ * Accepted for language parameters that take source or target languages: any
+ * {@link LanguageCode}, or any other language code string.
+ */
+export type LanguageCodeInput = LanguageCode | (string & Record<never, never>);
+
+/**
  * Language codes that do not include a regional variant, for example 'en' is included, but 'en-US'
  * is not.
  */

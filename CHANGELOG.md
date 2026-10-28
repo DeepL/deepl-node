@@ -67,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Target languages `en` and `pt` are no longer rejected client-side as deprecated;
   the DeepL API translates them as `en-US` and `pt-PT`. `TargetLanguageCode` now
   includes `en` and `pt`.
+- The language parameters of `translateText()`, `translateDocument()`,
+  `uploadDocument()`, `createGlossary()` and `createGlossaryWithCsv()` accept
+  any language code string, so languages the API adds can be used without a new
+  release of this package. They use the new `SourceLanguageCodeInput`,
+  `TargetLanguageCodeInput` and `LanguageCodeInput` types, which keep editor
+  autocompletion for the listed codes. Result types are unchanged.
 
 ### Deprecated
 - `TranslateTextOptions.__path` is deprecated. It is for internal use only

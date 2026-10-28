@@ -116,6 +116,12 @@ languages without a variant use a default variant, for example `'en'` translates
 to `'en-US'` and `'pt'` to `'pt-PT'`. The source language also accepts `null`, to
 enable auto-detection of the source language.
 
+The language parameters accept any language code returned by
+`getSourceLanguages()` and `getTargetLanguages()`, not only the members of the
+`SourceLanguageCode` and `TargetLanguageCode` types. In TypeScript, a code held
+in a `string` variable can be passed without a cast; the codes are sent to the
+API unchanged apart from the case standardization.
+
 The last argument to `translateText()` is optional, and specifies extra
 translation options, see [Text translation options](#text-translation-options)
 below.

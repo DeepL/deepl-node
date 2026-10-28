@@ -27,6 +27,13 @@ describe('Translator.translateText', () => {
         await makeTranslator().translateText('abc', null, 'de');
     });
 
+    it('accepts a target language held in a string variable', async () => {
+        expectTranslateBody({ ...baseBody, target_lang: 'de-AT' });
+        const targets: string[] = ['de-AT'];
+
+        await makeTranslator().translateText('abc', null, targets[0]);
+    });
+
     it('parses the detected language, billed characters and model type', async () => {
         expectTranslateBody(baseBody, {
             translations: [

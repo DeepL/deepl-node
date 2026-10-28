@@ -33,9 +33,9 @@ import {
     GlossaryInfo,
     GlossaryLanguagePair,
     Language,
-    LanguageCode,
-    SourceLanguageCode,
-    TargetLanguageCode,
+    LanguageCodeInput,
+    SourceLanguageCodeInput,
+    TargetLanguageCodeInput,
     TranslateTextOptions,
     TranslatorOptions,
     TextResult,
@@ -238,8 +238,8 @@ export class Translator {
      */
     async translateText<T extends string | string[]>(
         texts: T,
-        sourceLang: SourceLanguageCode | null,
-        targetLang: TargetLanguageCode,
+        sourceLang: SourceLanguageCodeInput | null,
+        targetLang: TargetLanguageCodeInput,
         options?: TranslateTextOptions,
     ): Promise<T extends string ? TextResult : TextResult[]> {
         const data = buildURLSearchParams(
@@ -289,8 +289,8 @@ export class Translator {
     async translateDocument(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
         outputFile: string | fs.WriteStream | fs.promises.FileHandle,
-        sourceLang: SourceLanguageCode | null,
-        targetLang: TargetLanguageCode,
+        sourceLang: SourceLanguageCodeInput | null,
+        targetLang: TargetLanguageCodeInput,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentStatus> {
         // Helper function to open output file if provided as filepath and remove it on error
@@ -369,8 +369,8 @@ export class Translator {
      */
     async uploadDocument(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
-        sourceLang: SourceLanguageCode | null,
-        targetLang: TargetLanguageCode,
+        sourceLang: SourceLanguageCodeInput | null,
+        targetLang: TargetLanguageCodeInput,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentHandle> {
         if (isString(inputFile)) {
@@ -507,8 +507,8 @@ export class Translator {
      */
     async createGlossary(
         name: string,
-        sourceLang: LanguageCode,
-        targetLang: LanguageCode,
+        sourceLang: LanguageCodeInput,
+        targetLang: LanguageCodeInput,
         entries: GlossaryEntries,
     ): Promise<GlossaryInfo> {
         if (Object.keys(entries.entries()).length === 0) {
@@ -530,8 +530,8 @@ export class Translator {
      */
     async createGlossaryWithCsv(
         name: string,
-        sourceLang: LanguageCode,
-        targetLang: LanguageCode,
+        sourceLang: LanguageCodeInput,
+        targetLang: LanguageCodeInput,
         csvFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
     ): Promise<GlossaryInfo> {
         let csvContent;
@@ -613,8 +613,8 @@ export class Translator {
      */
     private async internalUploadDocument(
         fileBuffer: Buffer,
-        sourceLang: SourceLanguageCode | null,
-        targetLang: TargetLanguageCode,
+        sourceLang: SourceLanguageCodeInput | null,
+        targetLang: TargetLanguageCodeInput,
         filename: string,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentHandle> {
@@ -678,8 +678,8 @@ export class Translator {
      */
     private async internalCreateGlossary(
         name: string,
-        sourceLang: LanguageCode,
-        targetLang: LanguageCode,
+        sourceLang: LanguageCodeInput,
+        targetLang: LanguageCodeInput,
         entriesFormat: string,
         entries: string,
     ): Promise<GlossaryInfo> {
