@@ -871,18 +871,6 @@ export interface CustomInstruction {
 }
 
 /**
- * Custom instruction to create or update on a style rule.
- */
-export interface CustomInstructionInput {
-    /** Label for the custom instruction. */
-    readonly label: string;
-    /** Prompt text for the custom instruction. */
-    readonly prompt: string;
-    /** Optional source language code for the custom instruction. */
-    readonly sourceLanguage?: string;
-}
-
-/**
  * Configuration rules for a style rule list.
  */
 export interface ConfiguredRules {

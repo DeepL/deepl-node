@@ -590,10 +590,12 @@ your account, each with a user-specified name and a uniquely-assigned ID.
 #### Creating a style rule
 
 Use `createStyleRule()` to create a new style rule with a name and language
-code. You can optionally provide `configuredRules` (a `ConfiguredRules` object,
-keyed by category such as `datesAndTimes` or `styleAndTone`) and
-`customInstructions` (an array of `CustomInstructionInput` objects with `label`,
-`prompt` and an optional `sourceLanguage`).
+code. You can optionally provide `configuredRules` and `customInstructions`,
+using the API's names: `configuredRules` is sent as given as `configured_rules`
+(the same shape `updateStyleRuleConfiguredRules()` takes, e.g.
+`{ dates_and_times: { calendar_era: 'use_bc_and_ad' } }`), and
+`customInstructions` as `custom_instructions`, an array of objects with
+`label`, `prompt` and an optional `source_language`.
 
 ```javascript
 const rule = await deeplClient.createStyleRule('My Style Rule', 'en');
@@ -602,14 +604,14 @@ console.log(`Created: ${rule.name} (${rule.styleId})`);
 const configured = await deeplClient.createStyleRule(
     'Formal English',
     'en',
-    { datesAndTimes: { calendar_era: 'use_bc_and_ad' } },
-    [{ label: 'Formal tone', prompt: 'Always use formal language', sourceLanguage: 'de' }],
+    { dates_and_times: { calendar_era: 'use_bc_and_ad' } },
+    [{ label: 'Formal tone', prompt: 'Always use formal language', source_language: 'de' }],
 );
 ```
 
-Passing a single object with the wire names (`configured_rules`,
-`custom_instructions`, `source_language`) is deprecated and will be removed in
-the next major version.
+Passing a single `CreateStyleRuleRequestBody` object
+(`{ name, language, configured_rules, custom_instructions }`) is deprecated and
+will be removed in the next major version.
 
 #### Retrieving and listing style rules
 

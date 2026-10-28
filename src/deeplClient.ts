@@ -23,8 +23,6 @@ import {
     StyleRuleInfoApiResponse,
     StyleId,
     CustomInstruction,
-    CustomInstructionInput,
-    ConfiguredRules,
     TranslationMemoryId,
     TranslationMemoryInfo,
     TranslationMemoryExport,
@@ -107,12 +105,6 @@ function styleProfileOptionsToJson(
     return body;
 }
 
-/**
- * @deprecated Pass the label, prompt and source language as separate arguments to
- * `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`, and use
- * {@link CustomInstructionInput} with `createStyleRule()`. This type will be removed in the next
- * major version.
- */
 export type CustomInstructionRequestBody = {
     label: string;
     prompt: string;
@@ -137,19 +129,6 @@ function customInstructionToWire(
 ): CustomInstructionRequestBody {
     const body: CustomInstructionRequestBody = { label, prompt };
     if (sourceLanguage !== undefined) body.source_language = sourceLanguage;
-    return body;
-}
-
-// Converts the camelCase category keys (e.g. datesAndTimes) to the wire's snake_case; the rule
-// names and values inside each category are sent unchanged.
-function configuredRulesToWire(
-    configuredRules: ConfiguredRules,
-): Record<string, Record<string, string>> {
-    const body: Record<string, Record<string, string>> = {};
-    for (const [category, rules] of Object.entries(configuredRules)) {
-        if (rules === undefined) continue;
-        body[category.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)] = rules;
-    }
     return body;
 }
 
@@ -1487,8 +1466,10 @@ export class DeepLClient extends Translator {
      *
      * @param name: The name of the style rule.
      * @param language: The language code of the style rule.
-     * @param configuredRules: Optional predefined rules to enable, see {@link ConfiguredRules}.
-     * @param customInstructions: Optional custom instructions, see {@link CustomInstructionInput}.
+     * @param configuredRules: Optional configured rules, sent as given as `configured_rules`,
+     *     e.g. `{ dates_and_times: { calendar_era: 'use_bc_and_ad' } }`.
+     * @param customInstructions: Optional custom instructions, sent as given as
+     *     `custom_instructions`, e.g. `[{ label, prompt, source_language: 'de' }]`.
      * @returns {Promise<StyleRuleInfo>} The created style rule info.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -1496,8 +1477,8 @@ export class DeepLClient extends Translator {
     async createStyleRule(
         name: string,
         language: string,
-        configuredRules?: ConfiguredRules,
-        customInstructions?: CustomInstructionInput[],
+        configuredRules?: Record<string, Record<string, string>>,
+        customInstructions?: CustomInstructionRequestBody[],
     ): Promise<StyleRuleInfo>;
     /**
      * @deprecated Pass the name, language, configured rules and custom instructions as separate
@@ -1507,24 +1488,14 @@ export class DeepLClient extends Translator {
     async createStyleRule(
         nameOrStyleRule: string | CreateStyleRuleRequestBody,
         language?: string,
-        configuredRules?: ConfiguredRules,
-        customInstructions?: CustomInstructionInput[],
+        configuredRules?: Record<string, Record<string, string>>,
+        customInstructions?: CustomInstructionRequestBody[],
     ): Promise<StyleRuleInfo> {
         let body: CreateStyleRuleRequestBody;
         if (typeof nameOrStyleRule === 'string') {
             body = { name: nameOrStyleRule, language: language as string };
-            if (configuredRules !== undefined) {
-                body.configured_rules = configuredRulesToWire(configuredRules);
-            }
-            if (customInstructions !== undefined) {
-                body.custom_instructions = customInstructions.map((instruction) =>
-                    customInstructionToWire(
-                        instruction.label,
-                        instruction.prompt,
-                        instruction.sourceLanguage,
-                    ),
-                );
-            }
+            if (configuredRules !== undefined) body.configured_rules = configuredRules;
+            if (customInstructions !== undefined) body.custom_instructions = customInstructions;
         } else {
             body = nameOrStyleRule;
         }

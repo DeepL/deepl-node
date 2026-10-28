@@ -68,10 +68,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createStyleRule()` accepts the name, language, configured rules and custom
   instructions as separate arguments:
   `createStyleRule(name, language, configuredRules?, customInstructions?)`.
-  `configuredRules` is a `ConfiguredRules` object (camelCase categories such as
-  `datesAndTimes`) and `customInstructions` is an array of the new
-  `CustomInstructionInput` type (`label`, `prompt`, `sourceLanguage`). They are
-  sent with the API's snake_case names.
+  They use the API's names and are sent as given: `configuredRules` as
+  `configured_rules` (e.g. `{ dates_and_times: { calendar_era: 'use_bc_and_ad' } }`,
+  like `updateStyleRuleConfiguredRules()`), and `customInstructions` as
+  `custom_instructions` (`CustomInstructionRequestBody` objects with `label`,
+  `prompt` and `source_language`).
 - `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`
   accept the label, prompt and optional source language as separate arguments:
   `createStyleRuleCustomInstruction(styleId, label, prompt, sourceLanguage?)` and
@@ -103,10 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argument instead. The positional form will be removed in the next major
   version.
 - Passing a single `CreateStyleRuleRequestBody` object to `createStyleRule()`
-  and a `CustomInstructionRequestBody` object to
+  is deprecated, as is the `CreateStyleRuleRequestBody` type; pass separate
+  arguments instead. Passing a `CustomInstructionRequestBody` object to
   `createStyleRuleCustomInstruction()` or `updateStyleRuleCustomInstruction()`
-  is deprecated, as are both types; pass separate arguments instead. The object
-  forms and types will be removed in the next major version.
+  is deprecated; pass the label, prompt and source language as separate
+  arguments instead. These object forms and `CreateStyleRuleRequestBody` will be
+  removed in the next major version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file

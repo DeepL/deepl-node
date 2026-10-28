@@ -80,33 +80,26 @@ describe('DeepLClient.createStyleRule', () => {
         await makeDeeplClient().createStyleRule(body);
     });
 
-    it('sends the same JSON for the positional arguments, converting them to the wire names', async () => {
+    it('sends the positional configured rules and custom instructions unchanged', async () => {
+        const configuredRules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
+        const customInstructions = [
+            { label: 'Label', prompt: 'Prompt', source_language: 'de' },
+            { label: 'L2', prompt: 'P2' },
+        ];
         nock(serverUrl)
             .post('/v3/style_rules', {
                 name: 'my rule',
                 language: 'en',
-                configured_rules: {
-                    dates_and_times: { calendar_era: 'use_bc_and_ad' },
-                    spelling_and_grammar: { color: 'british' },
-                },
-                custom_instructions: [
-                    { label: 'Label', prompt: 'Prompt', source_language: 'de' },
-                    { label: 'L2', prompt: 'P2' },
-                ],
+                configured_rules: configuredRules,
+                custom_instructions: customInstructions,
             })
             .reply(201, styleRuleReply);
 
         const styleRule = await makeDeeplClient().createStyleRule(
             'my rule',
             'en',
-            {
-                datesAndTimes: { calendar_era: 'use_bc_and_ad' },
-                spellingAndGrammar: { color: 'british' },
-            },
-            [
-                { label: 'Label', prompt: 'Prompt', sourceLanguage: 'de' },
-                { label: 'L2', prompt: 'P2' },
-            ],
+            configuredRules,
+            customInstructions,
         );
 
         expect(styleRule.styleId).toBe('s-1');
