@@ -1129,7 +1129,12 @@ To rephrase text, call `rephraseText()`. The first argument is a string containi
 
 The second argument is the target language code. Language codes are **case-insensitive** strings, for example, `'de'`, `'fr'`, `'en'`. The target language code can also be `null` to enable auto-detection of the target language.
 
-The last two arguments, `writingStyle` and `tone`, are optional and specify the writing style and tone of the rephrased text. Possible values are defined in the `WritingStyle` and `WritingTone` enums.
+The third argument is optional and is a `RephraseTextOptions` object with the following properties:
+-   `writingStyle`: the writing style of the rephrased text. Possible values are defined in the `WritingStyle` enum.
+-   `tone`: the tone of the rephrased text. Possible values are defined in the `WritingTone` enum. The API accepts either `writingStyle` or `tone` in a request, not both.
+-   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
+
+Passing the writing style and tone as the third and fourth arguments, for example `rephraseText(text, 'en', WritingStyle.ACADEMIC)`, is deprecated and will be removed in the next major version.
 
 `rephraseText()` returns a Promise that fulfills with an `Improvement` object or an array of `Improvement` objects corresponding to your input text(s). The `Improvement` object has the following properties:
 - `text`: the rephrased text,
@@ -1138,15 +1143,16 @@ The last two arguments, `writingStyle` and `tone`, are optional and specify the 
 
 ```javascript
 // Rephrasing a text in academic style:
-const rephrasedResult = await deepLClient.rephraseText('This is an example text.', 'en', WritingStyle.ACADEMIC);
+const rephrasedResult = await deepLClient.rephraseText('This is an example text.', 'en', {
+    writingStyle: WritingStyle.ACADEMIC,
+});
 console.log(rephrasedResult.text); // The rephrased text in academic style
 
 // Rephrasing multiple texts in a friendly tone:
 const rephrasedTexts = await deepLClient.rephraseText(
     ['How are you?', 'What are you doing today?'],
     'de',
-    null,
-    WritingTone.FRIENDLY,
+    { tone: WritingTone.FRIENDLY },
 );
 console.log(rephrasedTexts[0].text); // The rephrased text for "How are you?" in a friendly tone
 console.log(rephrasedTexts[1].text); // The rephrased text for "What are you doing today?" in a friendly tone

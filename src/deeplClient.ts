@@ -35,6 +35,8 @@ import {
     LanguageResourceName,
     GetLanguagesForResourceOptions,
     LanguageSupport,
+    RephraseTextOptions,
+    RequestParameters,
 } from './types';
 import {
     parseMultilingualGlossaryDictionaryInfo,
@@ -145,12 +147,64 @@ export class DeepLClient extends Translator {
         super(authKey, options);
     }
 
+    /**
+     * @deprecated Pass the writing style in a {@link RephraseTextOptions} object as the third
+     * argument instead. The positional parameters will be removed in the next major version.
+     */
+    async rephraseText<T extends string | string[]>(
+        texts: T,
+        targetLang: string | null | undefined,
+        writingStyle: string,
+        tone?: string | null,
+    ): Promise<T extends string ? WriteResult : WriteResult[]>;
+    /**
+     * Rephrases the given text(s), optionally in a writing style or tone.
+     * @param texts Text to rephrase, or an array of texts.
+     * @param targetLang Target language code, or `null` to keep the language of the input text.
+     * @param options Rephrasing options, see {@link RephraseTextOptions}. Passing the writing
+     *     style as a string here is deprecated.
+     * @param tone Deprecated, use {@link RephraseTextOptions.tone}.
+     * @return Promise of a {@link WriteResult}, or an array of them if `texts` is an array.
+     * @throws {ArgumentError} If an options object is combined with a `tone` argument.
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async rephraseText<T extends string | string[]>(
+        texts: T,
+        targetLang?: string | null,
+        // string and the undefined tone keep subclass overrides with the old positional
+        // signature compiling; a null tone would make string styles skip the deprecated overload
+        options?: RephraseTextOptions | string | null,
+        tone?: undefined,
+    ): Promise<T extends string ? WriteResult : WriteResult[]>;
+    /**
+     * @deprecated Pass the writing style and tone in a {@link RephraseTextOptions} object as the
+     * third argument instead. The positional parameters will be removed in the next major version.
+     */
     async rephraseText<T extends string | string[]>(
         texts: T,
         targetLang?: string | null,
         writingStyle?: string | null,
         tone?: string | null,
+    ): Promise<T extends string ? WriteResult : WriteResult[]>;
+    async rephraseText<T extends string | string[]>(
+        texts: T,
+        targetLang?: string | null,
+        writingStyleOrOptions?: string | RephraseTextOptions | null,
+        tone?: string | null,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
+        let writingStyle: string | null | undefined;
+        let extraBodyParameters: RequestParameters | undefined;
+        if (typeof writingStyleOrOptions === 'object' && writingStyleOrOptions !== null) {
+            if (tone !== undefined && tone !== null) {
+                throw new ArgumentError(
+                    'tone cannot be passed as a separate argument together with an options object',
+                );
+            }
+            ({ writingStyle, tone, extraBodyParameters } = writingStyleOrOptions);
+        } else {
+            writingStyle = writingStyleOrOptions;
+        }
+
         const data = new URLSearchParams();
         if (targetLang) {
             data.append('target_lang', targetLang);
@@ -165,6 +219,11 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
+        if (extraBodyParameters !== undefined) {
+            for (const paramName in extraBodyParameters) {
+                data.set(paramName, extraBodyParameters[paramName]);
+            }
+        }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/rephrase',

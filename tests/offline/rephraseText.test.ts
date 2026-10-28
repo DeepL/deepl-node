@@ -5,6 +5,7 @@
 import nock from 'nock';
 
 import { WritingStyle, WritingTone } from '../../src/deeplClient';
+import { ArgumentError } from '../../src/errors';
 import { makeDeeplClient, serverUrl } from './client';
 
 const rephrased = {
@@ -48,6 +49,45 @@ describe('DeepLClient.rephraseText', () => {
             await makeDeeplClient().rephraseText('abc', null, empty, empty);
         },
     );
+
+    it('sends the writing style, tone and extra body parameters of an options object', async () => {
+        nock(serverUrl)
+            .post('/v2/write/rephrase', {
+                text: 'abc',
+                target_lang: 'en',
+                writing_style: 'business',
+                tone: 'confident',
+                extra: 'x',
+            })
+            .reply(200, rephrased);
+
+        await makeDeeplClient().rephraseText('abc', 'en', {
+            writingStyle: WritingStyle.BUSINESS,
+            tone: WritingTone.CONFIDENT,
+            extraBodyParameters: { extra: 'x' },
+        });
+    });
+
+    it('lets extra body parameters override built-in parameters', async () => {
+        nock(serverUrl)
+            .post('/v2/write/rephrase', { text: 'abc', target_lang: 'fr' })
+            .reply(200, rephrased);
+
+        await makeDeeplClient().rephraseText('abc', 'en', {
+            extraBodyParameters: { target_lang: 'fr' },
+        });
+    });
+
+    it('throws ArgumentError when an options object is combined with a tone argument', async () => {
+        const client = makeDeeplClient();
+        // The overloads reject this at compile time; JavaScript callers can still pass it
+        const rephraseText = client.rephraseText.bind(client) as (
+            ...args: unknown[]
+        ) => Promise<unknown>;
+        await expect(rephraseText('abc', 'en', {}, WritingTone.FRIENDLY)).rejects.toThrow(
+            ArgumentError,
+        );
+    });
 
     it('sends every text of an array and returns an array of results', async () => {
         nock(serverUrl)

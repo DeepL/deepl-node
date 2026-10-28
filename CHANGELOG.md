@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `translateDocumentWaitUntilDone()`, which polls a document translation
   until it is done and resolves with the final `DocumentStatus`, or rejects with
   a `DeepLError` if the translation fails.
+- Added the `RephraseTextOptions` type with `writingStyle`, `tone` and
+  `extraBodyParameters`. `rephraseText()` accepts it as its third argument.
+  `extraBodyParameters` are added to the request body and override parameters
+  of the same name.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
@@ -83,6 +87,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `isDocumentTranslationComplete()` is deprecated; use
   `translateDocumentWaitUntilDone()` instead. It will be removed in the next
   major version.
+- Passing the writing style and tone of `rephraseText()` as positional
+  arguments is deprecated; pass a `RephraseTextOptions` object as the third
+  argument instead. The positional form will be removed in the next major
+  version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
