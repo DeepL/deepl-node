@@ -1129,10 +1129,10 @@ To rephrase text, call `rephraseText()`. The first argument is a string containi
 
 The second argument is the target language code. Language codes are **case-insensitive** strings, for example, `'de'`, `'fr'`, `'en'`. The target language code can also be `null` to enable auto-detection of the target language.
 
-The third argument is optional and is a `RephraseTextOptions` object with the following properties:
+The third argument is optional and is a `RephraseTextOptions` object (it extends `BaseRequestOptions`) with the following properties:
 -   `writingStyle`: the writing style of the rephrased text. Possible values are defined in the `WritingStyle` enum.
 -   `tone`: the tone of the rephrased text. Possible values are defined in the `WritingTone` enum. The API accepts either `writingStyle` or `tone` in a request, not both.
--   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
+-   `extraRequestParameters`: extra parameters to add to the request body. They can override parameters set by the library.
 
 Passing the writing style and tone as the third and fourth arguments, for example `rephraseText(text, 'en', WritingStyle.ACADEMIC)`, is deprecated and will be removed in the next major version.
 

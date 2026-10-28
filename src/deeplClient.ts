@@ -193,14 +193,14 @@ export class DeepLClient extends Translator {
         tone?: string | null,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
         let writingStyle: string | null | undefined;
-        let extraBodyParameters: RequestParameters | undefined;
+        let extraRequestParameters: RequestParameters | undefined;
         if (typeof writingStyleOrOptions === 'object' && writingStyleOrOptions !== null) {
             if (tone !== undefined && tone !== null) {
                 throw new ArgumentError(
                     'tone cannot be passed as a separate argument together with an options object',
                 );
             }
-            ({ writingStyle, tone, extraBodyParameters } = writingStyleOrOptions);
+            ({ writingStyle, tone, extraRequestParameters } = writingStyleOrOptions);
         } else {
             writingStyle = writingStyleOrOptions;
         }
@@ -219,9 +219,9 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
-        if (extraBodyParameters !== undefined) {
-            for (const paramName in extraBodyParameters) {
-                data.set(paramName, extraBodyParameters[paramName]);
+        if (extraRequestParameters !== undefined) {
+            for (const paramName in extraRequestParameters) {
+                data.set(paramName, extraRequestParameters[paramName]);
             }
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(

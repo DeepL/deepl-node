@@ -64,7 +64,7 @@ describe('DeepLClient.rephraseText', () => {
         await makeDeeplClient().rephraseText('abc', 'en', {
             writingStyle: WritingStyle.BUSINESS,
             tone: WritingTone.CONFIDENT,
-            extraBodyParameters: { extra: 'x' },
+            extraRequestParameters: { extra: 'x' },
         });
     });
 
@@ -74,7 +74,7 @@ describe('DeepLClient.rephraseText', () => {
             .reply(200, rephrased);
 
         await makeDeeplClient().rephraseText('abc', 'en', {
-            extraBodyParameters: { target_lang: 'fr' },
+            extraRequestParameters: { target_lang: 'fr' },
         });
     });
 

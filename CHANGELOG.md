@@ -61,10 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `translateDocumentWaitUntilDone()`, which polls a document translation
   until it is done and resolves with the final `DocumentStatus`, or rejects with
   a `DeepLError` if the translation fails.
-- Added the `RephraseTextOptions` type with `writingStyle`, `tone` and
-  `extraBodyParameters`. `rephraseText()` accepts it as its third argument.
-  `extraBodyParameters` are added to the request body and override parameters
-  of the same name.
+- Added the `RephraseTextOptions` type with `writingStyle` and `tone`. It
+  extends `BaseRequestOptions`, so it also accepts `extraRequestParameters`,
+  which are added to the request body and override parameters of the same
+  name. `rephraseText()` accepts it as its third argument.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the

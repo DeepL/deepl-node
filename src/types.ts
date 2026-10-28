@@ -790,17 +790,11 @@ export interface TextResult {
 /**
  * Options that can be specified when rephrasing text with `rephraseText()`.
  */
-export interface RephraseTextOptions {
+export interface RephraseTextOptions extends BaseRequestOptions {
     /** Writing style of the rephrased text, see `WritingStyle`. Cannot be combined with `tone`. */
     writingStyle?: string;
     /** Tone of the rephrased text, see `WritingTone`. Cannot be combined with `writingStyle`. */
     tone?: string;
-    /**
-     * Extra parameters to be added to the request body.
-     * Keys in this object will be added to the request body, and can override built-in parameters.
-     * This is mostly used by DeepL employees to test functionality, or for beta programs.
-     */
-    extraBodyParameters?: RequestParameters;
 }
 
 /**
