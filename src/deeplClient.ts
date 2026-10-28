@@ -23,6 +23,8 @@ import {
     StyleRuleInfoApiResponse,
     StyleId,
     CustomInstruction,
+    CustomInstructionInput,
+    ConfiguredRules,
     TranslationMemoryId,
     TranslationMemoryInfo,
     TranslationMemoryExport,
@@ -105,18 +107,51 @@ function styleProfileOptionsToJson(
     return body;
 }
 
+/**
+ * @deprecated Pass the label, prompt and source language as separate arguments to
+ * `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`, and use
+ * {@link CustomInstructionInput} with `createStyleRule()`. This type will be removed in the next
+ * major version.
+ */
 export type CustomInstructionRequestBody = {
     label: string;
     prompt: string;
     source_language?: string;
 };
 
+/**
+ * @deprecated Pass the name, language, configured rules and custom instructions as separate
+ * arguments to `createStyleRule()`. This type will be removed in the next major version.
+ */
 export type CreateStyleRuleRequestBody = {
     name: string;
     language: string;
     configured_rules?: Record<string, Record<string, string>>;
     custom_instructions?: CustomInstructionRequestBody[];
 };
+
+function customInstructionToWire(
+    label: string,
+    prompt: string,
+    sourceLanguage?: string,
+): CustomInstructionRequestBody {
+    const body: CustomInstructionRequestBody = { label, prompt };
+    if (sourceLanguage !== undefined) body.source_language = sourceLanguage;
+    return body;
+}
+
+// Converts the camelCase category keys (e.g. datesAndTimes) to the wire's snake_case; the rule
+// names and values inside each category are sent unchanged.
+function configuredRulesToWire(
+    configuredRules: ConfiguredRules,
+): Record<string, Record<string, string>> {
+    const body: Record<string, Record<string, string>> = {};
+    for (const [category, rules] of Object.entries(configuredRules)) {
+        if (rules === undefined) continue;
+        body[category.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)] = rules;
+    }
+    return body;
+}
 
 export enum WritingStyle {
     ACADEMIC = 'academic',
@@ -1450,22 +1485,59 @@ export class DeepLClient extends Translator {
     /**
      * Creates a new style rule.
      *
-     * @param styleRule: The style rule parameters including name, language, and optional configured_rules and custom_instructions.
+     * @param name: The name of the style rule.
+     * @param language: The language code of the style rule.
+     * @param configuredRules: Optional predefined rules to enable, see {@link ConfiguredRules}.
+     * @param customInstructions: Optional custom instructions, see {@link CustomInstructionInput}.
      * @returns {Promise<StyleRuleInfo>} The created style rule info.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async createStyleRule(styleRule: CreateStyleRuleRequestBody): Promise<StyleRuleInfo> {
-        if (!styleRule.name) {
+    async createStyleRule(
+        name: string,
+        language: string,
+        configuredRules?: ConfiguredRules,
+        customInstructions?: CustomInstructionInput[],
+    ): Promise<StyleRuleInfo>;
+    /**
+     * @deprecated Pass the name, language, configured rules and custom instructions as separate
+     * arguments instead. The object form will be removed in the next major version.
+     */
+    async createStyleRule(styleRule: CreateStyleRuleRequestBody): Promise<StyleRuleInfo>;
+    async createStyleRule(
+        nameOrStyleRule: string | CreateStyleRuleRequestBody,
+        language?: string,
+        configuredRules?: ConfiguredRules,
+        customInstructions?: CustomInstructionInput[],
+    ): Promise<StyleRuleInfo> {
+        let body: CreateStyleRuleRequestBody;
+        if (typeof nameOrStyleRule === 'string') {
+            body = { name: nameOrStyleRule, language: language as string };
+            if (configuredRules !== undefined) {
+                body.configured_rules = configuredRulesToWire(configuredRules);
+            }
+            if (customInstructions !== undefined) {
+                body.custom_instructions = customInstructions.map((instruction) =>
+                    customInstructionToWire(
+                        instruction.label,
+                        instruction.prompt,
+                        instruction.sourceLanguage,
+                    ),
+                );
+            }
+        } else {
+            body = nameOrStyleRule;
+        }
+        if (!body.name) {
             throw new ArgumentError('Parameter "name" must not be empty');
         }
-        if (!styleRule.language) {
+        if (!body.language) {
             throw new ArgumentError('Parameter "language" must not be empty');
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/style_rules',
-            { jsonBody: styleRule },
+            { jsonBody: body },
         );
         await checkStatusCode(statusCode, content);
         return parseStyleRuleInfo(JSON.parse(content) as StyleRuleInfoApiResponse);
@@ -1563,18 +1635,40 @@ export class DeepLClient extends Translator {
      * Creates a custom instruction for a style rule.
      *
      * @param styleId: The ID of the style rule.
-     * @param instruction: The custom instruction parameters including label, prompt, and optional source_language.
+     * @param label: The label of the custom instruction.
+     * @param prompt: The prompt text of the custom instruction.
+     * @param sourceLanguage: Optional source language code the instruction applies to.
      * @returns {Promise<CustomInstruction>} The created custom instruction.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async createStyleRuleCustomInstruction(
         styleId: StyleId,
+        label: string,
+        prompt: string,
+        sourceLanguage?: string,
+    ): Promise<CustomInstruction>;
+    /**
+     * @deprecated Pass the label, prompt and source language as separate arguments instead. The
+     * object form will be removed in the next major version.
+     */
+    async createStyleRuleCustomInstruction(
+        styleId: StyleId,
         instruction: CustomInstructionRequestBody,
+    ): Promise<CustomInstruction>;
+    async createStyleRuleCustomInstruction(
+        styleId: StyleId,
+        labelOrInstruction: string | CustomInstructionRequestBody,
+        prompt?: string,
+        sourceLanguage?: string,
     ): Promise<CustomInstruction> {
         if (!styleId) {
             throw new ArgumentError('Parameter "styleId" must not be empty');
         }
+        const instruction =
+            typeof labelOrInstruction === 'string'
+                ? customInstructionToWire(labelOrInstruction, prompt as string, sourceLanguage)
+                : labelOrInstruction;
         if (!instruction.label) {
             throw new ArgumentError('Parameter "label" must not be empty');
         }
@@ -1624,7 +1718,9 @@ export class DeepLClient extends Translator {
      *
      * @param styleId: The ID of the style rule.
      * @param instructionId: The ID of the custom instruction to update.
-     * @param instruction: The custom instruction parameters including label, prompt, and optional source_language.
+     * @param label: The new label of the custom instruction.
+     * @param prompt: The new prompt text of the custom instruction.
+     * @param sourceLanguage: Optional source language code the instruction applies to.
      * @returns {Promise<CustomInstruction>} The updated custom instruction.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -1632,7 +1728,25 @@ export class DeepLClient extends Translator {
     async updateStyleRuleCustomInstruction(
         styleId: StyleId,
         instructionId: string,
+        label: string,
+        prompt: string,
+        sourceLanguage?: string,
+    ): Promise<CustomInstruction>;
+    /**
+     * @deprecated Pass the label, prompt and source language as separate arguments instead. The
+     * object form will be removed in the next major version.
+     */
+    async updateStyleRuleCustomInstruction(
+        styleId: StyleId,
+        instructionId: string,
         instruction: CustomInstructionRequestBody,
+    ): Promise<CustomInstruction>;
+    async updateStyleRuleCustomInstruction(
+        styleId: StyleId,
+        instructionId: string,
+        labelOrInstruction: string | CustomInstructionRequestBody,
+        prompt?: string,
+        sourceLanguage?: string,
     ): Promise<CustomInstruction> {
         if (!styleId) {
             throw new ArgumentError('Parameter "styleId" must not be empty');
@@ -1640,6 +1754,10 @@ export class DeepLClient extends Translator {
         if (!instructionId) {
             throw new ArgumentError('Parameter "instructionId" must not be empty');
         }
+        const instruction =
+            typeof labelOrInstruction === 'string'
+                ? customInstructionToWire(labelOrInstruction, prompt as string, sourceLanguage)
+                : labelOrInstruction;
         if (!instruction.label) {
             throw new ArgumentError('Parameter "label" must not be empty');
         }

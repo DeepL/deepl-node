@@ -65,6 +65,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extends `BaseRequestOptions`, so it also accepts `extraRequestParameters`,
   which are added to the request body and override parameters of the same
   name. `rephraseText()` accepts it as its third argument.
+- `createStyleRule()` accepts the name, language, configured rules and custom
+  instructions as separate arguments:
+  `createStyleRule(name, language, configuredRules?, customInstructions?)`.
+  `configuredRules` is a `ConfiguredRules` object (camelCase categories such as
+  `datesAndTimes`) and `customInstructions` is an array of the new
+  `CustomInstructionInput` type (`label`, `prompt`, `sourceLanguage`). They are
+  sent with the API's snake_case names.
+- `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`
+  accept the label, prompt and optional source language as separate arguments:
+  `createStyleRuleCustomInstruction(styleId, label, prompt, sourceLanguage?)` and
+  `updateStyleRuleCustomInstruction(styleId, instructionId, label, prompt, sourceLanguage?)`.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
@@ -91,6 +102,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arguments is deprecated; pass a `RephraseTextOptions` object as the third
   argument instead. The positional form will be removed in the next major
   version.
+- Passing a single `CreateStyleRuleRequestBody` object to `createStyleRule()`
+  and a `CustomInstructionRequestBody` object to
+  `createStyleRuleCustomInstruction()` or `updateStyleRuleCustomInstruction()`
+  is deprecated, as are both types; pass separate arguments instead. The object
+  forms and types will be removed in the next major version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file

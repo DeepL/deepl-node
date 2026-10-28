@@ -80,11 +80,60 @@ describe('DeepLClient.createStyleRule', () => {
         await makeDeeplClient().createStyleRule(body);
     });
 
+    it('sends the same JSON for the positional arguments, converting them to the wire names', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules', {
+                name: 'my rule',
+                language: 'en',
+                configured_rules: {
+                    dates_and_times: { calendar_era: 'use_bc_and_ad' },
+                    spelling_and_grammar: { color: 'british' },
+                },
+                custom_instructions: [
+                    { label: 'Label', prompt: 'Prompt', source_language: 'de' },
+                    { label: 'L2', prompt: 'P2' },
+                ],
+            })
+            .reply(201, styleRuleReply);
+
+        const styleRule = await makeDeeplClient().createStyleRule(
+            'my rule',
+            'en',
+            {
+                datesAndTimes: { calendar_era: 'use_bc_and_ad' },
+                spellingAndGrammar: { color: 'british' },
+            },
+            [
+                { label: 'Label', prompt: 'Prompt', sourceLanguage: 'de' },
+                { label: 'L2', prompt: 'P2' },
+            ],
+        );
+
+        expect(styleRule.styleId).toBe('s-1');
+    });
+
+    it('sends only name and language when the optional positional arguments are omitted', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules', { name: 'my rule', language: 'en' })
+            .reply(201, styleRuleReply);
+
+        await makeDeeplClient().createStyleRule('my rule', 'en');
+    });
+
     it.each([
         ['name', { name: '', language: 'en' }],
         ['language', { name: 'n', language: '' }],
     ])('throws ArgumentError when %s is empty', async (_, styleRule) => {
         await expect(makeDeeplClient().createStyleRule(styleRule)).rejects.toThrow(
+            deepl.ArgumentError,
+        );
+    });
+
+    it.each([
+        ['name', '', 'en'],
+        ['language', 'n', ''],
+    ])('throws ArgumentError when the positional %s is empty', async (_, name, language) => {
+        await expect(makeDeeplClient().createStyleRule(name, language)).rejects.toThrow(
             deepl.ArgumentError,
         );
     });
@@ -159,6 +208,43 @@ describe('DeepLClient custom instructions', () => {
         await makeDeeplClient().updateStyleRuleCustomInstruction('s-1', 'i-1', instruction);
     });
 
+    it('createStyleRuleCustomInstruction sends the same JSON for the positional arguments', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules/s-1/custom_instructions', instruction)
+            .reply(201, instructionReply);
+
+        const result = await makeDeeplClient().createStyleRuleCustomInstruction(
+            's-1',
+            'Label',
+            'Prompt',
+            'de',
+        );
+
+        expect(result.id).toBe('i-1');
+    });
+
+    it('createStyleRuleCustomInstruction omits source_language when it is not given', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules/s-1/custom_instructions', { label: 'Label', prompt: 'Prompt' })
+            .reply(201, instructionReply);
+
+        await makeDeeplClient().createStyleRuleCustomInstruction('s-1', 'Label', 'Prompt');
+    });
+
+    it('updateStyleRuleCustomInstruction sends the same JSON for the positional arguments', async () => {
+        nock(serverUrl)
+            .put('/v3/style_rules/s-1/custom_instructions/i-1', instruction)
+            .reply(200, instructionReply);
+
+        await makeDeeplClient().updateStyleRuleCustomInstruction(
+            's-1',
+            'i-1',
+            'Label',
+            'Prompt',
+            'de',
+        );
+    });
+
     it('deleteStyleRuleCustomInstruction sends DELETE for the instruction ID', async () => {
         nock(serverUrl).delete('/v3/style_rules/s-1/custom_instructions/i-1').reply(204);
 
@@ -189,6 +275,14 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
             () => client().createStyleRuleCustomInstruction('s', { ...ok, prompt: '' }),
         ],
         [
+            'createStyleRuleCustomInstruction without positional label',
+            () => client().createStyleRuleCustomInstruction('s', '', 'P'),
+        ],
+        [
+            'createStyleRuleCustomInstruction without positional prompt',
+            () => client().createStyleRuleCustomInstruction('s', 'L', ''),
+        ],
+        [
             'getStyleRuleCustomInstruction without ID',
             () => client().getStyleRuleCustomInstruction('', 'i'),
         ],
@@ -211,6 +305,14 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
         [
             'updateStyleRuleCustomInstruction without prompt',
             () => client().updateStyleRuleCustomInstruction('s', 'i', { ...ok, prompt: '' }),
+        ],
+        [
+            'updateStyleRuleCustomInstruction without positional label',
+            () => client().updateStyleRuleCustomInstruction('s', 'i', '', 'P'),
+        ],
+        [
+            'updateStyleRuleCustomInstruction without positional prompt',
+            () => client().updateStyleRuleCustomInstruction('s', 'i', 'L', ''),
         ],
         [
             'deleteStyleRuleCustomInstruction without ID',

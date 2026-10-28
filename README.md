@@ -590,12 +590,26 @@ your account, each with a user-specified name and a uniquely-assigned ID.
 #### Creating a style rule
 
 Use `createStyleRule()` to create a new style rule with a name and language
-code. You can optionally provide `configuredRules` and `customInstructions`.
+code. You can optionally provide `configuredRules` (a `ConfiguredRules` object,
+keyed by category such as `datesAndTimes` or `styleAndTone`) and
+`customInstructions` (an array of `CustomInstructionInput` objects with `label`,
+`prompt` and an optional `sourceLanguage`).
 
 ```javascript
 const rule = await deeplClient.createStyleRule('My Style Rule', 'en');
 console.log(`Created: ${rule.name} (${rule.styleId})`);
+
+const configured = await deeplClient.createStyleRule(
+    'Formal English',
+    'en',
+    { datesAndTimes: { calendar_era: 'use_bc_and_ad' } },
+    [{ label: 'Formal tone', prompt: 'Always use formal language', sourceLanguage: 'de' }],
+);
 ```
+
+Passing a single object with the wire names (`configured_rules`,
+`custom_instructions`, `source_language`) is deprecated and will be removed in
+the next major version.
 
 #### Retrieving and listing style rules
 
@@ -650,12 +664,14 @@ const updatedRules = await deeplClient.updateStyleRuleConfiguredRules(
 Custom instructions allow you to add free-text prompts to a style rule. Use
 `createStyleRuleCustomInstruction()`, `getStyleRuleCustomInstruction()`,
 `updateStyleRuleCustomInstruction()`, and
-`deleteStyleRuleCustomInstruction()` to manage them.
+`deleteStyleRuleCustomInstruction()` to manage them. The create and update
+methods take the label, the prompt and an optional source language code;
+passing them as one object is deprecated.
 
 ```javascript
 // Create a custom instruction
 const instruction = await deeplClient.createStyleRuleCustomInstruction(
-    'YOUR_STYLE_ID', 'Formal tone', 'Always use formal language');
+    'YOUR_STYLE_ID', 'Formal tone', 'Always use formal language', 'de');
 console.log(`Created instruction: ${instruction.id}`);
 
 // Get a custom instruction
