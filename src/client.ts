@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { ConnectionError } from './errors';
+import { ArgumentError, ConnectionError } from './errors';
 import { logDebug, logInfo, timeout } from './utils';
 
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
@@ -27,12 +27,18 @@ export const RETRYABLE_AXIOS_ERROR_CODES = new Set([
     'ECONNRESET',
     'EPIPE',
     'EAI_AGAIN',
+    'ENOTFOUND',
+    'ECONNREFUSED',
 ]);
 
 /**
- * Axios error codes for failures that happen before the request is sent.
+ * Axios error codes for failures that happen before the request is sent: DNS failures and
+ * refused connections.
  */
-const UNSENT_AXIOS_ERROR_CODES = new Set(['EAI_AGAIN']);
+const UNSENT_AXIOS_ERROR_CODES = new Set(['EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED']);
+
+/** Connection errors whose request was never sent, so the server cannot have processed it. */
+const unsentRequestErrors = new WeakSet<ConnectionError>();
 
 const axiosInstance = axios.create({
     httpAgent: new http.Agent({ keepAlive: true }),
@@ -67,7 +73,8 @@ interface SendRequestOptions {
      */
     rawBody?: Buffer;
     /**
-     * Retry only failures that show the request was not processed (HTTP 429 and DNS errors), for
+     * Retry only failures that show the request was not processed (HTTP 429, DNS errors and
+     * refused connections), for
      * requests that are unsafe to repeat.
      */
     retryOnlyUnprocessed?: boolean;
@@ -243,7 +250,7 @@ export class HttpClient {
                     error,
                     options.retryOnlyUnprocessed,
                 ) ||
-                backoff.getNumRetries() + 1 >= this.maxRetries
+                backoff.getNumRetries() >= this.maxRetries
             ) {
                 break;
             }
@@ -309,8 +316,9 @@ export class HttpClient {
                 logDebug('Unrecognized axios error', axiosError);
                 error.shouldRetry = false;
             }
-            error.requestNotSent =
-                axiosError.code !== undefined && UNSENT_AXIOS_ERROR_CODES.has(axiosError.code);
+            if (axiosError.code !== undefined && UNSENT_AXIOS_ERROR_CODES.has(axiosError.code)) {
+                unsentRequestErrors.add(error);
+            }
             throw error;
         }
     }
@@ -322,7 +330,9 @@ export class HttpClient {
     ): boolean {
         if (statusCode === undefined) {
             const connectionError = error as ConnectionError;
-            return onlyUnprocessed ? connectionError.requestNotSent : connectionError.shouldRetry;
+            return onlyUnprocessed
+                ? unsentRequestErrors.has(connectionError)
+                : connectionError.shouldRetry;
         }
 
         // Retry on Too-Many-Requests error and internal errors
@@ -368,6 +378,36 @@ export function buildRequestHeaders(
 }
 
 /**
+ * Converts a proxy URL such as 'http://user:pass@proxy.example.com:3128' to a ProxyConfig; a
+ * ProxyConfig is returned unchanged.
+ * @private
+ */
+export function parseProxy(proxy?: ProxyConfig | string): ProxyConfig | undefined {
+    if (typeof proxy !== 'string') {
+        return proxy;
+    }
+    let url: URL;
+    try {
+        url = new URL(proxy);
+    } catch (error) {
+        throw new ArgumentError(`Invalid proxy URL: ${proxy}`, error as Error);
+    }
+    const protocol = url.protocol.replace(/:$/, '');
+    const config: ProxyConfig = {
+        protocol,
+        host: url.hostname,
+        port: url.port ? Number(url.port) : protocol === 'https' ? 443 : 80,
+    };
+    if (url.username || url.password) {
+        config.auth = {
+            username: decodeURIComponent(url.username),
+            password: decodeURIComponent(url.password),
+        };
+    }
+    return config;
+}
+
+/**
  * Creates an HttpClient with the retry and proxy settings from the options.
  * @private
  */
@@ -380,7 +420,7 @@ export function createHttpClient(
         serverUrl,
         headers,
         options?.maxRetries ?? 5,
-        options?.minTimeout ?? 5000,
-        options?.proxy,
+        options?.minTimeout ?? 10000,
+        parseProxy(options?.proxy),
     );
 }

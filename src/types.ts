@@ -40,21 +40,23 @@ export interface HttpClientOptions {
     headers?: Record<string, string>;
 
     /**
-     * The maximum number of failed attempts that the client will retry, per request. By default, 5
-     * retries are made. Note: only errors due to transient conditions are retried.
+     * The maximum number of retries after the first attempt, per request. By default, 5 retries
+     * are made (6 attempts in total); 0 disables retries. Note: only errors due to transient
+     * conditions are retried: HTTP 429, 5xx and network failures (connect, DNS, timeout).
      */
     maxRetries?: number;
 
     /**
      * Connection timeout used for each HTTP request retry, in milliseconds. The default timeout
-     * if this value is unspecified is 5 seconds (5000).
+     * if this value is unspecified is 10 seconds (10000).
      */
     minTimeout?: number;
 
     /**
-     * Define the host, port and protocol of the proxy server.
+     * Define the host, port and protocol of the proxy server, either as a ProxyConfig or as a
+     * proxy URL such as 'http://user:pass@proxy.example.com:3128'.
      */
-    proxy?: ProxyConfig;
+    proxy?: ProxyConfig | string;
 
     /**
      * Define if the library is allowed to send more detailed information about which platform
@@ -69,9 +71,9 @@ export interface HttpClientOptions {
 }
 
 /**
- * Options that can be specified when constructing a Translator.
+ * Options that can be specified when constructing a DeepLClient.
  */
-export interface TranslatorOptions extends HttpClientOptions {
+export interface DeepLClientOptions extends HttpClientOptions {
     /**
      * Base URL of DeepL API, can be overridden for example for testing purposes. By default, the
      * correct DeepL API URL is selected based on the user account type (free or paid).
@@ -80,10 +82,11 @@ export interface TranslatorOptions extends HttpClientOptions {
 }
 
 /**
- * Options that can be specified when constructing a DeepLClient.
+ * Options that can be specified when constructing a Translator.
+ * @deprecated Use DeepLClientOptions instead. Will be removed in the next major version.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface DeepLClientOptions extends TranslatorOptions {}
+export interface TranslatorOptions extends DeepLClientOptions {}
 
 export type Formality = 'less' | 'more' | 'default' | 'prefer_less' | 'prefer_more';
 export type SentenceSplittingMode = 'off' | 'on' | 'nonewlines' | 'default';

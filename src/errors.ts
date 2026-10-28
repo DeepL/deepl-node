@@ -6,6 +6,13 @@ import { DocumentHandle } from './index';
 
 export class DeepLError extends Error {
     public error?: Error;
+    /** HTTP status code of the failed response, or undefined if there was no HTTP response. */
+    public httpStatusCode?: number;
+    /**
+     * True if retrying the request could succeed: HTTP 429, 5xx and transient network failures.
+     * The client has already retried these up to `maxRetries` times before throwing.
+     */
+    public shouldRetry = false;
 
     constructor(message: string, error?: Error) {
         super(message);
@@ -21,10 +28,6 @@ export class QuotaExceededError extends DeepLError {}
 export class TooManyRequestsError extends DeepLError {}
 
 export class ConnectionError extends DeepLError {
-    shouldRetry: boolean;
-    /** True if the request failed before it was sent, so the server cannot have processed it. */
-    requestNotSent = false;
-
     constructor(message: string, shouldRetry?: boolean, error?: Error) {
         super(message, error);
         this.shouldRetry = shouldRetry || false;
@@ -40,7 +43,15 @@ export class DocumentTranslationError extends DeepLError {
     }
 }
 
-export class GlossaryNotFoundError extends DeepLError {}
+/** Thrown when the API answers HTTP 404: the requested resource does not exist. */
+export class NotFoundError extends DeepLError {}
+
+/**
+ * Thrown when the API answers HTTP 404 to a glossary request.
+ * @deprecated Use NotFoundError instead, which this class extends. Will be removed in the next
+ * major version.
+ */
+export class GlossaryNotFoundError extends NotFoundError {}
 
 export class DocumentNotReadyError extends DeepLError {}
 

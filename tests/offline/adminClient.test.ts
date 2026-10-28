@@ -257,6 +257,36 @@ describe('DeepLAdminClient', () => {
         expect(requests).toBe(1);
     });
 
+    it.each([['EAI_AGAIN'], ['ENOTFOUND'], ['ECONNREFUSED']])(
+        'retries developer key creation after the unsent-request error %s',
+        async (code) => {
+            nock(serverUrl)
+                .post('/v2/admin/developer-keys')
+                .replyWithError({ code })
+                .post('/v2/admin/developer-keys')
+                .reply(200, DEVELOPER_KEY_JSON);
+
+            const key = await makeAdminClient().createDeveloperKey();
+
+            expect(key.keyId).toBe(KEY_ID);
+        },
+    );
+
+    it('does not retry developer key creation after a connection reset', async () => {
+        nock(serverUrl).post('/v2/admin/developer-keys').replyWithError({ code: 'ECONNRESET' });
+
+        await expect(makeAdminClient().createDeveloperKey()).rejects.toThrow(deepl.ConnectionError);
+    });
+
+    it('trims the admin key and rejects a whitespace-only key', async () => {
+        expect(() => new deepl.DeepLAdminClient('  \n')).toThrow(deepl.ArgumentError);
+        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k:adm' } })
+            .get('/v2/admin/developer-keys')
+            .reply(200, []);
+
+        await makeAdminClient({ adminKey: ' k:adm\n' }).getDeveloperKeys();
+    });
+
     it('retries rate-limited developer key creation', async () => {
         nock(serverUrl)
             .post('/v2/admin/developer-keys')

@@ -42,6 +42,7 @@ export class DeepLAdminClient {
      * @param options Additional options controlling client behavior.
      */
     constructor(adminKey: string, options?: DeepLAdminClientOptions) {
+        if (isString(adminKey)) adminKey = adminKey.trim();
         if (!isString(adminKey) || adminKey.length === 0) {
             throw new ArgumentError('adminKey must be a non-empty string');
         }

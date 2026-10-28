@@ -7,7 +7,7 @@ import * as deepl from 'deepl-node';
 import log from 'loglevel';
 import nock from 'nock';
 
-import { RETRYABLE_AXIOS_ERROR_CODES } from '../../src/client';
+import { HttpClient, RETRYABLE_AXIOS_ERROR_CODES } from '../../src/client';
 import { makeDeeplClient, makeTranslator, serverUrl } from './client';
 import { inputText } from '../fixtures';
 
@@ -37,10 +37,43 @@ describe('HttpClient retries', () => {
         await makeTranslator().getUsage();
     });
 
-    it('does not retry when the connection is refused', async () => {
-        nock(serverUrl).get('/v2/usage').replyWithError({ code: 'ECONNREFUSED' });
+    it.each([['ECONNREFUSED'], ['ENOTFOUND']])(
+        'retries after the network error %s',
+        async (code) => {
+            nock(serverUrl).get('/v2/usage').replyWithError({ code });
+            nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        await expect(makeTranslator().getUsage()).rejects.toThrow(deepl.ConnectionError);
+            await makeTranslator().getUsage();
+        },
+    );
+
+    it('does not retry a non-transient network error', async () => {
+        nock(serverUrl).get('/v2/usage').replyWithError({ code: 'CERT_HAS_EXPIRED' });
+
+        const error = await makeTranslator()
+            .getUsage()
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(false);
+    });
+
+    it('makes maxRetries retries after the first attempt', async () => {
+        const scope = nock(serverUrl).get('/v2/usage').times(2).reply(500);
+        nock(serverUrl).get('/v2/usage').reply(200, usage);
+
+        await makeTranslator({ maxRetries: 2 }).getUsage();
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('uses a per-attempt timeout of 10 seconds by default', async () => {
+        const prepareRequest = jest.spyOn(HttpClient.prototype, 'prepareRequest');
+        nock(serverUrl).get('/v2/usage').reply(200, usage);
+
+        await makeTranslator().getUsage();
+
+        expect(prepareRequest.mock.calls[0][2]).toBe(10000);
+        prepareRequest.mockRestore();
     });
 
     it('does not retry when maxRetries is 0', async () => {
@@ -62,19 +95,21 @@ describe('HttpClient retries', () => {
         );
     });
 
-    it.each([['ETIMEDOUT'], ['ECONNABORTED'], ['ECONNRESET'], ['EPIPE'], ['EAI_AGAIN']])(
-        'classifies axios error code %s as retryable',
-        (code) => {
-            expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(true);
-        },
-    );
+    it.each([
+        ['ETIMEDOUT'],
+        ['ECONNABORTED'],
+        ['ECONNRESET'],
+        ['EPIPE'],
+        ['EAI_AGAIN'],
+        ['ENOTFOUND'],
+        ['ECONNREFUSED'],
+    ])('classifies axios error code %s as retryable', (code) => {
+        expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(true);
+    });
 
-    it.each([['ENOTFOUND'], ['ECONNREFUSED'], ['CERT_HAS_EXPIRED']])(
-        'classifies axios error code %s as not retryable',
-        (code) => {
-            expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(false);
-        },
-    );
+    it.each([['CERT_HAS_EXPIRED']])('classifies axios error code %s as not retryable', (code) => {
+        expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(false);
+    });
 });
 
 describe('HttpClient debug logging', () => {

@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `NotFoundError`, thrown when the API answers HTTP 404 on any endpoint.
+  `GlossaryNotFoundError` now extends it.
+- Added `httpStatusCode` to `DeepLError`: the HTTP status code of the failed
+  response, or `undefined` if there was no HTTP response.
+- Added `shouldRetry` to `DeepLError` (previously only on `ConnectionError`):
+  true for HTTP 429, 5xx and transient network failures.
+- The `proxy` option also accepts a proxy URL string, for example
+  `'http://user:pass@proxy.example.com:3128'`.
+- `isFreeAccountAuthKey()` is exported from the package root.
 - Added the `styleProfile` option to `TranslateTextOptions` and
   `DocumentTranslateOptions` to translate text and documents with a style
   profile, given as its ID or a `StyleProfile` object. It is sent as
@@ -36,8 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `CustomTagUsage`, `CustomTagUsageBreakdown`, `CustomTagUsageAggregateBy`,
   `CustomTagUsageAnalyticsOptions` and `AdminUsageAnalyticsOptions` types.
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
-- Added `ConnectionError.requestNotSent`, which is true when the request
-  failed before it was sent, so the server cannot have processed it.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and
@@ -79,6 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `updateStyleRuleCustomInstruction(styleId, instructionId, label, prompt, sourceLanguage?)`.
 
 ### Changed
+- Every HTTP 404 response now throws `NotFoundError`; before, only glossary
+  requests threw an error class of their own (`GlossaryNotFoundError`, which
+  is still thrown there) and other requests threw a plain `DeepLError`.
+- The default per-attempt timeout (`minTimeout`) is now 10 seconds instead of
+  5 seconds.
+- Refused connections (`ECONNREFUSED`) and DNS lookup failures (`ENOTFOUND`)
+  are now retried like other transient network failures.
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
   `GET /v3/languages` endpoint instead of the deprecated `GET /v2/languages` and
   `GET /v2/glossary-language-pairs` endpoints. The returned language lists may contain
@@ -96,6 +110,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- `Translator` and `TranslatorOptions` are deprecated; use `DeepLClient` and
+  `DeepLClientOptions` instead, which support every method of `Translator`.
+  They will be removed in the next major version.
+- `GlossaryNotFoundError` is deprecated; catch `NotFoundError` instead. It will
+  be removed in the next major version.
 - `TranslateTextOptions.__path` is deprecated. It is for internal use only
   and will be removed in the next major version.
 - `isDocumentTranslationComplete()` is deprecated; use
@@ -130,6 +149,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `maxRetries` now counts retries after the first attempt, as documented:
+  before, `maxRetries: N` made only N - 1 retries, so the default of 5 made 5
+  attempts instead of 6 and `maxRetries: 1` made no retry.
+- HTTP 401 responses now throw `AuthorizationError`, like 403; before they
+  threw a `DeepLError` with "Unexpected status code".
+- The authentication key is trimmed before it is checked, used for the free
+  account (`:fx`) detection and sent; a whitespace-only key is rejected.
+- Malformed or non-object API responses now throw `DeepLError`; before, some
+  methods (`getSourceLanguages()`, `getTargetLanguages()`, the multilingual
+  glossary, style rule, custom instruction, spoken terms and style profile
+  methods) let a raw `SyntaxError` or `TypeError` escape.
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
   already exists. It now rejects with `EEXIST` before downloading anything, on every Node
   version, and leaves the existing file unchanged.

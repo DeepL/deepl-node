@@ -55,3 +55,4 @@ export * from './types';
 export * from './adminClient';
 export * from './deeplClient';
 export * from './translator';
+export { isFreeAccountAuthKey } from './utils';

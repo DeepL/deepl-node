@@ -9,6 +9,7 @@ import {
     DocumentNotReadyError,
     DocumentTranslationError,
     GlossaryNotFoundError,
+    NotFoundError,
     QuotaExceededError,
     TooManyRequestsError,
 } from './errors';
@@ -61,6 +62,45 @@ import { URLSearchParams } from 'url';
 import * as util from 'util';
 import { DocumentMinifier } from './documentMinifier';
 
+function createStatusCodeError(
+    statusCode: number,
+    message: string,
+    content: string,
+    usingGlossary: boolean,
+    inDocumentDownload: boolean,
+): DeepLError {
+    switch (statusCode) {
+        case 401:
+        case 403:
+            return new AuthorizationError(`Authorization failure, check auth_key${message}`);
+        case 456:
+            return new QuotaExceededError(
+                `Quota for this billing period has been exceeded${message}`,
+            );
+        case 404:
+            if (usingGlossary) return new GlossaryNotFoundError(`Glossary not found${message}`);
+            return new NotFoundError(`Not found${message}`);
+        case 400:
+            return new DeepLError(`Bad request${message}`);
+        case 429:
+            return new TooManyRequestsError(
+                `Too many requests, DeepL servers are currently experiencing high load${message}`,
+            );
+        case 503:
+            if (inDocumentDownload) {
+                return new DocumentNotReadyError(`Document not ready${message}`);
+            } else {
+                return new DeepLError(`Service unavailable${message}`);
+            }
+        default: {
+            const statusName = STATUS_CODES[statusCode] || 'Unknown';
+            return new DeepLError(
+                `Unexpected status code: ${statusCode} ${statusName}${message}, content: ${content}`,
+            );
+        }
+    }
+}
+
 /**
  * Checks the HTTP status code, and in case of failure, throws an exception with diagnostic information.
  * @private
@@ -96,40 +136,22 @@ export async function checkStatusCode(
         message = ', ' + content;
     }
 
-    switch (statusCode) {
-        case 403:
-            throw new AuthorizationError(`Authorization failure, check auth_key${message}`);
-        case 456:
-            throw new QuotaExceededError(
-                `Quota for this billing period has been exceeded${message}`,
-            );
-        case 404:
-            if (usingGlossary) throw new GlossaryNotFoundError(`Glossary not found${message}`);
-            throw new DeepLError(`Not found${message}`);
-        case 400:
-            throw new DeepLError(`Bad request${message}`);
-        case 429:
-            throw new TooManyRequestsError(
-                `Too many requests, DeepL servers are currently experiencing high load${message}`,
-            );
-        case 503:
-            if (inDocumentDownload) {
-                throw new DocumentNotReadyError(`Document not ready${message}`);
-            } else {
-                throw new DeepLError(`Service unavailable${message}`);
-            }
-        default: {
-            const statusName = STATUS_CODES[statusCode] || 'Unknown';
-            throw new DeepLError(
-                `Unexpected status code: ${statusCode} ${statusName}${message}, content: ${content}`,
-            );
-        }
-    }
+    const error = createStatusCodeError(
+        statusCode,
+        message,
+        content,
+        usingGlossary,
+        inDocumentDownload,
+    );
+    error.httpStatusCode = statusCode;
+    error.shouldRetry = statusCode === 429 || statusCode >= 500;
+    throw error;
 }
 
 /**
  * Wrapper for the DeepL API for language translation.
- * Create an instance of Translator to use the DeepL API.
+ * @deprecated Use DeepLClient instead, which extends Translator and supports every feature of the
+ * DeepL API. Will be removed in the next major version.
  */
 export class Translator {
     /**
@@ -139,6 +161,7 @@ export class Translator {
      * @param options Additional options controlling Translator behavior.
      */
     constructor(authKey: string, options?: TranslatorOptions) {
+        if (isString(authKey)) authKey = authKey.trim();
         if (!isString(authKey) || authKey.length === 0) {
             throw new DeepLError('authKey must be a non-empty string');
         }

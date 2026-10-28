@@ -2,6 +2,8 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
+import * as deepl from 'deepl-node';
+
 import http from 'http';
 import { AddressInfo } from 'net';
 import { createProxy } from 'proxy';
@@ -9,7 +11,10 @@ import { createProxy } from 'proxy';
 import { makeTranslator } from './client';
 
 describe('Translator proxy option', () => {
-    it('sends requests through the configured proxy', async () => {
+    it.each<[string, (port: number) => deepl.ProxyConfig | string]>([
+        ['a ProxyConfig', (port) => ({ host: '127.0.0.1', port })],
+        ['a proxy URL', (port) => `http://127.0.0.1:${port}`],
+    ])('sends requests through the proxy configured as %s', async (_, proxy) => {
         const connectTargets: (string | undefined)[] = [];
         const server = createProxy(http.createServer());
         server.on('connect', (req) => connectTargets.push(req.url));
@@ -17,7 +22,7 @@ describe('Translator proxy option', () => {
         try {
             const port = (server.address() as AddressInfo).port;
 
-            const usage = await makeTranslator({ proxy: { host: '127.0.0.1', port } }).getUsage();
+            const usage = await makeTranslator({ proxy: proxy(port) }).getUsage();
 
             expect(usage.toString()).toContain('Usage this billing period');
             const authKey = process.env.DEEPL_AUTH_KEY as string;

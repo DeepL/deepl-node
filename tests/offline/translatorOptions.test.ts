@@ -30,6 +30,25 @@ describe('Translator constructor', () => {
         await makeTranslator({ authKey: 'my-key' }).getUsage();
     });
 
+    it('throws DeepLError when the auth key is only whitespace', () => {
+        expect(() => new deepl.Translator(' \t\n')).toThrow(/authKey.*empty/);
+    });
+
+    it('trims the auth key', async () => {
+        nock('https://api-free.deepl.com', {
+            reqheaders: { authorization: 'DeepL-Auth-Key my-key:fx' },
+        })
+            .get('/v2/usage')
+            .reply(200, usage);
+
+        await new deepl.DeepLClient(' my-key:fx\n').getUsage();
+    });
+
+    it('exports isFreeAccountAuthKey', () => {
+        expect(deepl.isFreeAccountAuthKey('my-key:fx')).toBe(true);
+        expect(deepl.isFreeAccountAuthKey('my-key')).toBe(false);
+    });
+
     it('sends requests to the API for free accounts when the auth key ends in :fx', async () => {
         nock('https://api-free.deepl.com').get('/v2/usage').reply(200, usage);
 

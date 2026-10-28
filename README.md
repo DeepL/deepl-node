@@ -69,6 +69,11 @@ const deeplClient = new deepl.DeepLClient(authKey);
 `DeepLClient` accepts options as the second argument, see
 [Configuration](#configuration) for more information.
 
+The `Translator` class of earlier versions is deprecated and will be removed in
+the next major version; `DeepLClient` extends it, so replacing
+`new deepl.Translator(...)` with `new deepl.DeepLClient(...)` keeps your code
+working.
+
 All `DeepLClient` functions return promises, and for brevity the examples in this
 file use `await` and `try`/`catch` blocks, however Promise-chaining is also
 possible:
@@ -1135,20 +1140,23 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 
 The available options are:
 
--   `maxRetries`: the maximum `Number` of failed HTTP requests to retry, per
-    function call. By default, 5 retries are made. See
-    [Request retries](#request-retries).
+-   `maxRetries`: the maximum `Number` of retries after the first attempt, per
+    function call. By default, 5 retries are made (6 attempts in total); 0
+    disables retries. See [Request retries](#request-retries).
 -   `minTimeout`: the `Number` of milliseconds used as connection timeout for each
-    HTTP request retry. The default value is 5000 (5 seconds).
+    HTTP request retry. The default value is 10000 (10 seconds).
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
     for example for testing purposes. By default, the URL is selected based on the
-    user account type (free or paid).
+    user account type (free or paid): `deepl.isFreeAccountAuthKey(authKey)`
+    returns true for a Free account key (it ends in `:fx`).
 -   `headers`: extra HTTP headers attached to every HTTP request. By default, no
     extra headers are used. Note that Authorization and User-Agent headers are
     added automatically but may be overridden by this option.
 -   `proxy`: define the hostname, and port of the proxy server, and optionally
     the protocol, and authorization (as an auth object with username and
-    password fields).
+    password fields). Alternatively, a proxy URL string such as
+    `'http://user:pass@proxy.example.com:3128'`, see
+    [Proxy configuration](#proxy-configuration).
 
 ### Rephrasing Text
 
@@ -1232,6 +1240,14 @@ const options = {proxy: {host: 'localhost', port: 3000}};
 const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
+The proxy may also be given as a URL; the protocol, host, port and optional
+credentials are taken from it:
+
+```javascript
+const options = {proxy: 'http://user:pass@localhost:3000'};
+const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+```
+
 The proxy argument is passed to the underlying `axios` request, see the
 [documentation for axios][axios-proxy-docs].
 
@@ -1251,16 +1267,39 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 
 ### Request retries
 
-Requests to the DeepL API that fail due to transient conditions (for example,
-network timeouts or high server-load) will be retried. The maximum number of
+Requests to the DeepL API that fail due to transient conditions will be
+retried: HTTP 429 and 5xx responses, and network failures such as timeouts,
+refused or reset connections and DNS lookup failures. The maximum number of
 retries can be configured when constructing the `DeepLClient` object using the
 `maxRetries` option. The timeout for each request attempt may be controlled
 using the `minTimeout` option. An exponential-backoff strategy is used, so
 requests that fail multiple times will incur delays.
 
 `DeepLAdminClient.createDeveloperKey()` is retried only after rate limiting
-(HTTP 429) and DNS failures, as repeating it after other failures could create
-a second key.
+(HTTP 429), DNS failures and refused connections, as repeating it after other
+failures could create a second key.
+
+### Errors
+
+All errors thrown by the library extend `DeepLError`. It has an
+`httpStatusCode` property with the HTTP status of the failed response
+(`undefined` if there was no response) and a `shouldRetry` property that is
+true for failures a later retry could resolve (HTTP 429, 5xx and transient
+network failures), after the library has already retried them `maxRetries`
+times. The subclasses are:
+
+-   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
+-   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary
+    requests throw its deprecated subclass `GlossaryNotFoundError`.
+-   `TooManyRequestsError`: HTTP 429, after all retries.
+-   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
+-   `DocumentNotReadyError`: HTTP 503 while downloading a translated document.
+-   `ConnectionError`: the request got no HTTP response, for example a timeout.
+-   `DocumentTranslationError`: a document translation failed.
+-   `ArgumentError`: an argument failed client-side validation.
+
+Other failed responses, and responses that cannot be parsed, throw a
+`DeepLError`.
 
 ## Issues
 
