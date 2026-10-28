@@ -290,7 +290,10 @@ execute these steps individually, you can instead use the following functions
 directly:
 
 -   `uploadDocument()`,
--   `getDocumentStatus()` (or `isDocumentTranslationComplete()`), and
+-   `getDocumentStatus()`, or `translateDocumentWaitUntilDone()` to poll the
+    status until the translation is done; it resolves with the final
+    `DocumentStatus` and rejects with a `DeepLError` if the translation fails
+    (`isDocumentTranslationComplete()` is deprecated in favour of it), and
 -   `downloadDocument()`
 
 #### Document translation options
@@ -336,7 +339,7 @@ await deeplClient.translateDocument(
 );
 ```
 In order to use document minification with the lower-level `uploadDocument()`,
-`isDocumentTranslationComplete()` and `downloadDocument()` methods as well as other details,
+`translateDocumentWaitUntilDone()` and `downloadDocument()` methods as well as other details,
 see the `DocumentMinifier` class.
 
 

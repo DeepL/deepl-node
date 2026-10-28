@@ -185,6 +185,30 @@ describe('Translator.getDocumentStatus', () => {
     });
 });
 
+describe('Translator.translateDocumentWaitUntilDone', () => {
+    it('polls until the document is done and resolves with the final status', async () => {
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'queued' });
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .reply(200, { status: 'done', billed_characters: 11 });
+
+        const status = await makeTranslator().translateDocumentWaitUntilDone(handle);
+
+        expect([status.ok(), status.done(), status.billedCharacters]).toEqual([true, true, 11]);
+    }, 15000);
+
+    it('throws DeepLError with the error message when the translation fails', async () => {
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .reply(200, { status: 'error', error_message: 'bad file' });
+
+        const result = makeTranslator().translateDocumentWaitUntilDone(handle);
+
+        await expect(result).rejects.toThrow(deepl.DeepLError);
+        await expect(result).rejects.toThrow('bad file');
+    });
+});
+
 describe('Translator.isDocumentTranslationComplete', () => {
     it('polls until the document is done', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'queued' });

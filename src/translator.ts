@@ -341,7 +341,7 @@ export class Translator {
                 targetLang,
                 options,
             );
-            const { status } = await this.isDocumentTranslationComplete(documentHandle);
+            const status = await this.translateDocumentWaitUntilDone(documentHandle);
             await this.downloadDocument(documentHandle, outputHandle);
             if (willMinify) {
                 // Intentionally replace outputFile with a deminified version of the outputFile
@@ -473,15 +473,13 @@ export class Translator {
     }
 
     /**
-     * Returns a promise that resolves when the given document translation completes, or rejects if
-     * there was an error communicating with the DeepL API or the document translation failed.
+     * Polls the status of the given document translation until it completes.
      * @param handle {DocumentHandle} Handle to the document translation.
-     * @return Fulfills with input DocumentHandle and DocumentStatus when the document translation
-     * completes successfully, rejects if translation fails or a communication error occurs.
+     * @return Fulfills with the final DocumentStatus when the document translation completes
+     * successfully, rejects with a DeepLError if the translation fails or a communication error
+     * occurs.
      */
-    async isDocumentTranslationComplete(
-        handle: DocumentHandle,
-    ): Promise<{ handle: DocumentHandle; status: DocumentStatus }> {
+    async translateDocumentWaitUntilDone(handle: DocumentHandle): Promise<DocumentStatus> {
         let status = await this.getDocumentStatus(handle);
         while (!status.done() && status.ok()) {
             // status.secondsRemaining is currently unreliable, so just poll equidistantly
@@ -494,6 +492,22 @@ export class Translator {
             const message = status.errorMessage || 'unknown error';
             throw new DeepLError(message);
         }
+        return status;
+    }
+
+    /**
+     * Returns a promise that resolves when the given document translation completes, or rejects if
+     * there was an error communicating with the DeepL API or the document translation failed.
+     * @param handle {DocumentHandle} Handle to the document translation.
+     * @return Fulfills with input DocumentHandle and DocumentStatus when the document translation
+     * completes successfully, rejects if translation fails or a communication error occurs.
+     * @deprecated Use {@link translateDocumentWaitUntilDone} instead, which resolves with the
+     * DocumentStatus. This method will be removed in the next major version.
+     */
+    async isDocumentTranslationComplete(
+        handle: DocumentHandle,
+    ): Promise<{ handle: DocumentHandle; status: DocumentStatus }> {
+        const status = await this.translateDocumentWaitUntilDone(handle);
         return { handle, status };
     }
 

@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `enableWatermark` option to `DocumentTranslateOptions`, which adds a
   "Translated by DeepL" watermark to the translated document. Only supported for
   `docx` and `pdf` output.
+- Added `translateDocumentWaitUntilDone()`, which polls a document translation
+  until it is done and resolves with the final `DocumentStatus`, or rejects with
+  a `DeepLError` if the translation fails.
 
 ### Changed
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
@@ -77,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 - `TranslateTextOptions.__path` is deprecated. It is for internal use only
   and will be removed in the next major version.
+- `isDocumentTranslationComplete()` is deprecated; use
+  `translateDocumentWaitUntilDone()` instead. It will be removed in the next
+  major version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
