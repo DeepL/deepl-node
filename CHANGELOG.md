@@ -118,6 +118,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DeepL API accepts larger documents; see the
   [usage limits](https://developers.deepl.com/docs/resources/usage-limits).
   Minification keeps working and will be removed in the next major version.
+- `checkStatusCode()` and the internal `*ApiResponse` types used to parse API
+  responses (`MultilingualGlossaryDictionaryEntriesApiResponse`,
+  `MultilingualGlossaryDictionaryApiResponse`,
+  `ListMultilingualGlossaryApiResponse`, `StyleRuleInfoApiResponse`,
+  `ListStyleRuleApiResponse`, `TranslationMemoryInfoApiResponse`,
+  `ListTranslationMemoryApiResponse`, `TranslationMemorySegmentsApiResponse`,
+  `TranslationMemoryImportApiResponse`, `TranslationMemoryExportApiResponse`,
+  `TranslationMemoryJobApiResponse` and `LanguageResourceApiResponse`) are
+  deprecated. They are internal and will no longer be exported in the next
+  major version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file

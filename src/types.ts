@@ -825,6 +825,7 @@ export interface WriteResult {
 /**
  * Type used during JSON parsing of API response for getting multilingual glossary dictionary entries.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface MultilingualGlossaryDictionaryEntriesApiResponse {
     dictionaries: [
@@ -839,6 +840,7 @@ export interface MultilingualGlossaryDictionaryEntriesApiResponse {
 /**
  * Type used during JSON parsing of API response for multilingual glossary dictionaries.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface MultilingualGlossaryDictionaryApiResponse {
     source_lang: string;
@@ -849,6 +851,7 @@ export interface MultilingualGlossaryDictionaryApiResponse {
 /**
  * Type used during JSON parsing of API response for listing multilingual glossaries.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface ListMultilingualGlossaryApiResponse {
     glossaries: [
@@ -920,6 +923,7 @@ export interface StyleRuleInfo {
 /**
  * Type used during JSON parsing of API response for style rule info.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface StyleRuleInfoApiResponse {
     style_id: string;
@@ -948,6 +952,7 @@ export interface StyleRuleInfoApiResponse {
 /**
  * Type used during JSON parsing of API response for listing style rules.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface ListStyleRuleApiResponse {
     style_rules: StyleRuleInfoApiResponse[];
@@ -1034,6 +1039,7 @@ export interface TranslationMemoryInfo {
 /**
  * Type used during JSON parsing of API response for translation memory info.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface TranslationMemoryInfoApiResponse {
     translation_memory_id: string;
@@ -1048,6 +1054,7 @@ export interface TranslationMemoryInfoApiResponse {
 /**
  * Type used during JSON parsing of API response for listing translation memories.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface ListTranslationMemoryApiResponse {
     translation_memories: TranslationMemoryInfoApiResponse[];
@@ -1181,6 +1188,7 @@ export interface TranslationMemoryJob {
 /**
  * Type used during JSON parsing of API response for translation memory segments.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface TranslationMemorySegmentsApiResponse {
     segments?: {
@@ -1205,6 +1213,7 @@ export interface TranslationMemorySegmentsApiResponse {
 /**
  * Type used during JSON parsing of API response for creating a translation memory import.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface TranslationMemoryImportApiResponse {
     job_id: string;
@@ -1215,6 +1224,7 @@ export interface TranslationMemoryImportApiResponse {
 /**
  * Type used during JSON parsing of API response for creating a translation memory export.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface TranslationMemoryExportApiResponse {
     job_id: string;
@@ -1226,6 +1236,7 @@ export interface TranslationMemoryExportApiResponse {
 /**
  * Type used during JSON parsing of API response for a translation memory job.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface TranslationMemoryJobApiResponse {
     job_id: string;
@@ -1282,6 +1293,7 @@ export interface LanguageResource {
 /**
  * Type used during JSON parsing of API response for language resources.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export interface LanguageResourceApiResponse {
     name: string;

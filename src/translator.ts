@@ -64,6 +64,7 @@ import { DocumentMinifier } from './documentMinifier';
 /**
  * Checks the HTTP status code, and in case of failure, throws an exception with diagnostic information.
  * @private
+ * @deprecated Internal; will no longer be exported in the next major version.
  */
 export async function checkStatusCode(
     statusCode: number,
