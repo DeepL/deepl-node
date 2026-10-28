@@ -316,14 +316,23 @@ directly:
     the translated document. Only supported for `docx` and `pdf` output; for
     other output formats the API ignores this option.
 -   `extraRequestParameters`: same as in [Text translation options](#text-translation-options).
--   `enableDocumentMinification`: A `bool` value. If set to `true`, the library will try to minify a document 
-before translating it through the API, sending a smaller document if the file contains a lot of media. This is 
-currently only supported for `pptx` and `docx` files. See also [Document minification](#document-minification). 
+-   `enableDocumentMinification`: **deprecated**, will be removed in the next
+    major version. A `bool` value. If set to `true`, the library will try to
+    minify a document before translating it through the API, sending a smaller
+    document if the file contains a lot of media. This is currently only
+    supported for `pptx` and `docx` files. See also
+    [Document minification](#document-minification).
 
 #### Document minification
+> **Deprecated:** document minification (the `enableDocumentMinification` option and the
+> `DocumentMinifier` class) is deprecated and will be removed in the next major version.
+> It still works until then. The DeepL API accepts larger documents; see the
+> [usage limits](https://developers.deepl.com/docs/resources/usage-limits).
+
 In some contexts, one can end up with large document files (e.g. PowerPoint presentations
-or Word files with many contributors, especially in a larger organization). However, the
-DeepL API enforces a limit of 30 MB for most of these files (see Usage Limits in the docs).
+or Word files with many contributors, especially in a larger organization). The DeepL API
+limits the size of uploaded documents; see the
+[usage limits](https://developers.deepl.com/docs/resources/usage-limits) for the current values.
 In the case that most of this size comes from media included in the documents (e.g. images,
 videos, animations), document minification can help.
 In this case, the library will create a temporary directory to extract the document into,

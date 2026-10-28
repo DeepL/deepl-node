@@ -92,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release of this package. They use the new `SourceLanguageCodeInput`,
   `TargetLanguageCodeInput` and `LanguageCodeInput` types, which keep editor
   autocompletion for the listed codes. Result types are unchanged.
+- README: the document minification section no longer states a 30 MB upload
+  limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
 - `TranslateTextOptions.__path` is deprecated. It is for internal use only
@@ -110,6 +112,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is deprecated; pass the label, prompt and source language as separate
   arguments instead. These object forms and `CreateStyleRuleRequestBody` will be
   removed in the next major version.
+- Document minification is deprecated: the `enableDocumentMinification` option
+  of `DocumentTranslateOptions`, the `DocumentMinifier` class, and the
+  `DocumentMinificationError` and `DocumentDeminificationError` errors. The
+  DeepL API accepts larger documents; see the
+  [usage limits](https://developers.deepl.com/docs/resources/usage-limits).
+  Minification keeps working and will be removed in the next major version.
 
 ### Fixed
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file

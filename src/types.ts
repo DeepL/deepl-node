@@ -283,7 +283,12 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
     /** Filename including extension, only required when translating documents as streams. */
     filename?: string;
 
-    /** Controls whether to use Document Minification for translation, if available. */
+    /**
+     * Controls whether to use Document Minification for translation, if available.
+     * @deprecated Document minification is deprecated and will be removed in the next major
+     * version. The DeepL API accepts larger documents; see the usage limits:
+     * https://developers.deepl.com/docs/resources/usage-limits
+     */
     enableDocumentMinification?: boolean;
 
     /**

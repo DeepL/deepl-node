@@ -87,6 +87,10 @@ interface IDocumentMinifier {
  *         }
  *       }
  *     }
+ *
+ * @deprecated Document minification is deprecated and will be removed in the next major version.
+ * The DeepL API accepts larger documents; see the usage limits:
+ * https://developers.deepl.com/docs/resources/usage-limits
  */
 export class DocumentMinifier implements IDocumentMinifier {
     /** Which input document types are supported for minification. */

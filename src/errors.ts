@@ -47,12 +47,18 @@ export class DocumentNotReadyError extends DeepLError {}
 /**
  * Error thrown if an error occurs during the minification phase.
  * @see DocumentMinifier.minifyDocument
+ * @deprecated Document minification is deprecated and will be removed in the next major version.
+ * The DeepL API accepts larger documents; see the usage limits:
+ * https://developers.deepl.com/docs/resources/usage-limits
  */
 export class DocumentMinificationError extends DeepLError {}
 
 /**
  * Error thrown if an error occurs during the deminification phase.
  * @see DocumentMinifier.deminifyDocument
+ * @deprecated Document minification is deprecated and will be removed in the next major version.
+ * The DeepL API accepts larger documents; see the usage limits:
+ * https://developers.deepl.com/docs/resources/usage-limits
  */
 export class DocumentDeminificationError extends DeepLError {}
 
