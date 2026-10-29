@@ -204,8 +204,9 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      * precedence. Accepts glossary ID strings, GlossaryInfo, or
      * MultilingualGlossaryInfo objects (the `.glossaryId` is extracted).
      *
-     * Requires `sourceLang` to be set. Cannot be combined with the singular
-     * `glossary` option.
+     * Without `sourceLang`, DeepL detects the source language and uses the
+     * glossary's dictionary for the detected language pair. Cannot be combined
+     * with the singular `glossary` option.
      */
     glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>;
 

@@ -172,6 +172,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a glossary ID.
 
 ### Changed
+- `translateText()` accepts the `glossary` and `glossaryIds` options without a
+  source language; the API detects the source language and uses the glossary's
+  dictionary for the detected language pair. Document translation with a
+  glossary still requires a source language.
 - `Formality`, `SentenceSplittingMode`, `TagHandlingMode`, `TagHandlingVersion`
   and `ModelType` accept any string in addition to their listed values, so values
   the API adds later can be passed without a type cast.

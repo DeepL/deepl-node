@@ -191,18 +191,14 @@ export function buildURLSearchParams(
         sourceLang = standardizeLanguageCode(sourceLang);
     }
 
-    // Treat an empty glossaryIds array as "no glossaries" so it doesn't enforce
-    // the sourceLang requirement or append an empty glossary_ids parameter.
+    // Treat an empty glossaryIds array as "no glossaries" so it doesn't append an
+    // empty glossary_ids parameter.
     const hasGlossaryIds = glossaryIds !== undefined && glossaryIds.length > 0;
 
     if (glossary !== undefined && hasGlossaryIds) {
         throw new DeepLError(
             'glossary and glossaryIds options cannot be used together, please use only one.',
         );
-    }
-
-    if ((glossary !== undefined || hasGlossaryIds) && sourceLang === null) {
-        throw new DeepLError('sourceLang is required if using a glossary');
     }
 
     if (glossaryIds !== undefined && glossaryIds.length > 5) {

@@ -67,6 +67,19 @@ describe('Translator.uploadDocument', () => {
         expect(result).toEqual(handle);
     });
 
+    it.each([
+        ['glossary', { glossary: 'g-1' }],
+        ['glossaryIds', { glossaryIds: ['g-1'] }],
+    ])('throws DeepLError when %s is set without a source language', async (_, options) => {
+        // No request is declared: nock rejects any request with a different error.
+        await expect(
+            makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+                filename: 'example.txt',
+                ...options,
+            }),
+        ).rejects.toThrow(new deepl.DeepLError('sourceLang is required if using a glossary'));
+    });
+
     it('sends extraBodyParameters as multipart parts', async () => {
         const upload = expectUpload();
 

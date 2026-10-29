@@ -717,6 +717,14 @@ export class Translator {
             options?.glossary,
             options?.glossaryIds,
         );
+        // Text translation detects the source language for a glossary; document translation
+        // with a glossary requires sourceLang.
+        const hasGlossary =
+            options?.glossary !== undefined ||
+            (options?.glossaryIds !== undefined && options.glossaryIds.length > 0);
+        if (hasGlossary && sourceLang === null) {
+            throw new DeepLError('sourceLang is required if using a glossary');
+        }
         appendStyleAndTranslationMemoryOptions(data, options ?? {});
         if (options?.outputFormat !== undefined) {
             data.append('output_format', options.outputFormat);

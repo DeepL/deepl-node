@@ -193,8 +193,8 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
     `getMultilingualGlossary()`/`getGlossary()`.
 -   `glossaryIds`: specifies up to 5 glossaries to use with translation, as an array of
     glossary ID strings, `MultilingualGlossaryInfo`, or `GlossaryInfo` objects. Glossaries are
-    applied in the order given, with the first matching term taking precedence. Requires
-    `sourceLang` to be set, and cannot be combined with the singular `glossary` option.
+    applied in the order given, with the first matching term taking precedence. Cannot be
+    combined with the singular `glossary` option.
 -   `styleRule`: specifies a style rule to use with translation, either as a string
     containing the style rule ID, or a `StyleRuleInfo` as returned by `getAllStyleRules()`.
 -   `styleProfile`: specifies a style profile to use with translation, either as a
@@ -326,7 +326,9 @@ statuses this library does not know.
 
 -   `formality`: same as in [Text translation options](#text-translation-options).
 -   `glossary`: same as in [Text translation options](#text-translation-options).
+    Requires `sourceLang` to be set.
 -   `glossaryIds`: same as in [Text translation options](#text-translation-options).
+    Requires `sourceLang` to be set.
 -   `styleRule`: same as in [Text translation options](#text-translation-options).
 -   `styleProfile`: same as in [Text translation options](#text-translation-options).
     A style profile that does not exist fails the translation with a
@@ -485,7 +487,11 @@ for (const glossaryDict of glossary.dictionaries) {
 
 To use a glossary when translating text and documents, include the ID
 (or `MultilingualGlossaryInfo` object returned by `listMultilingualGlossaries()` or `createMultilingualGlossary()`) in
-the function call. The source and target languages must match the glossary.
+the function call. The glossary needs a dictionary for the source and target
+languages. For text translation, `sourceLang` may be `null`: DeepL detects the
+source language and uses the dictionary for the detected language pair, and the
+request fails if the glossary has none. Document translation with a glossary
+requires `sourceLang`.
 
 ```javascript
 const resultWithGlossary = await deeplClient.translateText(

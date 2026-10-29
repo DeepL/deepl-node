@@ -383,12 +383,13 @@ describe('Translator.translateText', () => {
     });
 
     it.each([
-        ['glossary', { glossary: 'g-1' }],
-        ['glossaryIds', { glossaryIds: ['g-1'] }],
-    ])('throws DeepLError when %s is set without a source language', async (_, options) => {
-        await expect(makeTranslator().translateText('abc', null, 'de', options)).rejects.toThrow(
-            /sourceLang is required/,
-        );
+        ['glossary', { glossary: 'g-1' }, { glossary_id: 'g-1' }],
+        ['glossaryIds', { glossaryIds: ['g-1'] }, { glossary_ids: 'g-1' }],
+    ])('sends %s without a source language', async (_, options, glossaryParam) => {
+        // nock matches the exact body, so a source_lang field would fail the match.
+        expectTranslateBody({ ...baseBody, ...glossaryParam });
+
+        await makeTranslator().translateText('abc', null, 'de', options);
     });
 
     it('throws DeepLError when translationMemoryThreshold is set without a translation memory', async () => {
