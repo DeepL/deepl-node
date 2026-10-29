@@ -185,6 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- The `'downloaded'` member of `TranslationMemoryJobStatus`: the API does not
+  report it for translation memory jobs.
 - `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
   deprecated; use `translateDocumentUpload()`, `translateDocumentGetStatus()`
   and `translateDocumentDownload()` instead. They will be removed in the next
@@ -237,6 +239,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `isTranslationMemoryJobComplete()`, `importTranslationMemoryFromFilepath()` and
+  `exportTranslationMemoryToFilepath()` keep polling on an unknown status or a
+  job without results instead of rejecting, and no longer treat `'downloaded'`
+  as finished; the timeout bounds the wait.
 - Translation memory and job IDs are URL-encoded in request paths.
 - `rephraseText()` and `correctText()` now throw `DeepLError` when the response
   contains a different number of improvements than texts sent. Before, a single

@@ -39,7 +39,6 @@ import {
     TranslationMemoryJob,
     TranslationMemorySegments,
     TranslationMemorySegmentsOptions,
-    TranslationMemoryJobStatus,
     LanguageResource,
     LanguageResourceName,
     GetLanguagesForResourceOptions,
@@ -1427,8 +1426,8 @@ export class DeepLClient extends Translator {
      * with the final status.
      *
      * Note that an import job keeps reporting 'awaiting_input' for a while after its file has been
-     * uploaded, because the API detects the upload asynchronously. That status is therefore polled
-     * through like any other non-terminal one. A job whose file is never uploaded does not finish
+     * uploaded, because the API detects the upload asynchronously. That status, and statuses this
+     * library does not know, are polled through. A job whose file is never uploaded does not finish
      * on its own, so pass timeoutMs when that is a possibility.
      *
      * @param jobId: ID of the job to wait for.
@@ -1443,31 +1442,26 @@ export class DeepLClient extends Translator {
         jobId: string,
         timeoutMs?: number,
     ): Promise<TranslationMemoryJob> {
+        const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
         let job = await this.getTranslationMemoryJob(jobId);
-        const startTimeMs = Date.now();
-        while (!DeepLClient.isJobDone(job)) {
-            // The API always returns exactly one result with a known status. Anything else
-            // would never reach a terminal state, so fail closed instead of polling forever.
-            const status = job.results[0]?.status;
-            if (job.results.length === 0 || !DeepLClient.KNOWN_JOB_STATUSES.includes(status!)) {
-                throw new DeepLError(
-                    `Translation memory job ${jobId} returned an unusable status: ${
-                        status ?? 'none'
-                    }`,
-                );
+        // Unknown statuses and a missing result are polled through; the timeout bounds the wait.
+        while (!DeepLClient.isJobFinished(job)) {
+            let sleepMs = 5000;
+            if (deadline !== undefined) {
+                const remainingMs = deadline - Date.now();
+                if (remainingMs <= 0) {
+                    throw new DeepLError(
+                        `Timeout of ${timeoutMs}ms exceeded for translation memory job`,
+                    );
+                }
+                sleepMs = Math.min(sleepMs, remainingMs);
             }
-            if (timeoutMs !== undefined && Date.now() - startTimeMs > timeoutMs) {
-                throw new DeepLError(
-                    `Timeout of ${timeoutMs}ms exceeded for translation memory job`,
-                );
-            }
-            const secs = 5.0;
-            await timeout(secs * 1000);
-            logInfo(`Rechecking translation memory job status after sleeping for ${secs} seconds.`);
+            await timeout(sleepMs);
+            logInfo(`Rechecking translation memory job status after sleeping for ${sleepMs} ms.`);
             job = await this.getTranslationMemoryJob(jobId);
         }
         const result = job.results[0];
-        if (result !== undefined && (result.status === 'failed' || result.status === 'expired')) {
+        if (result.status !== 'completed') {
             throw new DeepLError(result.errorMessage || `Job ${result.status}`);
         }
         return job;
@@ -1620,28 +1614,13 @@ export class DeepLClient extends Translator {
         return job;
     }
 
-    /** Statuses the API is known to report; anything else is treated as unusable. @private */
-    private static readonly KNOWN_JOB_STATUSES: TranslationMemoryJobStatus[] = [
-        'awaiting_input',
-        'processing',
-        'completed',
-        'downloaded',
-        'failed',
-        'expired',
-    ];
-
     /**
-     * True once the job has finished, successfully or not.
+     * True once the job has completed, failed or expired.
      * @private
      */
-    private static isJobDone(job: TranslationMemoryJob): boolean {
+    private static isJobFinished(job: TranslationMemoryJob): boolean {
         const status = job.results[0]?.status;
-        return (
-            status === 'completed' ||
-            status === 'downloaded' ||
-            status === 'failed' ||
-            status === 'expired'
-        );
+        return status === 'completed' || status === 'failed' || status === 'expired';
     }
 
     /**

@@ -1266,7 +1266,10 @@ export interface TranslationMemoryExport {
 
 /**
  * Status of a translation memory import or export job, one of 'awaiting_input', 'processing',
- * 'completed', 'downloaded', 'failed' or 'expired'.
+ * 'completed', 'failed' or 'expired'.
+ *
+ * 'downloaded' is deprecated: the API does not report it for translation memory jobs, and it is not
+ * treated as a finished status. It will be removed in the next major version.
  */
 export type TranslationMemoryJobStatus =
     | 'awaiting_input'

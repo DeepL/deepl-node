@@ -349,26 +349,25 @@ describe('DeepLClient.isTranslationMemoryJobComplete', () => {
         );
     });
 
-    it('throws DeepLError when the status is unknown', async () => {
-        nock(serverUrl).get(jobPath).reply(200, jobReply('something_new'));
+    it.each([
+        ['an unknown status', jobReply('something_new')],
+        ['the deprecated downloaded status', jobReply('downloaded')],
+        ['no result', { job_id: 'job-1', operation: 'import', results: [] }],
+    ])(
+        'keeps polling on %s',
+        async (_, reply) => {
+            nock(serverUrl).get(jobPath).reply(200, reply);
+            nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
 
-        await expect(makeDeeplClient().isTranslationMemoryJobComplete('job-1')).rejects.toThrow(
-            /unusable status: something_new/,
-        );
-    });
+            const job = await makeDeeplClient().isTranslationMemoryJobComplete('job-1');
 
-    it('throws DeepLError when the job has no result', async () => {
-        nock(serverUrl)
-            .get(jobPath)
-            .reply(200, { job_id: 'job-1', operation: 'import', results: [] });
-
-        await expect(makeDeeplClient().isTranslationMemoryJobComplete('job-1')).rejects.toThrow(
-            /unusable status: none/,
-        );
-    });
+            expect(job.results[0].status).toBe('completed');
+        },
+        15000,
+    );
 
     it('throws DeepLError when timeoutMs is exceeded', async () => {
-        nock(serverUrl).get(jobPath).times(2).reply(200, jobReply('processing'));
+        nock(serverUrl).get(jobPath).reply(200, jobReply('processing')).persist();
 
         await expect(makeDeeplClient().isTranslationMemoryJobComplete('job-1', 1)).rejects.toThrow(
             'Timeout of 1ms exceeded',
