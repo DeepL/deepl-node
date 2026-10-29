@@ -288,14 +288,14 @@ class UsageImpl implements Usage {
 }
 
 class DocumentStatusImpl implements DocumentStatus {
-    public status: DocumentStatusCode | (string & Record<never, never>);
+    public status: DocumentStatusCode;
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
     public documentId?: string;
 
     constructor(
-        status: DocumentStatusCode | (string & Record<never, never>),
+        status: DocumentStatusCode,
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,
@@ -541,7 +541,7 @@ export function parseDocumentStatus(json: string): DocumentStatus {
     try {
         const obj = JSON.parse(json) as DocumentStatusApiResponse;
         return new DocumentStatusImpl(
-            obj.status,
+            obj.status as DocumentStatusCode,
             obj.seconds_remaining,
             obj.billed_characters,
             obj.error_message,

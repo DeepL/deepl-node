@@ -213,10 +213,8 @@ describe('Translator.translateDocumentGetStatus', () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
 
         const status = await makeDeeplClient().translateDocumentGetStatus(handle);
-        // Compiles only while DocumentStatus.status accepts strings outside DocumentStatusCode.
-        const expected: deepl.DocumentStatus['status'] = 'resyncing';
 
-        expect([status.status, status.ok(), status.done()]).toEqual([expected, true, false]);
+        expect([status.status, status.ok(), status.done()]).toEqual(['resyncing', true, false]);
     });
 
     it('URL-encodes the document ID in the path', async () => {

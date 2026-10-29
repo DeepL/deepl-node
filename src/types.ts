@@ -792,11 +792,10 @@ export interface DocumentStatus {
     readonly documentId?: string;
 
     /**
-     * One of the status values defined in DocumentStatusCode, or another string if the API
-     * returns a status this version of the library does not know.
+     * One of the status values defined in DocumentStatusCode.
      * @see DocumentStatusCode
      */
-    readonly status: DocumentStatusCode | (string & Record<never, never>);
+    readonly status: DocumentStatusCode;
 
     /**
      * Estimated time until document translation completes in seconds, otherwise undefined if

@@ -317,10 +317,10 @@ deprecated aliases of these methods and will be removed in the next major
 version.
 
 A `DocumentStatus` has `documentId`, `status` (`'queued'`, `'translating'`,
-`'done'`, `'error'`, or another string for a status this library does not know
-yet), `secondsRemaining`, `billedCharacters` and `errorMessage`. `done()` is
-true when the status is `'done'`; `ok()` is true unless the status is
-`'error'`, so the polling methods keep waiting through unknown statuses.
+`'done'` or `'error'`), `secondsRemaining`, `billedCharacters` and
+`errorMessage`. `done()` is true when the status is `'done'`; `ok()` is true
+unless the status is `'error'`, so the polling methods keep waiting through
+statuses this library does not know.
 
 #### Document translation options
 
