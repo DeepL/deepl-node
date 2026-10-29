@@ -10,7 +10,9 @@ export class DeepLError extends Error {
     public httpStatusCode?: number;
     /**
      * True if retrying the request could succeed: HTTP 429, 5xx and transient network failures.
-     * The client has already retried these up to `maxRetries` times before throwing.
+     * The client has already retried these up to `maxRetries` times before throwing. For
+     * `DeepLAdminClient.createDeveloperKey()`, which is not safe to repeat, it is true only for
+     * failures where the request was not processed: HTTP 429, DNS failures and refused connections.
      */
     public shouldRetry = false;
 

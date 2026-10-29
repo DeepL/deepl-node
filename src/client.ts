@@ -274,6 +274,10 @@ export class HttpClient {
             }
             return response;
         } else {
+            if (options.retryOnlyUnprocessed && error !== undefined) {
+                // Only an unsent request is safe to repeat for a non-idempotent call.
+                error.shouldRetry = unsentRequestErrors.has(error);
+            }
             throw error as Error;
         }
     }

@@ -1286,7 +1286,9 @@ All errors thrown by the library extend `DeepLError`. It has an
 (`undefined` if there was no response) and a `shouldRetry` property that is
 true for failures a later retry could resolve (HTTP 429, 5xx and transient
 network failures), after the library has already retried them `maxRetries`
-times. The subclasses are:
+times. For `DeepLAdminClient.createDeveloperKey()`, `shouldRetry` is true only
+when the request was not processed (HTTP 429, DNS failures and refused
+connections), as resending it after other failures could create a second key. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
 -   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary

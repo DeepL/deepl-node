@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `httpStatusCode` to `DeepLError`: the HTTP status code of the failed
   response, or `undefined` if there was no HTTP response.
 - Added `shouldRetry` to `DeepLError` (previously only on `ConnectionError`):
-  true for HTTP 429, 5xx and transient network failures.
+  true for HTTP 429, 5xx and transient network failures. For
+  `DeepLAdminClient.createDeveloperKey()` it is true only when the request was
+  not processed (HTTP 429, DNS failures and refused connections).
 - The `proxy` option also accepts a proxy URL string, for example
   `'http://user:pass@proxy.example.com:3128'`.
 - `isFreeAccountAuthKey()` is exported from the package root.

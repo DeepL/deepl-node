@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
-import { ArgumentError } from './errors';
+import { ArgumentError, DeepLError } from './errors';
 import {
     parseAdminUsageReport,
     parseCustomTagUsageReport,
@@ -204,7 +204,15 @@ export class DeepLAdminClient {
             url,
             options,
         );
-        await checkStatusCode(statusCode, content);
+        try {
+            await checkStatusCode(statusCode, content);
+        } catch (error) {
+            // A 5xx may come after the server processed the request, so only a 429 is safe to repeat.
+            if (options?.retryOnlyUnprocessed && error instanceof DeepLError) {
+                error.shouldRetry = statusCode === 429;
+            }
+            throw error;
+        }
         return content;
     }
 

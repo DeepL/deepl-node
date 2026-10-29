@@ -257,6 +257,25 @@ describe('DeepLAdminClient', () => {
         expect(requests).toBe(1);
     });
 
+    it.each<[string, boolean, (scope: nock.Interceptor) => nock.Scope]>([
+        ['a 500 response', false, (i) => i.reply(500)],
+        ['a connection reset', false, (i) => i.replyWithError({ code: 'ECONNRESET' })],
+        ['a 429 response', true, (i) => i.reply(429)],
+        ['a refused connection', true, (i) => i.replyWithError({ code: 'ECONNREFUSED' })],
+    ])(
+        'sets shouldRetry of a failed developer key creation after %s to %s',
+        async (_, shouldRetry, reply) => {
+            reply(nock(serverUrl).post('/v2/admin/developer-keys'));
+
+            const error = await makeAdminClient({ maxRetries: 0 })
+                .createDeveloperKey()
+                .catch((e) => e);
+
+            expect(error).toBeInstanceOf(deepl.DeepLError);
+            expect(error.shouldRetry).toBe(shouldRetry);
+        },
+    );
+
     it.each([['EAI_AGAIN'], ['ENOTFOUND'], ['ECONNREFUSED']])(
         'retries developer key creation after the unsent-request error %s',
         async (code) => {
