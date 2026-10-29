@@ -747,6 +747,19 @@ A style profile is a named set of linked glossaries, style rule lists and transl
 memories, with an optional description and industry. Every method that takes a style
 profile accepts its ID or a `StyleProfile` object.
 
+`createStyleProfile()` takes `CreateStyleProfileOptions` and `updateStyleProfile()`
+takes `UpdateStyleProfileOptions` (optional; the same options plus `name`):
+
+-   `description`, `industry`: free-text description and industry.
+-   `glossaryIds`, `styleRuleIds`, `translationMemoryIds`: the components to link, each
+    given as its ID or as the object returned by the SDK (`GlossaryInfo` or
+    `MultilingualGlossaryInfo`, `StyleRuleInfo`, `TranslationMemoryInfo`). Glossaries
+    are listed highest priority first.
+-   `glossaryPriorityOrderEnabled`: whether the order of `glossaryIds` sets the
+    priority of the glossaries.
+-   `extraBodyParameters`: extra fields added to the JSON request body, replacing
+    fields with the same key.
+
 Options left `undefined` are not sent. When updating, they are not changed; an empty
 string `''` clears `description` or `industry`, and an ID array replaces the linked
 components of that kind in full, so an empty array `[]` unlinks all of them.
@@ -759,7 +772,7 @@ const minimal = await deeplClient.createStyleProfile('My profile');
 const styleProfile = await deeplClient.createStyleProfile('Legal, German', {
     description: 'Contract wording for the German market.',
     industry: 'Legal',
-    glossaryIds: ['YOUR_GLOSSARY_ID'],
+    glossaryIds: ['YOUR_GLOSSARY_ID', myGlossaryInfo],
     styleRuleIds: ['YOUR_STYLE_ID'],
     translationMemoryIds: ['YOUR_TRANSLATION_MEMORY_ID'],
     glossaryPriorityOrderEnabled: true,

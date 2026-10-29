@@ -127,6 +127,70 @@ describe('DeepLClient.createStyleProfile', () => {
             },
         ]);
     });
+
+    it('sends the IDs of linked objects given instead of IDs', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl).post('/v3/style_profiles', capture(bodies)).reply(201, profileReply);
+        const created = new Date('2026-01-01T00:00:00Z');
+        const glossary: deepl.GlossaryInfo = {
+            glossaryId: 'g-1',
+            name: 'v2',
+            ready: true,
+            sourceLang: 'en',
+            targetLang: 'de',
+            creationTime: created,
+            entryCount: 1,
+        };
+        const multilingualGlossary: deepl.MultilingualGlossaryInfo = {
+            glossaryId: 'g-2',
+            name: 'v3',
+            dictionaries: [],
+            creationTime: created,
+        };
+        const styleRule: deepl.StyleRuleInfo = {
+            styleId: 's-1',
+            name: 'rules',
+            creationTime: created,
+            updatedTime: created,
+            language: 'de',
+            version: 1,
+        };
+        const translationMemory: deepl.TranslationMemoryInfo = {
+            translationMemoryId: 't-1',
+            name: 'tm',
+            sourceLanguage: 'en',
+            targetLanguages: ['de'],
+            segmentCount: 0,
+        };
+        const options: deepl.CreateStyleProfileOptions = {
+            glossaryIds: [multilingualGlossary, 'g-3', glossary],
+            styleRuleIds: [styleRule, 's-2'],
+            translationMemoryIds: ['t-2', translationMemory],
+        };
+
+        await makeDeeplClient().createStyleProfile('Refs', options);
+
+        expect(bodies).toStrictEqual([
+            {
+                name: 'Refs',
+                glossary_ids: ['g-2', 'g-3', 'g-1'],
+                style_rule_ids: ['s-1', 's-2'],
+                translation_memory_ids: ['t-2', 't-1'],
+            },
+        ]);
+    });
+
+    it('merges extraBodyParameters into the JSON body last', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl).post('/v3/style_profiles', capture(bodies)).reply(201, profileReply);
+
+        await makeDeeplClient().createStyleProfile('Legal', {
+            industry: 'Legal',
+            extraBodyParameters: { industry: 'Finance', beta_flag: 'on' },
+        });
+
+        expect(bodies).toStrictEqual([{ name: 'Legal', industry: 'Finance', beta_flag: 'on' }]);
+    });
 });
 
 describe('DeepLClient.getStyleProfile', () => {
@@ -199,12 +263,13 @@ describe('DeepLClient.updateStyleProfile', () => {
             .patch(`/v3/style_profiles/${profileId}`, capture(bodies))
             .reply(200, profileReply);
 
-        await makeDeeplClient().updateStyleProfile(profileId, {
+        const options: deepl.UpdateStyleProfileOptions = {
             name: 'Renamed',
             description: '',
             styleRuleIds: [],
             glossaryPriorityOrderEnabled: false,
-        });
+        };
+        await makeDeeplClient().updateStyleProfile(profileId, options);
 
         expect(bodies).toStrictEqual([
             {
@@ -230,6 +295,30 @@ describe('DeepLClient.updateStyleProfile', () => {
         await client.updateStyleProfile('a/b c', {});
 
         expect(bodies).toStrictEqual([{}, {}]);
+    });
+
+    it('sends an empty object when options are omitted', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl)
+            .patch(`/v3/style_profiles/${profileId}`, capture(bodies))
+            .reply(200, profileReply);
+
+        expect(await makeDeeplClient().updateStyleProfile(profileId)).toStrictEqual(profile);
+        expect(bodies).toStrictEqual([{}]);
+    });
+
+    it('merges extraBodyParameters into the JSON body last', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl)
+            .patch(`/v3/style_profiles/${profileId}`, capture(bodies))
+            .reply(200, profileReply);
+
+        await makeDeeplClient().updateStyleProfile(profile, {
+            name: 'Renamed',
+            extraBodyParameters: { name: 'Override', beta_flag: 'on' },
+        });
+
+        expect(bodies).toStrictEqual([{ name: 'Override', beta_flag: 'on' }]);
     });
 });
 

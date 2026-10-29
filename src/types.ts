@@ -1073,26 +1073,27 @@ export interface StyleProfile {
  * Options for createStyleProfile(). An option left undefined is not sent. An empty string or
  * empty array is sent as given.
  */
-export interface StyleProfileOptions {
+export interface CreateStyleProfileOptions extends BaseRequestOptions {
     /** Free-text description of the style profile. In an update, '' clears it. */
     description?: string;
     /** The industry the style profile is written for. In an update, '' clears it. */
     industry?: string;
     /**
-     * IDs of the glossaries to link, highest priority first. In an update, the array replaces the
-     * linked glossaries in full; [] unlinks all of them.
+     * Glossaries to link, as IDs or GlossaryInfo / MultilingualGlossaryInfo objects, highest
+     * priority first. In an update, the array replaces the linked glossaries in full; [] unlinks
+     * all of them.
      */
-    glossaryIds?: string[];
+    glossaryIds?: (GlossaryId | GlossaryInfo | MultilingualGlossaryInfo)[];
     /**
-     * IDs of the style rule lists to link. In an update, the array replaces the linked style rule
-     * lists in full; [] unlinks all of them.
+     * Style rule lists to link, as IDs or StyleRuleInfo objects. In an update, the array replaces
+     * the linked style rule lists in full; [] unlinks all of them.
      */
-    styleRuleIds?: string[];
+    styleRuleIds?: (StyleId | StyleRuleInfo)[];
     /**
-     * IDs of the translation memories to link. In an update, the array replaces the linked
-     * translation memories in full; [] unlinks all of them.
+     * Translation memories to link, as IDs or TranslationMemoryInfo objects. In an update, the
+     * array replaces the linked translation memories in full; [] unlinks all of them.
      */
-    translationMemoryIds?: string[];
+    translationMemoryIds?: (TranslationMemoryId | TranslationMemoryInfo)[];
     /** Whether the order of glossaryIds sets the priority of the glossaries. */
     glossaryPriorityOrderEnabled?: boolean;
 }
@@ -1100,7 +1101,7 @@ export interface StyleProfileOptions {
 /**
  * Options for updateStyleProfile(). Options left undefined are not changed.
  */
-export interface StyleProfileUpdateOptions extends StyleProfileOptions {
+export interface UpdateStyleProfileOptions extends CreateStyleProfileOptions {
     /** New name of the style profile. */
     name?: string;
 }

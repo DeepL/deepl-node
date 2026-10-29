@@ -4,6 +4,7 @@
 
 import { Translator, checkStatusCode } from './translator';
 import {
+    BaseRequestOptions,
     DeepLClientOptions,
     WriteResult,
     MultilingualGlossaryDictionaryEntries,
@@ -17,8 +18,8 @@ import {
     SpokenTermsList,
     UpdateSpokenTermsOptions,
     StyleProfile,
-    StyleProfileOptions,
-    StyleProfileUpdateOptions,
+    CreateStyleProfileOptions,
+    UpdateStyleProfileOptions,
     StyleRuleInfo,
     StyleId,
     CustomInstruction,
@@ -70,6 +71,7 @@ import {
     extractSpokenTermsId,
     extractStyleProfileId,
     extractTranslationMemoryId,
+    isString,
     logInfo,
     resolveExtraBodyParameters,
     setExtraBodyParameters,
@@ -92,7 +94,7 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
 
 function addExtraBodyParametersToJson(
     body: Record<string, unknown>,
-    options: CreateSpokenTermsOptions | undefined,
+    options: BaseRequestOptions | undefined,
 ): Record<string, unknown> {
     // Added last, so they replace library-set fields with the same key
     const extraBodyParameters = resolveExtraBodyParameters(options);
@@ -100,17 +102,23 @@ function addExtraBodyParametersToJson(
 }
 
 function styleProfileOptionsToJson(
-    options: StyleProfileOptions | undefined,
+    options: CreateStyleProfileOptions | undefined,
 ): Record<string, unknown> {
     const body: Record<string, unknown> = {};
     if (options === undefined) return body;
     // Unset fields are not sent; '' and [] are sent, as they clear or unlink in an update
     if (options.description !== undefined) body.description = options.description;
     if (options.industry !== undefined) body.industry = options.industry;
-    if (options.glossaryIds !== undefined) body.glossary_ids = options.glossaryIds;
-    if (options.styleRuleIds !== undefined) body.style_rule_ids = options.styleRuleIds;
+    if (options.glossaryIds !== undefined) {
+        body.glossary_ids = options.glossaryIds.map(extractGlossaryId);
+    }
+    if (options.styleRuleIds !== undefined) {
+        body.style_rule_ids = options.styleRuleIds.map((styleRule) =>
+            isString(styleRule) ? styleRule : styleRule.styleId,
+        );
+    }
     if (options.translationMemoryIds !== undefined) {
-        body.translation_memory_ids = options.translationMemoryIds;
+        body.translation_memory_ids = options.translationMemoryIds.map(extractTranslationMemoryId);
     }
     if (options.glossaryPriorityOrderEnabled !== undefined) {
         body.glossary_priority_order_enabled = options.glossaryPriorityOrderEnabled;
@@ -1825,13 +1833,19 @@ export class DeepLClient extends Translator {
      *
      * @param name: Name of the style profile.
      * @param options: Description, industry and the IDs of the glossaries, style rule lists and
-     *     translation memories to link, see {@link StyleProfileOptions}.
+     *     translation memories to link, see {@link CreateStyleProfileOptions}.
      * @returns {Promise<StyleProfile>} The created style profile.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async createStyleProfile(name: string, options?: StyleProfileOptions): Promise<StyleProfile> {
-        const body = { name, ...styleProfileOptionsToJson(options) };
+    async createStyleProfile(
+        name: string,
+        options?: CreateStyleProfileOptions,
+    ): Promise<StyleProfile> {
+        const body = addExtraBodyParametersToJson(
+            { name, ...styleProfileOptionsToJson(options) },
+            options,
+        );
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/style_profiles',
@@ -1862,23 +1876,25 @@ export class DeepLClient extends Translator {
     /**
      * Updates a style profile. Options left undefined are not changed. An empty string clears
      * the description or industry; an ID array replaces the linked components of that kind in
-     * full, and an empty array unlinks all of them. With no options set, nothing changes.
+     * full, and an empty array unlinks all of them. With no options set, `{}` is sent and nothing
+     * changes.
      *
      * @param styleProfile: ID of the style profile, or a StyleProfile object.
-     * @param options: The fields to change, see {@link StyleProfileUpdateOptions}.
+     * @param options: The fields to change (optional), see {@link UpdateStyleProfileOptions}.
      * @returns {Promise<StyleProfile>} The updated style profile.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async updateStyleProfile(
         styleProfile: string | StyleProfile,
-        options: StyleProfileUpdateOptions,
+        options?: UpdateStyleProfileOptions,
     ): Promise<StyleProfile> {
         const styleProfileId = extractStyleProfileId(styleProfile);
-        const body = styleProfileOptionsToJson(options);
-        if (options.name !== undefined) {
-            body.name = options.name;
+        const fields = styleProfileOptionsToJson(options);
+        if (options?.name !== undefined) {
+            fields.name = options.name;
         }
+        const body = addExtraBodyParametersToJson(fields, options);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,

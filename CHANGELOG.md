@@ -41,7 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added style profiles (`/v3/style_profiles`) to `DeepLClient`:
   `listStyleProfiles()`, `createStyleProfile()`, `getStyleProfile()`,
   `updateStyleProfile()` and `deleteStyleProfile()`. Added the `StyleProfile`,
-  `StyleProfileOptions` and `StyleProfileUpdateOptions` types.
+  `CreateStyleProfileOptions` and `UpdateStyleProfileOptions` types. The
+  options accept `extraBodyParameters`, and the linked glossaries, style rule
+  lists and translation memories as IDs or objects; the options of
+  `updateStyleProfile()` are optional.
 - Added spoken terms collections (`/v3/spoken-terms`) to `DeepLClient`:
   `createSpokenTerms()`, `listSpokenTerms()`, `getSpokenTerms()`,
   `updateSpokenTerms()`, `getSpokenTermsEntries()`, `replaceSpokenTermsList()`,
