@@ -208,6 +208,16 @@ describe('Translator.translateDocumentGetStatus', () => {
         expect(status.documentId).toBeUndefined();
         expect([status.done(), status.billedCharacters]).toEqual([true, 11]);
     });
+
+    it('keeps an unknown status as a string and treats it as ok', async () => {
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
+
+        const status = await makeDeeplClient().translateDocumentGetStatus(handle);
+        // Compiles only while DocumentStatus.status accepts strings outside DocumentStatusCode.
+        const expected: deepl.DocumentStatus['status'] = 'resyncing';
+
+        expect([status.status, status.ok(), status.done()]).toEqual([expected, true, false]);
+    });
 });
 
 describe('Translator.getDocumentStatus', () => {
@@ -278,7 +288,30 @@ describe('Translator.translateDocumentWaitUntilDone', () => {
     });
 });
 
-describe('Translator.translateDocumentWaitUntilDone timeoutMs', () => {});
+describe('Translator.translateDocumentWaitUntilDone (polling)', () => {
+    it('keeps polling through an unknown status', async () => {
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });
+
+        const status = await makeDeeplClient().translateDocumentWaitUntilDone(handle);
+
+        expect(status.done()).toBe(true);
+    }, 15000);
+
+    it('throws DeepLError when timeoutMs expires', async () => {
+        // A second poll happens only if the first status request took under 1 ms.
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'translating' });
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .optionally()
+            .reply(200, { status: 'translating' });
+
+        const result = makeDeeplClient().translateDocumentWaitUntilDone(handle, { timeoutMs: 1 });
+
+        await expect(result).rejects.toThrow(deepl.DeepLError);
+        await expect(result).rejects.toThrow('Timeout of 1ms exceeded');
+    });
+});
 
 describe('Translator.isDocumentTranslationComplete', () => {
     it('polls until the document is done', async () => {

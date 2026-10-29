@@ -792,10 +792,11 @@ export interface DocumentStatus {
     readonly documentId?: string;
 
     /**
-     * One of the status values defined in DocumentStatusCode.
+     * One of the status values defined in DocumentStatusCode, or another string if the API
+     * returns a status this version of the library does not know.
      * @see DocumentStatusCode
      */
-    readonly status: DocumentStatusCode;
+    readonly status: DocumentStatusCode | (string & Record<never, never>);
 
     /**
      * Estimated time until document translation completes in seconds, otherwise undefined if
@@ -815,8 +816,8 @@ export interface DocumentStatus {
     readonly errorMessage?: string;
 
     /**
-     * True if no error has occurred, otherwise false. Note that while the document translation is
-     * in progress, this returns true.
+     * True if no error has occurred (status is not `'error'`), otherwise false. Note that while
+     * the document translation is in progress, this returns true.
      */
     ok(): boolean;
 

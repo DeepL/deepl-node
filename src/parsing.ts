@@ -288,14 +288,14 @@ class UsageImpl implements Usage {
 }
 
 class DocumentStatusImpl implements DocumentStatus {
-    public status: DocumentStatusCode;
+    public status: DocumentStatusCode | (string & Record<never, never>);
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
     public documentId?: string;
 
     constructor(
-        status: DocumentStatusCode,
+        status: DocumentStatusCode | (string & Record<never, never>),
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,
@@ -309,7 +309,8 @@ class DocumentStatusImpl implements DocumentStatus {
     }
 
     ok(): boolean {
-        return this.status === 'queued' || this.status === 'translating' || this.status === 'done';
+        // Unknown statuses count as not failed, so polling continues through them.
+        return this.status !== 'error';
     }
 
     done(): boolean {
@@ -540,7 +541,7 @@ export function parseDocumentStatus(json: string): DocumentStatus {
     try {
         const obj = JSON.parse(json) as DocumentStatusApiResponse;
         return new DocumentStatusImpl(
-            obj.status as DocumentStatusCode,
+            obj.status,
             obj.seconds_remaining,
             obj.billed_characters,
             obj.error_message,

@@ -106,6 +106,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `updateStyleRuleCustomInstruction(styleId, instructionId, label, prompt, sourceLanguage?)`.
 
 ### Changed
+- `DocumentStatus.status` is typed as `DocumentStatusCode | string`, so statuses
+  the API adds later are typed correctly. At runtime the value was already
+  the string the API returned.
 - `Formality`, `SentenceSplittingMode`, `TagHandlingMode`, `TagHandlingVersion`
   and `ModelType` accept any string in addition to their listed values, so values
   the API adds later can be passed without a type cast.
@@ -180,6 +183,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `DocumentStatus.ok()` is now true for every status except `'error'`. Before,
+  a status the library did not know made `translateDocument()` and
+  `translateDocumentWaitUntilDone()` stop polling and reject with
+  `unknown error`.
 - `extraBodyParameters` (and `extraRequestParameters`) of `translateText()` and
   `uploadDocument()`/`translateDocument()` now replace every parameter of the same
   name set by the library. Before, parameters appended after the languages and
