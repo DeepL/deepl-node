@@ -12,15 +12,20 @@ import {
 } from './parsing';
 import { checkStatusCode } from './translator';
 import {
-    AdminUsageAnalyticsOptions,
+    AdminUsageGroupBy,
     AdminUsageReport,
-    CustomTagUsageAnalyticsOptions,
+    BaseRequestOptions,
+    CreateDeveloperKeyOptions,
+    CustomTagUsageAggregateBy,
     CustomTagUsageReport,
+    DeactivateDeveloperKeyOptions,
     DeepLAdminClientOptions,
     DeveloperKey,
     DeveloperKeyUsageLimitsUpdate,
+    RenameDeveloperKeyOptions,
+    SetDeveloperKeyUsageLimitsOptions,
 } from './types';
-import { isString } from './utils';
+import { isString, resolveExtraBodyParameters } from './utils';
 
 import { URLSearchParams } from 'url';
 
@@ -62,18 +67,19 @@ export class DeepLAdminClient {
      *     as a Date. For a Date, the UTC date of that moment is sent, so local midnight in UTC+2
      *     (2026-10-20T00:00+02:00) is sent as 2026-10-19.
      * @param endDate End date of the report, in the same format as startDate.
-     * @param options Optional grouping of the usage by key or by key and day.
+     * @param groupBy Optional grouping of the usage by key ('key') or by key and day
+     *     ('key_and_day'); not sent if omitted.
      * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
      * @return Fulfills with an AdminUsageReport.
      */
     async getUsageAnalytics(
         startDate: Date | string,
         endDate: Date | string,
-        options?: AdminUsageAnalyticsOptions,
+        groupBy?: AdminUsageGroupBy,
     ): Promise<AdminUsageReport> {
         const data = DeepLAdminClient.dateRangeParams(startDate, endDate);
-        if (options?.groupBy !== undefined) {
-            data.append('group_by', options.groupBy);
+        if (groupBy !== undefined) {
+            data.append('group_by', groupBy);
         }
         const content = await this.request('GET', '/v2/admin/analytics', { data });
         return parseAdminUsageReport(content);
@@ -81,7 +87,7 @@ export class DeepLAdminClient {
 
     /**
      * Retrieves usage statistics per custom tag within the given date range. Results are
-     * paginated: pass the `nextPage` value of a report as `options.page` to retrieve the following
+     * paginated: pass the `nextPage` value of a report as `page` to retrieve the following
      * page. Dates are UTC calendar days and both the start and the end day are included. The API
      * requires endDate to be after startDate (a report covers at least two days) and at most 366
      * days after it.
@@ -89,21 +95,24 @@ export class DeepLAdminClient {
      *     as a Date. For a Date, the UTC date of that moment is sent, so local midnight in UTC+2
      *     (2026-10-20T00:00+02:00) is sent as 2026-10-19.
      * @param endDate End date of the report, in the same format as startDate.
-     * @param options Optional aggregation and page number.
+     * @param aggregateBy Optional aggregation over the whole period ('period', the API default) or
+     *     by day ('day'); not sent if omitted.
+     * @param page Optional page number, from the `nextPage` value of a previous report.
      * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
      * @return Fulfills with a CustomTagUsageReport.
      */
     async getCustomTagUsageAnalytics(
         startDate: Date | string,
         endDate: Date | string,
-        options?: CustomTagUsageAnalyticsOptions,
+        aggregateBy?: CustomTagUsageAggregateBy,
+        page?: number,
     ): Promise<CustomTagUsageReport> {
         const data = DeepLAdminClient.dateRangeParams(startDate, endDate);
-        if (options?.aggregateBy !== undefined) {
-            data.append('aggregate_by', options.aggregateBy);
+        if (aggregateBy !== undefined) {
+            data.append('aggregate_by', aggregateBy);
         }
-        if (options?.page !== undefined) {
-            data.append('page', String(options.page));
+        if (page !== undefined) {
+            data.append('page', String(page));
         }
         const content = await this.request('GET', '/v2/admin/analytics/custom-tags', { data });
         return parseCustomTagUsageReport(content);
@@ -111,16 +120,17 @@ export class DeepLAdminClient {
 
     /**
      * Creates a developer key in the organization.
-     * @param label Optional label for the new key. The API uses "DeepL API Key" if omitted.
+     * @param options Optional label and extra body parameters, see
+     *     {@link CreateDeveloperKeyOptions}. The API uses "DeepL API Key" if no label is given.
      * @return Fulfills with the created DeveloperKey.
      */
-    async createDeveloperKey(label?: string): Promise<DeveloperKey> {
+    async createDeveloperKey(options?: CreateDeveloperKeyOptions): Promise<DeveloperKey> {
         const jsonBody: Record<string, unknown> = {};
-        if (label !== undefined) {
-            jsonBody.label = label;
+        if (options?.label !== undefined) {
+            jsonBody.label = options.label;
         }
         const content = await this.request('POST', '/v2/admin/developer-keys', {
-            jsonBody,
+            jsonBody: DeepLAdminClient.withExtraBodyParameters(jsonBody, options),
             retryOnlyUnprocessed: true,
         });
         return parseDeveloperKey(content);
@@ -130,7 +140,7 @@ export class DeepLAdminClient {
      * Retrieves all developer keys of the organization, including deactivated ones.
      * @return Fulfills with an array of DeveloperKey objects.
      */
-    async getDeveloperKeys(): Promise<DeveloperKey[]> {
+    async listDeveloperKeys(): Promise<DeveloperKey[]> {
         const content = await this.request('GET', '/v2/admin/developer-keys');
         return parseDeveloperKeyList(content);
     }
@@ -138,21 +148,31 @@ export class DeepLAdminClient {
     /**
      * Deactivates a developer key. Deactivation is permanent.
      * @param key Key ID or DeveloperKey to deactivate.
+     * @param options Additional options, see {@link DeactivateDeveloperKeyOptions}.
      * @return Fulfills with the deactivated DeveloperKey.
      */
-    async deactivateDeveloperKey(key: string | DeveloperKey): Promise<DeveloperKey> {
-        return this.putDeveloperKey('deactivate', { key_id: DeepLAdminClient.keyId(key) });
+    async deactivateDeveloperKey(
+        key: string | DeveloperKey,
+        options?: DeactivateDeveloperKeyOptions,
+    ): Promise<DeveloperKey> {
+        const keyId = DeepLAdminClient.keyId(key);
+        return this.putDeveloperKey('deactivate', { key_id: keyId }, options);
     }
 
     /**
      * Changes the label of a developer key.
      * @param key Key ID or DeveloperKey to rename.
      * @param label New label for the key.
+     * @param options Additional options, see {@link RenameDeveloperKeyOptions}.
      * @return Fulfills with the renamed DeveloperKey.
      */
-    async renameDeveloperKey(key: string | DeveloperKey, label: string): Promise<DeveloperKey> {
+    async renameDeveloperKey(
+        key: string | DeveloperKey,
+        label: string,
+        options?: RenameDeveloperKeyOptions,
+    ): Promise<DeveloperKey> {
         const keyId = DeepLAdminClient.keyId(key);
-        return this.putDeveloperKey('label', { key_id: keyId, label });
+        return this.putDeveloperKey('label', { key_id: keyId, label }, options);
     }
 
     /**
@@ -160,11 +180,13 @@ export class DeepLAdminClient {
      * limits keep their current value. A null limit means unlimited and 0 blocks that usage.
      * @param key Key ID or DeveloperKey to modify.
      * @param limits Usage limits to change.
+     * @param options Additional options, see {@link SetDeveloperKeyUsageLimitsOptions}.
      * @return Fulfills with the modified DeveloperKey.
      */
     async setDeveloperKeyUsageLimits(
         key: string | DeveloperKey,
         limits: DeveloperKeyUsageLimitsUpdate,
+        options?: SetDeveloperKeyUsageLimitsOptions,
     ): Promise<DeveloperKey> {
         const keyId = DeepLAdminClient.keyId(key);
         const limitsBody: Record<string, unknown> = {};
@@ -177,17 +199,29 @@ export class DeepLAdminClient {
         if (limits?.speechToSpeechMilliseconds !== undefined) {
             limitsBody.speech_to_speech_milliseconds = limits.speechToSpeechMilliseconds;
         }
-        return this.putDeveloperKey('limits', { key_id: keyId, ...limitsBody });
+        return this.putDeveloperKey('limits', { key_id: keyId, ...limitsBody }, options);
     }
 
     private async putDeveloperKey(
         action: string,
         jsonBody: Record<string, unknown>,
+        options: BaseRequestOptions | undefined,
     ): Promise<DeveloperKey> {
         const content = await this.request('PUT', `/v2/admin/developer-keys/${action}`, {
-            jsonBody,
+            jsonBody: DeepLAdminClient.withExtraBodyParameters(jsonBody, options),
         });
         return parseDeveloperKey(content);
+    }
+
+    private static withExtraBodyParameters(
+        jsonBody: Record<string, unknown>,
+        options: BaseRequestOptions | undefined,
+    ): Record<string, unknown> {
+        // Added last, so they replace library-set fields with the same key
+        const extraBodyParameters = resolveExtraBodyParameters(options);
+        return extraBodyParameters === undefined
+            ? jsonBody
+            : { ...jsonBody, ...extraBodyParameters };
     }
 
     private async request(

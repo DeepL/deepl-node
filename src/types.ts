@@ -1457,33 +1457,40 @@ export interface DeepLAdminClientOptions extends HttpClientOptions {
  * Grouping of the `DeepLAdminClient.getUsageAnalytics()` report:
  * - 'key': usage per API key, see {@link AdminUsageReport.keyUsages}.
  * - 'key_and_day': usage per API key and day, see {@link AdminUsageReport.keyAndDayUsages}.
+ * Other strings are sent unchanged.
  */
-export type AdminUsageGroupBy = 'key' | 'key_and_day';
-
-/**
- * Options for `DeepLAdminClient.getUsageAnalytics()`.
- */
-export interface AdminUsageAnalyticsOptions {
-    /** Group the usage by key or by key and day. */
-    groupBy?: AdminUsageGroupBy;
-}
+export type AdminUsageGroupBy = 'key' | 'key_and_day' | (string & Record<never, never>);
 
 /**
  * Aggregation of the `DeepLAdminClient.getCustomTagUsageAnalytics()` report:
  * - 'period': usage over the entire date range.
  * - 'day': usage per day.
+ * Other strings are sent unchanged.
  */
-export type CustomTagUsageAggregateBy = 'period' | 'day';
+export type CustomTagUsageAggregateBy = 'period' | 'day' | (string & Record<never, never>);
 
 /**
- * Options for `DeepLAdminClient.getCustomTagUsageAnalytics()`.
+ * Options for `DeepLAdminClient.createDeveloperKey()`.
  */
-export interface CustomTagUsageAnalyticsOptions {
-    /** Aggregate the usage over the whole period (the default) or by day. */
-    aggregateBy?: CustomTagUsageAggregateBy;
-    /** Page number to retrieve, from the `nextPage` value of a previous report. */
-    page?: number;
+export interface CreateDeveloperKeyOptions extends BaseRequestOptions {
+    /** Label for the new key. The API uses "DeepL API Key" if omitted. */
+    label?: string;
 }
+
+/**
+ * Options for `DeepLAdminClient.deactivateDeveloperKey()`.
+ */
+export type DeactivateDeveloperKeyOptions = BaseRequestOptions;
+
+/**
+ * Options for `DeepLAdminClient.renameDeveloperKey()`.
+ */
+export type RenameDeveloperKeyOptions = BaseRequestOptions;
+
+/**
+ * Options for `DeepLAdminClient.setDeveloperKeyUsageLimits()`.
+ */
+export type SetDeveloperKeyUsageLimitsOptions = BaseRequestOptions;
 
 /**
  * Usage limits of a developer key. A null limit means unlimited.

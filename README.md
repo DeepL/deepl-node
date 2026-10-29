@@ -1083,10 +1083,10 @@ const adminClient = new deepl.DeepLAdminClient('YOUR_ADMIN_KEY');
 #### Managing developer keys
 
 ```javascript
-let key = await adminClient.createDeveloperKey('Staging Team Key');
+let key = await adminClient.createDeveloperKey({ label: 'Staging Team Key' });
 console.log(`Created ${key.label} (${key.keyId})`);
 
-for (const k of await adminClient.getDeveloperKeys()) {
+for (const k of await adminClient.listDeveloperKeys()) {
     console.log(`${k.label}: deactivated=${k.isDeactivated}`);
 }
 
@@ -1106,6 +1106,12 @@ await adminClient.deactivateDeveloperKey(key);
 `renameDeveloperKey()`, `setDeveloperKeyUsageLimits()` and
 `deactivateDeveloperKey()` accept either a key ID or a `DeveloperKey` object.
 These three and `createDeveloperKey()` return the resulting `DeveloperKey`.
+`createDeveloperKey()` takes optional `CreateDeveloperKeyOptions`: `label`, the
+label of the new key (the API uses "DeepL API Key" if it is omitted). All four
+take a trailing options argument (`CreateDeveloperKeyOptions`,
+`DeactivateDeveloperKeyOptions`, `RenameDeveloperKeyOptions`,
+`SetDeveloperKeyUsageLimitsOptions`) that accepts `extraBodyParameters`, which
+are added last to the JSON request body.
 
 `setDeveloperKeyUsageLimits()` changes only the limits you pass:
 `characters`, `speechToTextMilliseconds` and `speechToSpeechMilliseconds`.
@@ -1122,17 +1128,16 @@ Dates can be `'YYYY-MM-DD'` strings or `Date` objects. For a `Date`, the library
 sends the UTC date of that moment: local midnight in UTC+2
 (`2026-10-20T00:00+02:00`) is sent as `2026-10-19`. Use a string to send an
 exact date. Invalid dates throw an `ArgumentError` before any request is sent.
-Use the optional `groupBy` option
-to break the usage down by key (`'key'`, see `keyUsages`) or by key and day
-(`'key_and_day'`, see `keyAndDayUsages`). The `groupBy` of the returned report
+Use the optional third parameter
+`groupBy` to break the usage down by key (`'key'`, see `keyUsages`) or by key
+and day (`'key_and_day'`, see `keyAndDayUsages`); other strings are sent
+unchanged. The `groupBy` of the returned report
 is the raw string the API reports, for example `'keyAndDay'`. Usage breakdowns
 contain the characters per product plus `speechToTextMinutes` and
 `speechToSpeechMinutes`.
 
 ```javascript
-const report = await adminClient.getUsageAnalytics('2026-06-01', '2026-07-01', {
-    groupBy: 'key',
-});
+const report = await adminClient.getUsageAnalytics('2026-06-01', '2026-07-01', 'key');
 console.log(`Total characters: ${report.totalUsage.totalCharacters}`);
 for (const keyUsage of report.keyUsages) {
     console.log(`${keyUsage.apiKeyLabel}: ${keyUsage.usage.totalCharacters}`);
@@ -1140,17 +1145,21 @@ for (const keyUsage of report.keyUsages) {
 ```
 
 `getCustomTagUsageAnalytics()` returns a `CustomTagUsageReport` with the usage
-per custom tag. Use the optional `aggregateBy` option to choose between the
-whole period (`'period'`, the default) and per-day usage (`'day'`). The results
-are paginated: pass the `nextPage` value of a report as the `page` option to get
-the next page.
+per custom tag. Use the optional third parameter `aggregateBy` to choose
+between the whole period (`'period'`, the default) and per-day usage (`'day'`);
+other strings are sent unchanged. The results are paginated: pass the
+`nextPage` value of a report as the optional fourth parameter `page` to get the
+next page.
 
 ```javascript
 let page;
 do {
-    const report = await adminClient.getCustomTagUsageAnalytics('2026-06-01', '2026-07-01', {
+    const report = await adminClient.getCustomTagUsageAnalytics(
+        '2026-06-01',
+        '2026-07-01',
+        undefined,
         page,
-    });
+    );
     for (const tagUsage of report.usage) {
         console.log(`${tagUsage.customTag}: ${tagUsage.breakdown.totalCharacters}`);
     }

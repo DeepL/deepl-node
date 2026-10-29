@@ -12,9 +12,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('DeepLAdminClient', () => {
     it('sends GET /v2/admin/analytics and parses the report', async () => {
-        const report = await makeAdminClient().getUsageAnalytics(weekAgo, today, {
-            groupBy: 'key_and_day',
-        });
+        const report = await makeAdminClient().getUsageAnalytics(weekAgo, today, 'key_and_day');
 
         expect(typeof report.totalUsage.totalCharacters).toBe('number');
         expect(typeof report.totalUsage.speechToSpeechMinutes).toBe('number');
@@ -26,9 +24,7 @@ describe('DeepLAdminClient', () => {
     });
 
     it('sends GET /v2/admin/analytics/custom-tags and parses the report', async () => {
-        const report = await makeAdminClient().getCustomTagUsageAnalytics(weekAgo, today, {
-            aggregateBy: 'day',
-        });
+        const report = await makeAdminClient().getCustomTagUsageAnalytics(weekAgo, today, 'day');
 
         expect(report.startDate).toBeDefined();
         expect(report.endDate).toBeDefined();
@@ -41,7 +37,7 @@ describe('DeepLAdminClient', () => {
         async () => {
             const client = makeAdminClient();
 
-            const key = await client.createDeveloperKey(getUniqueName('developer-key'));
+            const key = await client.createDeveloperKey({ label: getUniqueName('developer-key') });
             let deactivated;
             let bodyError;
             try {
@@ -53,7 +49,7 @@ describe('DeepLAdminClient', () => {
                     if (attempt > 0) {
                         await sleep(1000);
                     }
-                    const listed = await client.getDeveloperKeys();
+                    const listed = await client.listDeveloperKeys();
                     visible = listed.some((k) => k.keyId === key.keyId);
                 }
                 if (!visible) {
@@ -68,8 +64,8 @@ describe('DeepLAdminClient', () => {
                     characters: 5000,
                     speechToTextMilliseconds: null,
                 });
-                expect(limited.usageLimits.characters).toBe(5000);
-                expect(limited.usageLimits.speechToTextMilliseconds).toBeNull();
+                expect(limited.usageLimits?.characters).toBe(5000);
+                expect(limited.usageLimits?.speechToTextMilliseconds).toBeNull();
 
                 deactivated = await client.deactivateDeveloperKey(key);
                 expect(deactivated.isDeactivated).toBe(true);

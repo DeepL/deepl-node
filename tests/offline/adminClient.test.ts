@@ -32,7 +32,7 @@ describe('DeepLAdminClient', () => {
 
         const client = makeAdminClient({ serverUrl: 'http://localhost:3000' });
 
-        await expect(client.getDeveloperKeys()).resolves.toEqual([]);
+        await expect(client.listDeveloperKeys()).resolves.toEqual([]);
     });
 
     it('gets usage analytics', async () => {
@@ -73,7 +73,7 @@ describe('DeepLAdminClient', () => {
         const report = await client.getUsageAnalytics(
             new Date(Date.UTC(2025, 8, 29)),
             '2025-10-01',
-            { groupBy: 'key_and_day' },
+            'key_and_day',
         );
 
         expect(report.totalUsage.totalCharacters).toBe(9619);
@@ -146,7 +146,8 @@ describe('DeepLAdminClient', () => {
         const report = await client.getCustomTagUsageAnalytics(
             new Date('2026-05-03T12:30:00Z'),
             '2026-05-15',
-            { aggregateBy: 'day', page: 2 },
+            'day',
+            2,
         );
 
         expect(report.aggregateBy).toBe('day');
@@ -163,7 +164,7 @@ describe('DeepLAdminClient', () => {
             .reply(200, DEVELOPER_KEY_JSON);
         const client = makeAdminClient();
 
-        const key = await client.createDeveloperKey('developer key prod');
+        const key = await client.createDeveloperKey({ label: 'developer key prod' });
 
         expect(key).toEqual({
             keyId: KEY_ID,
@@ -190,7 +191,7 @@ describe('DeepLAdminClient', () => {
             .reply(200, [DEVELOPER_KEY_JSON, deactivated]);
         const client = makeAdminClient();
 
-        const keys = await client.getDeveloperKeys();
+        const keys = await client.listDeveloperKeys();
 
         expect(keys.map((k) => k.isDeactivated)).toEqual([false, true]);
         expect(keys[1].deactivatedTime).toEqual(new Date('2025-07-09T08:15:29.362Z'));
@@ -231,6 +232,75 @@ describe('DeepLAdminClient', () => {
         });
 
         expect(key.usageLimits.speechToSpeechMilliseconds).toBe(60000);
+    });
+
+    it('sends a group_by and aggregate_by value outside the known set unchanged', async () => {
+        const scope = nock(serverUrl)
+            .get('/v2/admin/analytics')
+            .query({ start_date: '2025-09-29', end_date: '2025-10-01', group_by: 'key_and_week' })
+            .reply(200, { usage_report: {} })
+            .get('/v2/admin/analytics/custom-tags')
+            .query({ start_date: '2025-09-29', end_date: '2025-10-01', aggregate_by: 'week' })
+            .reply(200, { custom_tag_usage_report: {} });
+        const client = makeAdminClient();
+
+        await client.getUsageAnalytics('2025-09-29', '2025-10-01', 'key_and_week');
+        await client.getCustomTagUsageAnalytics('2025-09-29', '2025-10-01', 'week');
+
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends the page without an aggregation', async () => {
+        const scope = nock(serverUrl)
+            .get('/v2/admin/analytics/custom-tags')
+            .query({ start_date: '2025-09-29', end_date: '2025-10-01', page: '3' })
+            .reply(200, { custom_tag_usage_report: {} });
+
+        await makeAdminClient().getCustomTagUsageAnalytics(
+            '2025-09-29',
+            '2025-10-01',
+            undefined,
+            3,
+        );
+
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('adds extraBodyParameters last to the developer key request bodies', async () => {
+        const scope = nock(serverUrl)
+            .post('/v2/admin/developer-keys', { label: 'override', beta: 'true' })
+            .reply(200, DEVELOPER_KEY_JSON)
+            .put('/v2/admin/developer-keys/deactivate', { key_id: KEY_ID, beta: 'x' })
+            .reply(200, DEVELOPER_KEY_JSON)
+            .put('/v2/admin/developer-keys/label', { key_id: KEY_ID, label: 'renamed', n: '1' })
+            .reply(200, DEVELOPER_KEY_JSON)
+            .put('/v2/admin/developer-keys/limits', { key_id: 'other', characters: 0 })
+            .reply(200, DEVELOPER_KEY_JSON);
+        const client = makeAdminClient();
+
+        await client.createDeveloperKey({
+            label: 'mine',
+            extraBodyParameters: { label: 'override', beta: 'true' },
+        });
+        await client.deactivateDeveloperKey(KEY_ID, { extraBodyParameters: { beta: 'x' } });
+        await client.renameDeveloperKey(KEY_ID, 'renamed', { extraBodyParameters: { n: '1' } });
+        await client.setDeveloperKeyUsageLimits(
+            KEY_ID,
+            { characters: 0 },
+            { extraBodyParameters: { key_id: 'other' } },
+        );
+
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends an empty body to create a developer key without options', async () => {
+        const scope = nock(serverUrl)
+            .post('/v2/admin/developer-keys', (body) => Object.keys(body).length === 0)
+            .reply(200, DEVELOPER_KEY_JSON);
+
+        await makeAdminClient().createDeveloperKey();
+
+        expect(scope.isDone()).toBe(true);
     });
 
     it.each<[Date | string, Date | string]>([
@@ -303,7 +373,7 @@ describe('DeepLAdminClient', () => {
             .get('/v2/admin/developer-keys')
             .reply(200, []);
 
-        await makeAdminClient({ adminKey: ' k:adm\n' }).getDeveloperKeys();
+        await makeAdminClient({ adminKey: ' k:adm\n' }).listDeveloperKeys();
     });
 
     it('retries rate-limited developer key creation', async () => {
@@ -341,7 +411,7 @@ describe('DeepLAdminClient', () => {
                 { ...DEVELOPER_KEY_JSON, usage_limits: { characters: 'many' } },
             ]);
 
-        const keys = await makeAdminClient().getDeveloperKeys();
+        const keys = await makeAdminClient().listDeveloperKeys();
 
         expect(keys).toHaveLength(2);
         expect(keys[0].creationTime).toBeUndefined();
@@ -366,7 +436,7 @@ describe('DeepLAdminClient', () => {
     it('throws a DeepLError if the developer key list is not an array', async () => {
         nock(serverUrl).get('/v2/admin/developer-keys').reply(200, { keys: [] });
 
-        await expect(makeAdminClient().getDeveloperKeys()).rejects.toThrow(deepl.DeepLError);
+        await expect(makeAdminClient().listDeveloperKeys()).rejects.toThrow(deepl.DeepLError);
     });
 
     it('treats only JSON true as deactivated', async () => {
@@ -378,7 +448,7 @@ describe('DeepLAdminClient', () => {
                 { ...DEVELOPER_KEY_JSON, is_deactivated: true },
             ]);
 
-        const keys = await makeAdminClient().getDeveloperKeys();
+        const keys = await makeAdminClient().listDeveloperKeys();
 
         expect(keys.map((k) => k.isDeactivated)).toEqual([false, false, true]);
     });
@@ -425,9 +495,7 @@ describe('DeepLAdminClient', () => {
             });
         const client = makeAdminClient();
 
-        const report = await client.getUsageAnalytics('2025-01-01', '2025-02-01', {
-            groupBy: 'key_and_day',
-        });
+        const report = await client.getUsageAnalytics('2025-01-01', '2025-02-01', 'key_and_day');
         const tags = await client.getCustomTagUsageAnalytics('2025-01-01', '2025-02-01');
 
         expect(report.totalUsage.totalCharacters).toBe(0);
@@ -449,6 +517,6 @@ describe('DeepLAdminClient', () => {
         nock(serverUrl).get('/v2/admin/developer-keys').reply(403, { message: 'Forbidden' });
         const client = makeAdminClient();
 
-        await expect(client.getDeveloperKeys()).rejects.toBeInstanceOf(deepl.AuthorizationError);
+        await expect(client.listDeveloperKeys()).rejects.toBeInstanceOf(deepl.AuthorizationError);
     });
 });

@@ -62,14 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document usage.
 - Added the `DeepLAdminClient` class for the Admin API. It must be created with
   an admin API key and supports managing developer keys
-  (`createDeveloperKey()`, `getDeveloperKeys()`, `deactivateDeveloperKey()`,
+  (`createDeveloperKey()`, `listDeveloperKeys()`, `deactivateDeveloperKey()`,
   `renameDeveloperKey()`, `setDeveloperKeyUsageLimits()`) and retrieving usage
-  analytics (`getUsageAnalytics()`, `getCustomTagUsageAnalytics()`). Added the
-  `HttpClientOptions`, `DeepLAdminClientOptions`, `DeveloperKey`,
+  analytics (`getUsageAnalytics(startDate, endDate, groupBy?)`,
+  `getCustomTagUsageAnalytics(startDate, endDate, aggregateBy?, page?)`). Added
+  the `HttpClientOptions`, `DeepLAdminClientOptions`, `DeveloperKey`,
   `DeveloperKeyUsageLimits`, `DeveloperKeyUsageLimitsUpdate`, `AdminUsageReport`,
   `AdminUsageBreakdown`, `KeyUsage`, `AdminUsageGroupBy`, `CustomTagUsageReport`,
-  `CustomTagUsage`, `CustomTagUsageBreakdown`, `CustomTagUsageAggregateBy`,
-  `CustomTagUsageAnalyticsOptions` and `AdminUsageAnalyticsOptions` types.
+  `CustomTagUsage`, `CustomTagUsageBreakdown` and `CustomTagUsageAggregateBy`
+  types; `AdminUsageGroupBy` and `CustomTagUsageAggregateBy` also accept any
+  other string, which is sent unchanged. The developer key methods take a
+  trailing options argument (`CreateDeveloperKeyOptions` with `label`,
+  `DeactivateDeveloperKeyOptions`, `RenameDeveloperKeyOptions`,
+  `SetDeveloperKeyUsageLimitsOptions`) that accepts `extraBodyParameters`.
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
