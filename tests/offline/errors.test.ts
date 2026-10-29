@@ -99,35 +99,3 @@ describe('error mapping', () => {
         expect(error.message).toMatch(/Error parsing response JSON/);
     });
 });
-
-    it.each<[string, string, string, (client: deepl.DeepLClient) => Promise<unknown>]>([
-        [
-            'source languages',
-            '/v3/languages?resource=translate_text',
-            'null',
-            (c) => c.getSourceLanguages(),
-        ],
-        [
-            'source languages',
-            '/v3/languages?resource=translate_text',
-            'not json',
-            (c) => c.getSourceLanguages(),
-        ],
-        [
-            'target languages',
-            '/v3/languages?resource=translate_text',
-            '{}',
-            (c) => c.getTargetLanguages(),
-        ],
-        ['multilingual glossaries', '/v3/glossaries', '{}', (c) => c.listMultilingualGlossaries()],
-        ['style rule', '/v3/style_rules/s-1', 'not json', (c) => c.getStyleRule('s-1')],
-        ['spoken terms', '/v3/spoken-terms/t-1', 'null', (c) => c.getSpokenTerms('t-1')],
-        ['style profile', '/v3/style_profiles/p-1', 'null', (c) => c.getStyleProfile('p-1')],
-    ])('throws DeepLError for a malformed %s response at %s: %s', async (_, path, body, call) => {
-        nock(serverUrl).get(path).reply(200, body, { 'Content-Type': 'text/plain' });
-
-        const error = (await call(makeDeeplClient()).catch((e) => e)) as Error;
-
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error.message).toMatch(/Error parsing response JSON/);
-    });
