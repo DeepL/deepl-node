@@ -1091,8 +1091,8 @@ export function parseLanguageResourceList(json: string): LanguageResource[] {
             for (const feature of resource.features ?? []) {
                 features[feature.name] = {
                     name: feature.name,
-                    needsSourceSupport: feature.needs_source_support,
-                    needsTargetSupport: feature.needs_target_support,
+                    needsSourceSupport: feature.needs_source_support === true,
+                    needsTargetSupport: feature.needs_target_support === true,
                 };
             }
             return { name: resource.name, features };

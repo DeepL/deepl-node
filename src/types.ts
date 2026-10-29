@@ -1363,10 +1363,10 @@ export interface TranslationMemoryJobApiResponse {
 export interface ResourceFeature {
     /** Feature identifier, matching the feature keys reported per language, e.g. 'glossary'. */
     readonly name: string;
-    /** If true, the source language must support this feature. Undefined means false. */
-    readonly needsSourceSupport?: boolean;
-    /** If true, the target language must support this feature. Undefined means false. */
-    readonly needsTargetSupport?: boolean;
+    /** If true, the source language must support this feature. False when the API omits it. */
+    readonly needsSourceSupport: boolean;
+    /** If true, the target language must support this feature. False when the API omits it. */
+    readonly needsTargetSupport: boolean;
 }
 
 /**
@@ -1396,6 +1396,7 @@ export interface LanguageResourceApiResponse {
 
 /**
  * DeepL API resource that languages can be queried for with `DeepLClient.getLanguagesForResource()`.
+ * Any other string is accepted and sent unchanged, e.g. a resource the API adds later.
  */
 export type LanguageResourceName =
     | 'translate_text'
@@ -1404,14 +1405,16 @@ export type LanguageResourceName =
     | 'voice'
     | 'write'
     | 'style_rules'
-    | 'translation_memory';
+    | 'translation_memory'
+    | (string & Record<never, never>);
 
 /**
  * Additional languages and features to include in the `DeepLClient.getLanguagesForResource()` response:
  * - 'beta': languages and features in beta, in addition to stable ones.
  * - 'external': features that rely on third-party service providers.
+ * Any other string is accepted and sent unchanged.
  */
-export type LanguageInclude = 'beta' | 'external';
+export type LanguageInclude = 'beta' | 'external' | (string & Record<never, never>);
 
 /**
  * Options for `DeepLClient.getLanguagesForResource()`.

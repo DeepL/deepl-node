@@ -118,6 +118,17 @@ describe('DeepLClient.getLanguagesForResource', () => {
         await makeDeeplClient().getLanguagesForResource('write');
     });
 
+    it('sends a resource and include values outside the listed ones unchanged', async () => {
+        nock(serverUrl)
+            .get('/v3/languages')
+            .query({ resource: 'new_resource', include: 'new_include' })
+            .reply(200, []);
+
+        await makeDeeplClient().getLanguagesForResource('new_resource', {
+            include: ['new_include'],
+        });
+    });
+
     it('throws ArgumentError when the resource is empty', async () => {
         await expect(
             makeDeeplClient().getLanguagesForResource('' as deepl.LanguageResourceName),
@@ -156,7 +167,7 @@ describe('DeepLClient.getLanguageResources', () => {
                     },
                     formality: {
                         name: 'formality',
-                        needsSourceSupport: undefined,
+                        needsSourceSupport: false,
                         needsTargetSupport: true,
                     },
                 },

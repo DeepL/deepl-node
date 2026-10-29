@@ -1063,6 +1063,33 @@ for (let i = 0; i < glossaryLanguages.length; i++) {
 }
 ```
 
+`DeepLClient` can also query the languages of any DeepL API resource with
+`getLanguagesForResource(resource, options?)`, which returns an array of
+`LanguageSupport` objects with `code` (as returned by the API), `name`,
+`status`, `usableAsSource`, `usableAsTarget` and `features`. The `resource` is
+a `LanguageResourceName` such as `'translate_text'` or `'glossary'`; the
+optional `include` option takes `LanguageInclude` values (`'beta'`,
+`'external'`). Both also accept any other string, which is sent unchanged.
+
+`getLanguageResources()` returns the resources as `LanguageResource` objects
+with `name` and `features`, keyed by feature name. Each `ResourceFeature` has
+`needsSourceSupport` and `needsTargetSupport`, which are `false` when the API
+omits them.
+
+```javascript
+const languages = await deeplClient.getLanguagesForResource('glossary', { include: ['beta'] });
+for (const lang of languages) {
+    console.log(`${lang.name} (${lang.code}): source ${lang.usableAsSource}`);
+}
+
+const resources = await deeplClient.getLanguageResources();
+for (const resource of resources) {
+    for (const feature of Object.values(resource.features)) {
+        console.log(`${resource.name}.${feature.name}: needs target ${feature.needsTargetSupport}`);
+    }
+}
+```
+
 ### Admin API
 
 The Admin API lets you manage the developer keys of your organization and
