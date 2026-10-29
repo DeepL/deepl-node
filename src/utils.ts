@@ -11,6 +11,7 @@ import {
     LanguageCode,
     LanguageCodeInput,
     NonRegionalLanguageCode,
+    BaseRequestOptions,
     RequestParameters,
     SentenceSplittingMode,
     StyleId,
@@ -157,6 +158,25 @@ function joinTagList(tagList: TagList): string {
 }
 
 /**
+ * Returns the extra body parameters of the given options, accepting the deprecated
+ * extraRequestParameters name. Throws if both names are set.
+ * @private
+ */
+export function resolveExtraBodyParameters(
+    options: BaseRequestOptions | undefined,
+): RequestParameters | undefined {
+    if (options?.extraBodyParameters !== undefined) {
+        if (options.extraRequestParameters !== undefined) {
+            throw new ArgumentError(
+                'pass only one of extraBodyParameters and extraRequestParameters',
+            );
+        }
+        return options.extraBodyParameters;
+    }
+    return options?.extraRequestParameters;
+}
+
+/**
  * Validates and prepares URLSearchParams for arguments common to text and document translation.
  * @private
  */
@@ -165,7 +185,7 @@ export function buildURLSearchParams(
     targetLang: LanguageCodeInput,
     formality: Formality | undefined,
     glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo | undefined,
-    extraRequestParameters: RequestParameters | undefined,
+    extraBodyParameters: RequestParameters | undefined,
     glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>,
 ): URLSearchParams {
     targetLang = standardizeLanguageCode(targetLang);
@@ -226,9 +246,9 @@ export function buildURLSearchParams(
         });
         searchParams.append('glossary_ids', ids.join(','));
     }
-    if (extraRequestParameters !== undefined) {
-        for (const paramName in extraRequestParameters) {
-            searchParams.set(paramName, extraRequestParameters[paramName]);
+    if (extraBodyParameters !== undefined) {
+        for (const paramName in extraBodyParameters) {
+            searchParams.set(paramName, extraBodyParameters[paramName]);
         }
     }
     return searchParams;

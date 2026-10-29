@@ -112,6 +112,14 @@ export interface BaseRequestOptions {
      * Keys in this object will be added to the request body, and can override built-in parameters.
      * This is mostly used by DeepL employees to test functionality, or for beta programs.
      */
+    extraBodyParameters?: RequestParameters;
+
+    /**
+     * Extra parameters to be added to the request body.
+     * Keys in this object will be added to the request body, and can override built-in parameters.
+     * This is mostly used by DeepL employees to test functionality, or for beta programs.
+     * @deprecated Use `extraBodyParameters`. Will be removed in the next major version.
+     */
     extraRequestParameters?: RequestParameters;
 }
 

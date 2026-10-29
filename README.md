@@ -243,12 +243,13 @@ The following options are only used if `tagHandling` is `'xml'`:
     into sentences. Format and default are the same as for `splittingTags`.
 -   `ignoreTags`: list of XML tags that containing content that should not be
     translated. Format and default are the same as for `splittingTags`.
--   `extraRequestParameters`: Extra body parameters to be passed along with the
+-   `extraBodyParameters`: Extra body parameters to be passed along with the
     HTTP request. Only string values are permitted.
     For example: `{'param': 'value', 'param2': 'value2'}`
-    Note: Extra request parameters can override parameters explicitly set by the library
+    Note: Extra body parameters can override parameters explicitly set by the library
     (such as `target_lang`, `source_lang`, etc.). This is primarily useful for testing or
-    accessing beta features.
+    accessing beta features. `extraRequestParameters` is the deprecated old name
+    of this option; pass only one of the two.
 
 
 ### Translating documents
@@ -320,7 +321,7 @@ directly:
 -   `enableWatermark`: set to `true` to add a "Translated by DeepL" watermark to
     the translated document. Only supported for `docx` and `pdf` output; for
     other output formats the API ignores this option.
--   `extraRequestParameters`: same as in [Text translation options](#text-translation-options).
+-   `extraBodyParameters`: same as in [Text translation options](#text-translation-options).
 -   `enableDocumentMinification`: **deprecated**, will be removed in the next
     major version. A `bool` value. If set to `true`, the library will try to
     minify a document before translating it through the API, sending a smaller
@@ -1167,7 +1168,7 @@ The second argument is the target language code. Language codes are **case-insen
 The third argument is optional and is a `RephraseTextOptions` object (it extends `BaseRequestOptions`) with the following properties:
 -   `writingStyle`: the writing style of the rephrased text. Possible values are defined in the `WritingStyle` enum.
 -   `tone`: the tone of the rephrased text. Possible values are defined in the `WritingTone` enum. The API accepts either `writingStyle` or `tone` in a request, not both.
--   `extraRequestParameters`: extra parameters to add to the request body. They can override parameters set by the library.
+-   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library. `extraRequestParameters` is the deprecated old name of this option.
 
 Passing the writing style and tone as the third and fourth arguments, for example `rephraseText(text, 'en', WritingStyle.ACADEMIC)`, is deprecated and will be removed in the next major version.
 

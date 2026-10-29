@@ -68,6 +68,16 @@ describe('DeepLClient.rephraseText', () => {
         });
     });
 
+    it('sends the extraBodyParameters of an options object', async () => {
+        nock(serverUrl)
+            .post('/v2/write/rephrase', { text: 'abc', target_lang: 'en', extra: 'x' })
+            .reply(200, rephrased);
+
+        await makeDeeplClient().rephraseText('abc', 'en', {
+            extraBodyParameters: { extra: 'x' },
+        });
+    });
+
     it('lets extra body parameters override built-in parameters', async () => {
         nock(serverUrl)
             .post('/v2/write/rephrase', { text: 'abc', target_lang: 'fr' })

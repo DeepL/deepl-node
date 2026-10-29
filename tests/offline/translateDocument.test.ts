@@ -67,6 +67,17 @@ describe('Translator.uploadDocument', () => {
         expect(result).toEqual(handle);
     });
 
+    it('sends extraBodyParameters as multipart parts', async () => {
+        const upload = expectUpload();
+
+        await makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+            filename: 'example.txt',
+            extraBodyParameters: { 'my-extra-parameter': 'my-extra-value' },
+        });
+
+        expect(upload.body()).toContain('name="my-extra-parameter"\r\n\r\nmy-extra-value\r\n');
+    });
+
     it('sends the style profile ID of a string and of a StyleProfile as one part', async () => {
         const translator = makeTranslator();
         for (const [styleProfile, id] of <Array<[string | deepl.StyleProfile, string]>>[

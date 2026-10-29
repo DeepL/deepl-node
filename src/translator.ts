@@ -48,6 +48,7 @@ import {
     nonRegionalLanguageCode,
     buildURLSearchParams,
     isFreeAccountAuthKey,
+    resolveExtraBodyParameters,
     isString,
     logInfo,
     streamToBuffer,
@@ -271,7 +272,7 @@ export class Translator {
             targetLang,
             options?.formality,
             options?.glossary,
-            options?.extraRequestParameters,
+            resolveExtraBodyParameters(options),
             options?.glossaryIds,
         );
         // Always send show_billed_characters=1, remove when the API default is changed to true
@@ -661,7 +662,7 @@ export class Translator {
             targetLang,
             options?.formality,
             options?.glossary,
-            options?.extraRequestParameters,
+            resolveExtraBodyParameters(options),
             options?.glossaryIds,
         );
         appendStyleAndTranslationMemoryOptions(data, options ?? {});

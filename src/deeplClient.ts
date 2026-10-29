@@ -68,6 +68,7 @@ import {
     extractStyleProfileId,
     extractTranslationMemoryId,
     logInfo,
+    resolveExtraBodyParameters,
     timeout,
 } from './utils';
 import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
@@ -204,14 +205,15 @@ export class DeepLClient extends Translator {
         tone?: string | null,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
         let writingStyle: string | null | undefined;
-        let extraRequestParameters: RequestParameters | undefined;
+        let extraBodyParameters: RequestParameters | undefined;
         if (typeof writingStyleOrOptions === 'object' && writingStyleOrOptions !== null) {
             if (tone !== undefined && tone !== null) {
                 throw new ArgumentError(
                     'tone cannot be passed as a separate argument together with an options object',
                 );
             }
-            ({ writingStyle, tone, extraRequestParameters } = writingStyleOrOptions);
+            ({ writingStyle, tone } = writingStyleOrOptions);
+            extraBodyParameters = resolveExtraBodyParameters(writingStyleOrOptions);
         } else {
             writingStyle = writingStyleOrOptions;
         }
@@ -230,9 +232,9 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
-        if (extraRequestParameters !== undefined) {
-            for (const paramName in extraRequestParameters) {
-                data.set(paramName, extraRequestParameters[paramName]);
+        if (extraBodyParameters !== undefined) {
+            for (const paramName in extraBodyParameters) {
+                data.set(paramName, extraBodyParameters[paramName]);
             }
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(

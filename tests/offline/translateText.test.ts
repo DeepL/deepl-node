@@ -249,6 +249,27 @@ describe('Translator.translateText', () => {
         });
     });
 
+    it('sends extraBodyParameters, which override standard parameters', async () => {
+        expectTranslateBody({ ...baseBody, target_lang: 'fr', 'my-extra-parameter': 'v' });
+
+        await makeTranslator().translateText('abc', null, 'de', {
+            extraBodyParameters: { target_lang: 'fr', 'my-extra-parameter': 'v' },
+        });
+    });
+
+    it('throws ArgumentError when extraBodyParameters and extraRequestParameters are both set', async () => {
+        await expect(
+            makeTranslator().translateText('abc', null, 'de', {
+                extraBodyParameters: { a: '1' },
+                extraRequestParameters: { b: '2' },
+            }),
+        ).rejects.toThrow(
+            new deepl.ArgumentError(
+                'pass only one of extraBodyParameters and extraRequestParameters',
+            ),
+        );
+    });
+
     it('sends the request to __path when it is set', async () => {
         nock(serverUrl).post('/v2/translate_secondary', baseBody).reply(200, translation);
 

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added the `extraBodyParameters` option to `BaseRequestOptions`, and so to
+  `TranslateTextOptions`, `DocumentTranslateOptions` and `RephraseTextOptions`.
+  It replaces `extraRequestParameters` and behaves the same. Passing both
+  throws `ArgumentError`.
 - Added `NotFoundError`, thrown when the API answers HTTP 404 on any endpoint.
   `GlossaryNotFoundError` now extends it.
 - Added `httpStatusCode` to `DeepLError`: the HTTP status code of the failed
@@ -112,6 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- `extraRequestParameters` is deprecated; use `extraBodyParameters` instead.
+  It will be removed in the next major version.
 - `Translator` and `TranslatorOptions` are deprecated; use `DeepLClient` and
   `DeepLClientOptions` instead, which support every method of `Translator`.
   They will be removed in the next major version.
