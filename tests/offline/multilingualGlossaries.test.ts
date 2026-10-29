@@ -287,3 +287,126 @@ describe('DeepLClient glossary methods that validate their arguments', () => {
         await expect(call()).rejects.toThrow(deepl.ArgumentError);
     });
 });
+
+describe('DeepLClient replace dictionary encoding', () => {
+    it('replaceMultilingualGlossaryDictionary sends a JSON body', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
+            .put('/v3/glossaries/g-1/dictionaries', {
+                source_lang: 'en',
+                target_lang: 'de',
+                entries: 'a\tb',
+                entries_format: 'tsv',
+            })
+            .reply(200, { source_lang: 'en', target_lang: 'de', entry_count: 1 });
+
+        await makeDeeplClient().replaceMultilingualGlossaryDictionary('g-1', {
+            sourceLangCode: 'en',
+            targetLangCode: 'de',
+            entries,
+        });
+    });
+
+    it('replaceMultilingualGlossaryDictionaryWithCsv sends a JSON body', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
+            .put('/v3/glossaries/g-1/dictionaries', {
+                source_lang: 'en',
+                target_lang: 'de',
+                entries: 'a,b',
+                entries_format: 'csv',
+            })
+            .reply(200, { source_lang: 'en', target_lang: 'de', entry_count: 1 });
+
+        await makeDeeplClient().replaceMultilingualGlossaryDictionaryWithCsv(
+            'g-1',
+            'en',
+            'de',
+            'a,b',
+        );
+    });
+});
+
+describe('DeepLClient multilingual glossary 404 on collection endpoints', () => {
+    const dictionary = { sourceLangCode: 'en', targetLangCode: 'de', entries };
+
+    it.each<[string, () => nock.Interceptor, (c: deepl.DeepLClient) => Promise<unknown>]>([
+        [
+            'createMultilingualGlossary',
+            () => nock(serverUrl).post('/v3/glossaries'),
+            (c) => c.createMultilingualGlossary('n', [dictionary]),
+        ],
+        [
+            'createMultilingualGlossaryWithCsv',
+            () => nock(serverUrl).post('/v3/glossaries'),
+            (c) => c.createMultilingualGlossaryWithCsv('n', 'en', 'de', 'a,b'),
+        ],
+        [
+            'listMultilingualGlossaries',
+            () => nock(serverUrl).get('/v3/glossaries'),
+            (c) => c.listMultilingualGlossaries(),
+        ],
+    ])('%s throws GlossaryNotFoundError', async (_, interceptor, call) => {
+        interceptor().reply(404, { message: 'not found' });
+
+        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.GlossaryNotFoundError);
+    });
+});
+
+describe('DeepLClient multilingual glossary URL encoding', () => {
+    const id = 'g/1?x';
+    const path = '/v3/glossaries/g%2F1%3Fx';
+    const dictionary = { sourceLangCode: 'en', targetLangCode: 'de', entries };
+
+    it.each<[string, () => nock.Interceptor, (c: deepl.DeepLClient) => Promise<unknown>]>([
+        ['get', () => nock(serverUrl).get(path), (c) => c.getMultilingualGlossary(id)],
+        [
+            'getDictionaryEntries',
+            () => nock(serverUrl).get(`${path}/entries`).query(true),
+            (c) => c.getMultilingualGlossaryDictionaryEntries(id, 'en', 'de'),
+        ],
+        ['delete', () => nock(serverUrl).delete(path), (c) => c.deleteMultilingualGlossary(id)],
+        [
+            'deleteDictionary',
+            () => nock(serverUrl).delete(`${path}/dictionaries`).query(true),
+            (c) => c.deleteMultilingualGlossaryDictionary(id, 'en', 'de'),
+        ],
+        [
+            'replaceDictionary',
+            () => nock(serverUrl).put(`${path}/dictionaries`),
+            (c) => c.replaceMultilingualGlossaryDictionary(id, dictionary),
+        ],
+        [
+            'replaceDictionaryWithCsv',
+            () => nock(serverUrl).put(`${path}/dictionaries`),
+            (c) => c.replaceMultilingualGlossaryDictionaryWithCsv(id, 'en', 'de', 'a,b'),
+        ],
+        [
+            'updateName',
+            () => nock(serverUrl).patch(path),
+            (c) => c.updateMultilingualGlossaryName(id, 'n'),
+        ],
+        [
+            'updateDictionary',
+            () => nock(serverUrl).patch(path),
+            (c) => c.updateMultilingualGlossaryDictionary(id, dictionary),
+        ],
+        [
+            'updateDictionaryWithCsv',
+            () => nock(serverUrl).patch(path),
+            (c) => c.updateMultilingualGlossaryDictionaryWithCsv(id, 'en', 'de', 'a,b'),
+        ],
+    ])('%s encodes the glossary ID in the path', async (_, interceptor, call) => {
+        const scope = interceptor().reply(404, { message: 'not found' });
+
+        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.GlossaryNotFoundError);
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('deleteMultilingualGlossaryDictionary encodes the language codes in the query', async () => {
+        nock(serverUrl)
+            .delete('/v3/glossaries/g-1/dictionaries')
+            .query({ source_lang: 'en', target_lang: 'de&x=1' })
+            .reply(204);
+
+        await makeDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'en', 'de&x=1');
+    });
+});

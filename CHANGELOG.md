@@ -235,6 +235,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
   already exists. It now rejects with `EEXIST` before downloading anything, on every Node
   version, and leaves the existing file unchanged.
+- `createMultilingualGlossary()`, `createMultilingualGlossaryWithCsv()` and
+  `listMultilingualGlossaries()` now throw `GlossaryNotFoundError` on HTTP 404,
+  like the other multilingual glossary methods.
+- The glossary ID is now URL-encoded in the request paths of the multilingual
+  glossary methods, and the language codes of
+  `deleteMultilingualGlossaryDictionary()` in its query string.
+- `replaceMultilingualGlossaryDictionary()` and
+  `replaceMultilingualGlossaryDictionaryWithCsv()` now send a JSON body, the only
+  format the API documents for this request; before they sent form-encoded data.
 
 ## [1.28.1] - 2026-10-09
 ### Security

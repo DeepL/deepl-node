@@ -343,7 +343,7 @@ export class DeepLClient extends Translator {
             { data: data },
         );
 
-        await checkStatusCode(statusCode, content);
+        await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -395,7 +395,7 @@ export class DeepLClient extends Translator {
             { data: data },
         );
 
-        await checkStatusCode(statusCode, content);
+        await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -413,7 +413,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/glossaries/${glossaryId}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -457,7 +457,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/glossaries/${glossaryId}/entries`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}/entries`,
             { data: queryParams },
         );
 
@@ -486,7 +486,7 @@ export class DeepLClient extends Translator {
             '/v3/glossaries',
         );
 
-        await checkStatusCode(statusCode, content);
+        await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseResponse(content, parseListMultilingualGlossaries);
     }
 
@@ -507,7 +507,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
-            `/v3/glossaries/${glossaryId}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -539,9 +539,14 @@ export class DeepLClient extends Translator {
 
         const glossaryId = extractGlossaryId(glossary);
 
+        const query = new URLSearchParams({
+            source_lang: sourceLanguageCode,
+            target_lang: targetLanguageCode,
+        }).toString();
+
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
-            `/v3/glossaries/${glossaryId}/dictionaries?source_lang=${sourceLanguageCode}&target_lang=${targetLanguageCode}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries?${query}`,
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -572,16 +577,17 @@ export class DeepLClient extends Translator {
 
         const glossaryId = extractGlossaryId(glossary);
 
-        const data = new URLSearchParams();
-        data.append('source_lang', glossaryDict.sourceLangCode);
-        data.append('target_lang', glossaryDict.targetLangCode);
-        data.append('entries', glossaryDict.entries.toTsv());
-        data.append('entries_format', 'tsv');
+        const body = {
+            source_lang: glossaryDict.sourceLangCode,
+            target_lang: glossaryDict.targetLangCode,
+            entries: glossaryDict.entries.toTsv(),
+            entries_format: 'tsv',
+        };
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
-            `/v3/glossaries/${glossaryId}/dictionaries`,
-            { data: data },
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries`,
+            { jsonBody: body },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -622,16 +628,17 @@ export class DeepLClient extends Translator {
 
         const glossaryId = extractGlossaryId(glossary);
 
-        const data = new URLSearchParams();
-        data.append('source_lang', sourceLanguageCode);
-        data.append('target_lang', targetLanguageCode);
-        data.append('entries', csvContent);
-        data.append('entries_format', 'csv');
+        const body = {
+            source_lang: sourceLanguageCode,
+            target_lang: targetLanguageCode,
+            entries: csvContent,
+            entries_format: 'csv',
+        };
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
-            `/v3/glossaries/${glossaryId}/dictionaries`,
-            { data: data },
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries`,
+            { jsonBody: body },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -663,7 +670,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
-            `/v3/glossaries/${glossaryId}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
             { data: data },
         );
 
@@ -699,7 +706,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
-            `/v3/glossaries/${glossaryId}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
             { data: data },
         );
 
@@ -746,7 +753,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
-            `/v3/glossaries/${glossaryId}`,
+            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
             { data: data },
         );
 
