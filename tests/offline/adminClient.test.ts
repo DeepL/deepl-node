@@ -521,7 +521,9 @@ describe('DeepLAdminClient', () => {
         expect(report.totalUsage.totalCharacters).toBe(0);
         expect(report.totalUsage.textTranslationCharacters).toBe(5);
         expect(report.totalUsage.speechToSpeechMinutes).toBe(0);
-        expect(report.startDate).toBeUndefined();
+        expect(report.startDate).toBeInstanceOf(Date);
+        expect(report.startDate.getTime()).toBeNaN();
+        expect(report.endDate.getTime()).toBeNaN();
         expect(report.groupBy).toBe('keyAndDay');
         expect(report.keyAndDayUsages).toHaveLength(1);
         expect(report.keyAndDayUsages[0]).toMatchObject({ apiKey: 'k' });
@@ -529,6 +531,7 @@ describe('DeepLAdminClient', () => {
         expect(report.keyAndDayUsages[0].usageDate).toBeUndefined();
         expect(tags.aggregateBy).toBe('day');
         expect(tags.nextPage).toBeUndefined();
+        expect(tags.startDate.getTime()).toBeNaN();
         expect(tags.usage).toHaveLength(1);
         expect(tags.usage[0].customTag).toBe('t');
         expect(tags.usage[0].breakdown.totalCharacters).toBe(0);

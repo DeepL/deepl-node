@@ -1321,8 +1321,9 @@ export function parseAdminUsageReport(json: string): AdminUsageReport {
             : {};
         return {
             totalUsage: parseAdminUsageBreakdown(report.total_usage),
-            startDate: parseOptionalUtcTimestamp(report.start_date),
-            endDate: parseOptionalUtcTimestamp(report.end_date),
+            // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
+            startDate: parseOptionalUtcTimestamp(report.start_date) ?? new Date(NaN),
+            endDate: parseOptionalUtcTimestamp(report.end_date) ?? new Date(NaN),
             groupBy: isString(report.group_by) ? report.group_by : undefined,
             keyUsages: recordList<KeyUsageApiResponse>(report.key_usages).map(parseKeyUsage),
             keyAndDayUsages: recordList<KeyUsageApiResponse>(report.key_and_day_usages).map(
@@ -1373,8 +1374,9 @@ export function parseCustomTagUsageReport(json: string): CustomTagUsageReport {
             isRecord(parsed) ? parsed : {};
         return {
             aggregateBy: isString(report.aggregate_by) ? report.aggregate_by : undefined,
-            startDate: parseOptionalUtcTimestamp(report.start_date),
-            endDate: parseOptionalUtcTimestamp(report.end_date),
+            // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
+            startDate: parseOptionalUtcTimestamp(report.start_date) ?? new Date(NaN),
+            endDate: parseOptionalUtcTimestamp(report.end_date) ?? new Date(NaN),
             nextPage: typeof report.next_page === 'number' ? report.next_page : undefined,
             usage: recordList<CustomTagUsageApiResponse>(report.usage).map(parseCustomTagUsage),
         };

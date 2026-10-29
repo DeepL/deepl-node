@@ -1571,10 +1571,10 @@ export interface KeyUsage {
 export interface AdminUsageReport {
     /** Usage totals over the whole date range. */
     readonly totalUsage: AdminUsageBreakdown;
-    /** Start of the report period. */
-    readonly startDate?: Date;
-    /** End of the report period. */
-    readonly endDate?: Date;
+    /** First day of the report period, at UTC midnight. */
+    readonly startDate: Date;
+    /** Last day of the report period, at UTC midnight. */
+    readonly endDate: Date;
     /** Grouping as reported by the API, if any: the raw string, for example 'keyAndDay'. */
     readonly groupBy?: string;
     /** Usage per key when grouped by 'key', otherwise empty. */
@@ -1611,10 +1611,10 @@ export interface CustomTagUsage {
 export interface CustomTagUsageReport {
     /** Aggregation reported by the API. */
     readonly aggregateBy?: string;
-    /** Start of the report period. */
-    readonly startDate?: Date;
-    /** End of the report period. */
-    readonly endDate?: Date;
+    /** First day of the report period, at UTC midnight. */
+    readonly startDate: Date;
+    /** Last day of the report period, at UTC midnight. */
+    readonly endDate: Date;
     /** Page number to request the next page, or undefined if this is the last page. */
     readonly nextPage?: number;
     /** Usage entries per custom tag. */

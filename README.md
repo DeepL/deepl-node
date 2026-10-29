@@ -1134,7 +1134,8 @@ Use the optional third parameter
 `groupBy` to break the usage down by key (`'key'`, see `keyUsages`) or by key
 and day (`'key_and_day'`, see `keyAndDayUsages`); other strings are sent
 unchanged. The `groupBy` of the returned report
-is the raw string the API reports, for example `'keyAndDay'`. Usage breakdowns
+is the raw string the API reports, for example `'keyAndDay'`. The `startDate` and
+`endDate` of both report types are `Date`s at UTC midnight. Usage breakdowns
 contain the characters per product plus `speechToTextMinutes` and
 `speechToSpeechMinutes`.
 

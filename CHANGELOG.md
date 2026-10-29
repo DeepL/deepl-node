@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
   `DeveloperKey.label`, `DeveloperKey.usageLimits` and `KeyUsage.apiKeyLabel`
   are `undefined` when the response does not contain them.
+  `startDate` and `endDate` of both reports are required `Date`s at UTC
+  midnight.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and
