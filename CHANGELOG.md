@@ -157,6 +157,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `extraBodyParameters` (and `extraRequestParameters`) of `translateText()` and
+  `uploadDocument()`/`translateDocument()` now replace every parameter of the same
+  name set by the library. Before, parameters appended after the languages and
+  glossaries, such as `text`, `split_sentences`, `style_id` or `output_format`, were
+  sent twice.
 - `maxRetries` now counts retries after the first attempt, as documented:
   before, `maxRetries: N` made only N - 1 retries, so the default of 5 made 5
   attempts instead of 6 and `maxRetries: 1` made no retry.

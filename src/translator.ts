@@ -49,6 +49,7 @@ import {
     buildURLSearchParams,
     isFreeAccountAuthKey,
     resolveExtraBodyParameters,
+    setExtraBodyParameters,
     isString,
     logInfo,
     streamToBuffer,
@@ -272,13 +273,13 @@ export class Translator {
             targetLang,
             options?.formality,
             options?.glossary,
-            resolveExtraBodyParameters(options),
             options?.glossaryIds,
         );
         // Always send show_billed_characters=1, remove when the API default is changed to true
         data.append('show_billed_characters', '1');
         const singular = appendTextsAndReturnIsSingular(data, texts);
         validateAndAppendTextOptions(data, options);
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
 
         const translatePath = options?.__path ?? '/v2/translate';
 
@@ -662,7 +663,6 @@ export class Translator {
             targetLang,
             options?.formality,
             options?.glossary,
-            resolveExtraBodyParameters(options),
             options?.glossaryIds,
         );
         appendStyleAndTranslationMemoryOptions(data, options ?? {});
@@ -673,6 +673,7 @@ export class Translator {
             // The API ignores '1'/'0' for this parameter; only 'true'/'false' take effect.
             data.append('enable_watermark', String(options.enableWatermark));
         }
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/document',

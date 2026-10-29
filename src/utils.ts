@@ -185,7 +185,6 @@ export function buildURLSearchParams(
     targetLang: LanguageCodeInput,
     formality: Formality | undefined,
     glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo | undefined,
-    extraBodyParameters: RequestParameters | undefined,
     glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>,
 ): URLSearchParams {
     targetLang = standardizeLanguageCode(targetLang);
@@ -246,12 +245,23 @@ export function buildURLSearchParams(
         });
         searchParams.append('glossary_ids', ids.join(','));
     }
+    return searchParams;
+}
+
+/**
+ * Sets the extra body parameters on the request, replacing parameters of the same name. Call it
+ * after all other parameters are appended.
+ * @private
+ */
+export function setExtraBodyParameters(
+    data: URLSearchParams,
+    extraBodyParameters: RequestParameters | undefined,
+) {
     if (extraBodyParameters !== undefined) {
         for (const paramName in extraBodyParameters) {
-            searchParams.set(paramName, extraBodyParameters[paramName]);
+            data.set(paramName, extraBodyParameters[paramName]);
         }
     }
-    return searchParams;
 }
 
 /**

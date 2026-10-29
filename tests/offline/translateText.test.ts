@@ -257,6 +257,27 @@ describe('Translator.translateText', () => {
         });
     });
 
+    it('sends extraBodyParameters once, replacing parameters the SDK sets after the languages', async () => {
+        expectTranslateBody({
+            text: 'replaced',
+            target_lang: 'de',
+            show_billed_characters: '0',
+            split_sentences: 'nonewlines',
+            style_id: 'style-2',
+        });
+
+        await makeTranslator().translateText('abc', null, 'de', {
+            splitSentences: 'off',
+            styleRule: 'style-1',
+            extraBodyParameters: {
+                text: 'replaced',
+                show_billed_characters: '0',
+                split_sentences: 'nonewlines',
+                style_id: 'style-2',
+            },
+        });
+    });
+
     it('throws ArgumentError when extraBodyParameters and extraRequestParameters are both set', async () => {
         await expect(
             makeTranslator().translateText('abc', null, 'de', {

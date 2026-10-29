@@ -246,8 +246,8 @@ The following options are only used if `tagHandling` is `'xml'`:
 -   `extraBodyParameters`: Extra body parameters to be passed along with the
     HTTP request. Only string values are permitted.
     For example: `{'param': 'value', 'param2': 'value2'}`
-    Note: Extra body parameters can override parameters explicitly set by the library
-    (such as `target_lang`, `source_lang`, etc.). This is primarily useful for testing or
+    Note: Extra body parameters replace parameters of the same name set by the library
+    (such as `target_lang`, `source_lang`, `split_sentences`, etc.). This is primarily useful for testing or
     accessing beta features. `extraRequestParameters` is the deprecated old name
     of this option; pass only one of the two.
 

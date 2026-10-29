@@ -69,6 +69,7 @@ import {
     extractTranslationMemoryId,
     logInfo,
     resolveExtraBodyParameters,
+    setExtraBodyParameters,
     timeout,
 } from './utils';
 import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
@@ -232,11 +233,7 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
-        if (extraBodyParameters !== undefined) {
-            for (const paramName in extraBodyParameters) {
-                data.set(paramName, extraBodyParameters[paramName]);
-            }
-        }
+        setExtraBodyParameters(data, extraBodyParameters);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/rephrase',
