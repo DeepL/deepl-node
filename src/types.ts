@@ -1063,10 +1063,10 @@ export interface StyleProfile {
     readonly translationMemoryIds: string[];
     /** Whether the order of glossaryIds sets the priority of the glossaries. */
     readonly glossaryPriorityOrderEnabled: boolean;
-    /** Time when the style profile was created; undefined if the API returned no valid time. */
-    readonly creationTime?: Date;
-    /** Time of the last update; undefined if the API returned no valid time. */
-    readonly updatedTime?: Date;
+    /** Time when the style profile was created. */
+    readonly creationTime: Date;
+    /** Time when the style profile was last updated. */
+    readonly updatedTime: Date;
 }
 
 /**

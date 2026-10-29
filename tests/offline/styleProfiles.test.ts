@@ -221,11 +221,13 @@ describe('DeepLClient.getStyleProfile', () => {
         expect(fetched).toStrictEqual({ ...profile, description: undefined, industry: undefined });
     });
 
-    it('tolerates a malformed timestamp and non-string IDs', async () => {
+    it('tolerates malformed or missing timestamps and non-string IDs', async () => {
+        const { updated_time: updatedTime, ...withoutUpdatedTime } = profileReply;
+        void updatedTime;
         nock(serverUrl)
             .get(`/v3/style_profiles/${profileId}`)
             .reply(200, {
-                ...profileReply,
+                ...withoutUpdatedTime,
                 creation_time: 'not a timestamp',
                 glossary_ids: ['g-1', 42, null, 'g-2'],
                 style_rule_ids: null,
@@ -235,9 +237,15 @@ describe('DeepLClient.getStyleProfile', () => {
 
         const fetched = await makeDeeplClient().getStyleProfile(profileId);
 
+        // The timestamps are required, so they are invalid Dates rather than undefined
+        expect(fetched.creationTime).toBeInstanceOf(Date);
+        expect(fetched.creationTime.getTime()).toBeNaN();
+        expect(fetched.updatedTime).toBeInstanceOf(Date);
+        expect(fetched.updatedTime.getTime()).toBeNaN();
         expect(fetched).toStrictEqual({
             ...profile,
-            creationTime: undefined,
+            creationTime: fetched.creationTime,
+            updatedTime: fetched.updatedTime,
             glossaryIds: ['g-1', 'g-2'],
             styleRuleIds: [],
             translationMemoryIds: [],

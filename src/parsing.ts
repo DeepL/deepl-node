@@ -896,8 +896,9 @@ function parseRawStyleProfile(obj: StyleProfileApiResponse): StyleProfile {
         styleRuleIds: parseIdList(obj.style_rule_ids),
         translationMemoryIds: parseIdList(obj.translation_memory_ids),
         glossaryPriorityOrderEnabled: obj.glossary_priority_order_enabled === true,
-        creationTime: parseOptionalTimestamp(parseOptionalString(obj.creation_time)),
-        updatedTime: parseOptionalTimestamp(parseOptionalString(obj.updated_time)),
+        // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
+        creationTime: new Date(parseOptionalString(obj.creation_time) ?? NaN),
+        updatedTime: new Date(parseOptionalString(obj.updated_time) ?? NaN),
     };
 }
 
