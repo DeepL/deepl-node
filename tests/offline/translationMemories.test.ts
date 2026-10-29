@@ -79,6 +79,12 @@ describe('DeepLClient.getTranslationMemory', () => {
         await makeDeeplClient().getTranslationMemory(translationMemory);
     });
 
+    it('URL-encodes the translation memory ID in the path', async () => {
+        nock(serverUrl).get('/v3/translation_memories/a%2Fb%3F').reply(200, {});
+
+        await makeDeeplClient().getTranslationMemory('a/b?');
+    });
+
     it('throws DeepLError when the translation memory has no ID', async () => {
         await expect(
             makeDeeplClient().getTranslationMemory(<deepl.TranslationMemoryInfo>{}),
@@ -143,6 +149,14 @@ describe('DeepLClient.listTranslationMemorySegments', () => {
             filterCaseSensitive: true,
         });
     });
+
+    it('URL-encodes the translation memory ID in the path', async () => {
+        nock(serverUrl)
+            .get('/v3/translation_memories/a%2Fb/segments')
+            .reply(200, { segments: [], segment_count: 0 });
+
+        await makeDeeplClient().listTranslationMemorySegments('a/b');
+    });
 });
 
 describe('DeepLClient.deleteTranslationMemory', () => {
@@ -150,6 +164,12 @@ describe('DeepLClient.deleteTranslationMemory', () => {
         nock(serverUrl).delete('/v3/translation_memories/tm-1').reply(204);
 
         await makeDeeplClient().deleteTranslationMemory('tm-1');
+    });
+
+    it('URL-encodes the translation memory ID in the path', async () => {
+        nock(serverUrl).delete('/v3/translation_memories/a%2Fb').reply(204);
+
+        await makeDeeplClient().deleteTranslationMemory('a/b');
     });
 });
 
@@ -293,6 +313,14 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
         ]);
     });
 
+    it('URL-encodes the job ID in the path', async () => {
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/a%2Fb')
+            .reply(200, jobReply('processing'));
+
+        await makeDeeplClient().getTranslationMemoryJob('a/b');
+    });
+
     it('throws ArgumentError when the job ID is empty', async () => {
         await expect(makeDeeplClient().getTranslationMemoryJob('')).rejects.toThrow(
             deepl.ArgumentError,
@@ -349,6 +377,12 @@ describe('DeepLClient.isTranslationMemoryJobComplete', () => {
 });
 
 describe('DeepLClient.createTranslationMemoryExport', () => {
+    it('URL-encodes the translation memory ID in the path', async () => {
+        nock(serverUrl).post('/v3/translation_memories/a%2Fb/export').reply(202, { job_id: 'j' });
+
+        await makeDeeplClient().createTranslationMemoryExport('a/b');
+    });
+
     it.each([
         [202, false],
         [200, true],

@@ -237,6 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- Translation memory and job IDs are URL-encoded in request paths.
 - `rephraseText()` and `correctText()` now throw `DeepLError` when the response
   contains a different number of improvements than texts sent. Before, a single
   text resolved to `undefined` and an array to a shorter array.

@@ -1209,7 +1209,7 @@ export class DeepLClient extends Translator {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/translation_memories/${translationMemoryId}`,
+            `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}`,
         );
 
         await checkStatusCode(statusCode, content);
@@ -1254,7 +1254,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/translation_memories/${translationMemoryId}/segments`,
+            `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}/segments`,
             { data: queryParams },
         );
 
@@ -1275,7 +1275,7 @@ export class DeepLClient extends Translator {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
-            `/v3/translation_memories/${translationMemoryId}`,
+            `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}`,
         );
 
         await checkStatusCode(statusCode, content);
@@ -1393,7 +1393,7 @@ export class DeepLClient extends Translator {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
-            `/v3/translation_memories/${translationMemoryId}/export`,
+            `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}/export`,
         );
 
         await checkStatusCode(statusCode, content);
@@ -1415,7 +1415,7 @@ export class DeepLClient extends Translator {
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/translation_memories/jobs/${jobId}`,
+            `/v3/translation_memories/jobs/${encodeURIComponent(jobId)}`,
         );
 
         await checkStatusCode(statusCode, content);
