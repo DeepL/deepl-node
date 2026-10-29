@@ -1316,6 +1316,44 @@ export interface TranslationMemoryJob {
     readonly sourceContentType?: string;
     /** Size in bytes declared for an import job's file. */
     readonly sourceContentLength?: number;
+    /** The entry of results (the API returns exactly one), or undefined if there is none. */
+    readonly result?: TranslationMemoryJobResult;
+    /** Status of result, or undefined if there is no result. */
+    readonly status?: TranslationMemoryJobStatus | (string & Record<never, never>);
+
+    /**
+     * True if the job completed successfully (status is 'completed'), otherwise false.
+     */
+    done(): boolean;
+
+    /**
+     * True if the job has not failed (status is not 'failed' or 'expired'), otherwise false. Note
+     * that while the job is in progress, this returns true.
+     */
+    ok(): boolean;
+}
+
+/**
+ * Options for {@link DeepLClient.createTranslationMemoryImport}.
+ */
+export interface CreateTranslationMemoryImportOptions extends BaseRequestOptions {
+    /** MIME type of the file, sent as source_file.content_type; the API defaults to 'application/xml'. */
+    contentType?: string;
+    /** Name of the resulting translation memory; the API defaults to the file name. */
+    displayName?: string;
+}
+
+/**
+ * Options for {@link DeepLClient.importTranslationMemoryFromFilepath}.
+ */
+export interface ImportTranslationMemoryOptions
+    extends CreateTranslationMemoryImportOptions,
+        WaitOptions {
+    /**
+     * File name sent to the API, required when the input is a Buffer or stream unless displayName
+     * is set (then used as the file name). Defaults to the base name of the input path.
+     */
+    fileName?: string;
 }
 
 /**

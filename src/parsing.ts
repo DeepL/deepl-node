@@ -1062,6 +1062,8 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             translationMemoryId: result.translation_memory_id,
             skippedSegmentCount: result.skipped_segment_count,
         }));
+        const result = results[0];
+        const status = result?.status;
         return {
             jobId: obj.job_id,
             operation: (obj.operation ?? '') as 'import' | 'export',
@@ -1073,6 +1075,10 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             displayName: obj.parameters?.display_name,
             sourceContentType: obj.source_file?.content_type,
             sourceContentLength: obj.source_file?.content_length,
+            result,
+            status,
+            done: () => status === 'completed',
+            ok: () => status !== 'failed' && status !== 'expired',
         };
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);

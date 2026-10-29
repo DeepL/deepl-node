@@ -913,9 +913,19 @@ const job = await deeplClient.importTranslationMemoryFromFilepath('/path/to/lega
     displayName: 'Legal TM',
     timeoutMs: 300000,
 });
-console.log(`Created translation memory ${job.results[0].translationMemoryId}`);
-console.log(`Skipped segments: ${job.results[0].skippedSegmentCount}`);
+console.log(`Created translation memory ${job.result?.translationMemoryId}`);
+console.log(`Skipped segments: ${job.result?.skippedSegmentCount}`);
 ```
+
+The input may also be a `Buffer` or `ReadStream`; then pass the `fileName`
+option (otherwise `displayName` is used as the file name). The options
+(`ImportTranslationMemoryOptions`) are:
+
+-   `displayName`: name of the new translation memory; defaults to the file name.
+-   `contentType`: MIME type of the file; defaults to `'application/xml'`.
+-   `fileName`: file name sent to the API; defaults to the base name of the path.
+-   `timeoutMs`: maximum time to wait for the import, in milliseconds.
+-   `extraBodyParameters`: extra fields added last to the JSON request body.
 
 The three steps are also available separately, for example to upload the file
 yourself or to poll for progress. `createTranslationMemoryImport()` returns an
@@ -929,15 +939,32 @@ const created = await deeplClient.createTranslationMemoryImport('legal.tmx', fil
 });
 await deeplClient.uploadTranslationMemoryFile(created, fileBuffer);
 
-const job = await deeplClient.isTranslationMemoryJobComplete(created.jobId, 300000);
+const job = await deeplClient.waitUntilTranslationMemoryJobDone(created.jobId, {
+    timeoutMs: 300000,
+});
 ```
+
+`createTranslationMemoryImport()` accepts `CreateTranslationMemoryImportOptions`:
+`contentType`, `displayName` and `extraBodyParameters`.
+
+`getTranslationMemoryJob()` and `waitUntilTranslationMemoryJobDone()` accept the
+job ID or a `TranslationMemoryJob`. `waitUntilTranslationMemoryJobDone()` takes
+`WaitOptions` (`{ timeoutMs }`) or the timeout in milliseconds as a number,
+resolves with the job once its status is `'completed'`, and rejects with a
+`DeepLError` carrying the job's error message if it fails or expires.
+`isTranslationMemoryJobComplete()` is deprecated in its favour.
+
+A `TranslationMemoryJob` has `result` (the single entry of `results`), `status`
+(the status of `result`), `done()` (true once the status is `'completed'`) and
+`ok()` (false once the status is `'failed'` or `'expired'`, true while the job
+is in progress). `status` may also be a status this library does not know.
 
 The job status is `'awaiting_input'` until the file is uploaded, and stays
 `'awaiting_input'` for a while afterwards because the API detects the upload
-asynchronously. `isTranslationMemoryJobComplete()` polls through that status
-like any other non-terminal one. A job whose file is never uploaded does not
-finish on its own, so pass a timeout in milliseconds when that is a
-possibility.
+asynchronously. `waitUntilTranslationMemoryJobDone()` polls through that status
+like any other status that is not final, including statuses it does not know.
+A job whose file is never uploaded does not finish on its own, so pass a
+timeout when that is a possibility.
 
 #### Exporting a translation memory
 
@@ -957,7 +984,9 @@ indicated by `reusedExisting`.
 
 ```javascript
 const created = await deeplClient.createTranslationMemoryExport('YOUR_TM_ID');
-const job = await deeplClient.isTranslationMemoryJobComplete(created.jobId, 300000);
+const job = await deeplClient.waitUntilTranslationMemoryJobDone(created.jobId, {
+    timeoutMs: 300000,
+});
 await deeplClient.downloadTranslationMemoryExport(job, '/path/to/exported.tmx');
 ```
 

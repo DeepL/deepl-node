@@ -212,6 +212,21 @@ describe('DeepLClient.createTranslationMemoryImport', () => {
         await makeDeeplClient().createTranslationMemoryImport('a.tmx', 10);
     });
 
+    it('merges extraBodyParameters last into the JSON body', async () => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/import', {
+                source_file: { file_name: 'a.tmx', content_length: 10 },
+                parameters: 'overridden',
+                beta: 'x',
+            })
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+
+        await makeDeeplClient().createTranslationMemoryImport('a.tmx', 10, {
+            displayName: 'my tm',
+            extraBodyParameters: { parameters: 'overridden', beta: 'x' },
+        });
+    });
+
     it.each([
         ['file name', '', 10],
         ['content length', 'a.tmx', 0],
@@ -313,12 +328,55 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
         ]);
     });
 
-    it('URL-encodes the job ID in the path', async () => {
+    it('accepts a TranslationMemoryJob and URL-encodes its ID in the path', async () => {
         nock(serverUrl)
             .get('/v3/translation_memories/jobs/a%2Fb')
             .reply(200, jobReply('processing'));
 
-        await makeDeeplClient().getTranslationMemoryJob('a/b');
+        await makeDeeplClient().getTranslationMemoryJob(<deepl.TranslationMemoryJob>{
+            jobId: 'a/b',
+        });
+    });
+
+    it.each([
+        ['completed', true, true],
+        ['processing', false, true],
+        ['failed', false, false],
+        ['expired', false, false],
+    ])('parses status %s with result, done %s and ok %s', async (status, done, ok) => {
+        nock(serverUrl).get('/v3/translation_memories/jobs/job-1').reply(200, jobReply(status));
+
+        const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
+
+        expect(job.status).toBe(status);
+        expect(job.result).toBe(job.results[0]);
+        expect(job.done()).toBe(done);
+        expect(job.ok()).toBe(ok);
+    });
+
+    it('keeps an unknown status as sent', async () => {
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, jobReply('something_new'));
+
+        const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
+
+        expect([job.status, job.done(), job.ok()]).toEqual(['something_new', false, true]);
+    });
+
+    it('parses a job without results as not done and ok', async () => {
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, { job_id: 'job-1', operation: 'import', results: [] });
+
+        const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
+
+        expect([job.result, job.status, job.done(), job.ok()]).toEqual([
+            undefined,
+            undefined,
+            false,
+            true,
+        ]);
     });
 
     it('throws ArgumentError when the job ID is empty', async () => {
@@ -328,15 +386,25 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
     });
 });
 
-describe('DeepLClient.isTranslationMemoryJobComplete', () => {
+describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
     const jobPath = '/v3/translation_memories/jobs/job-1';
 
     it('polls through awaiting_input until the job is completed', async () => {
         nock(serverUrl).get(jobPath).reply(200, jobReply('awaiting_input'));
         nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
 
-        await makeDeeplClient().isTranslationMemoryJobComplete('job-1');
+        const job = await makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1');
+
+        expect(job.status).toBe('completed');
     }, 15000);
+
+    it('accepts a TranslationMemoryJob', async () => {
+        nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
+
+        await makeDeeplClient().waitUntilTranslationMemoryJobDone(<deepl.TranslationMemoryJob>{
+            jobId: 'job-1',
+        });
+    });
 
     it.each([
         ['failed', { error: { message: 'bad tmx' } }, 'bad tmx'],
@@ -344,7 +412,7 @@ describe('DeepLClient.isTranslationMemoryJobComplete', () => {
     ])('throws DeepLError when the job is %s', async (status, extra, message) => {
         nock(serverUrl).get(jobPath).reply(200, jobReply(status, extra));
 
-        await expect(makeDeeplClient().isTranslationMemoryJobComplete('job-1')).rejects.toThrow(
+        await expect(makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1')).rejects.toThrow(
             message,
         );
     });
@@ -359,20 +427,27 @@ describe('DeepLClient.isTranslationMemoryJobComplete', () => {
             nock(serverUrl).get(jobPath).reply(200, reply);
             nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
 
-            const job = await makeDeeplClient().isTranslationMemoryJobComplete('job-1');
+            const job = await makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1');
 
-            expect(job.results[0].status).toBe('completed');
+            expect(job.status).toBe('completed');
         },
         15000,
     );
 
-    it('throws DeepLError when timeoutMs is exceeded', async () => {
-        nock(serverUrl).get(jobPath).reply(200, jobReply('processing')).persist();
+    it.each([
+        ['WaitOptions', { timeoutMs: 1 }],
+        ['a number', 1],
+    ])(
+        'throws DeepLError when the timeout given as %s is exceeded',
+        async (_, options) => {
+            nock(serverUrl).get(jobPath).reply(200, jobReply('processing')).persist();
 
-        await expect(makeDeeplClient().isTranslationMemoryJobComplete('job-1', 1)).rejects.toThrow(
-            'Timeout of 1ms exceeded',
-        );
-    }, 15000);
+            await expect(
+                makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1', options),
+            ).rejects.toThrow('Timeout of 1ms exceeded');
+        },
+        15000,
+    );
 });
 
 describe('DeepLClient.createTranslationMemoryExport', () => {
@@ -397,7 +472,7 @@ describe('DeepLClient.createTranslationMemoryExport', () => {
 });
 
 describe('DeepLClient.downloadTranslationMemoryExport', () => {
-    const job = (downloadUrl?: string): deepl.TranslationMemoryJob => ({
+    const job = (downloadUrl?: string): Omit<deepl.TranslationMemoryJob, 'done' | 'ok'> => ({
         jobId: 'job-2',
         operation: 'export',
         product: 'translation_memory',
@@ -469,6 +544,57 @@ describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
         await makeDeeplClient().importTranslationMemoryFromFilepath(inputPath, {
             displayName: 'my tm',
         });
+    });
+
+    it.each([
+        ['a Buffer', () => Buffer.from(tmx)],
+        [
+            'a ReadStream',
+            () => {
+                const inputPath = path.join(tempDir(), 'unused-name.tmx');
+                fs.writeFileSync(inputPath, tmx);
+                return fs.createReadStream(inputPath);
+            },
+        ],
+    ])('imports %s with fileName and extraBodyParameters', async (_, makeInput) => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/import', {
+                source_file: { file_name: 'mem.tmx', content_length: tmx.length },
+                beta: 'x',
+            })
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+        nock(storageUrl).put('/upload', tmx).reply(200);
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, jobReply('completed'));
+
+        await makeDeeplClient().importTranslationMemoryFromFilepath(makeInput(), {
+            fileName: 'mem.tmx',
+            extraBodyParameters: { beta: 'x' },
+        });
+    });
+
+    it('uses displayName as the file name of a Buffer', async () => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/import', {
+                source_file: { file_name: 'my tm', content_length: tmx.length },
+                parameters: { display_name: 'my tm' },
+            })
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+        nock(storageUrl).put('/upload', tmx).reply(200);
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, jobReply('completed'));
+
+        await makeDeeplClient().importTranslationMemoryFromFilepath(Buffer.from(tmx), {
+            displayName: 'my tm',
+        });
+    });
+
+    it('throws ArgumentError for a Buffer without fileName or displayName', async () => {
+        await expect(
+            makeDeeplClient().importTranslationMemoryFromFilepath(Buffer.from(tmx)),
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 });
 

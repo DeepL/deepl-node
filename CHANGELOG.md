@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `waitUntilTranslationMemoryJobDone()`, which replaces
+  `isTranslationMemoryJobComplete()`. It accepts the job as an ID or a
+  `TranslationMemoryJob`, and `WaitOptions` or the timeout in milliseconds, and
+  rejects with the job's error message if the job fails or expires.
+  `getTranslationMemoryJob()` also accepts a `TranslationMemoryJob`.
+- Added `result`, `status`, `done()` and `ok()` to `TranslationMemoryJob`:
+  the single entry of `results`, its status, whether the job completed, and
+  whether it has not failed or expired.
+- Added the `CreateTranslationMemoryImportOptions` and
+  `ImportTranslationMemoryOptions` types, with `extraBodyParameters` merged last
+  into the import request body.
+- `importTranslationMemoryFromFilepath()` accepts a `Buffer` or `ReadStream`, with
+  the new `fileName` option (or `displayName`) as the file name.
+- `isTranslationMemoryJobComplete()` also accepts `WaitOptions`.
 - The style rule methods `getStyleRule()`, `updateStyleRuleName()`,
   `updateStyleRuleConfiguredRules()`, `deleteStyleRule()` and the four custom
   instruction methods accept the style rule as an ID or a `StyleRuleInfo`
@@ -185,6 +199,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`
+  instead.
 - The `'downloaded'` member of `TranslationMemoryJobStatus`: the API does not
   report it for translation memory jobs.
 - `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
