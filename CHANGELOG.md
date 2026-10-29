@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DeactivateDeveloperKeyOptions`, `RenameDeveloperKeyOptions`,
   `SetDeveloperKeyUsageLimitsOptions`) that accepts `extraBodyParameters`.
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
+  `DeveloperKey.label`, `DeveloperKey.usageLimits` and `KeyUsage.apiKeyLabel`
+  are `undefined` when the response does not contain them.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and

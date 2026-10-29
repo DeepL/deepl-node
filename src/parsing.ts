@@ -1231,15 +1231,21 @@ function parseRawDeveloperKey(value: unknown): DeveloperKey | undefined {
     const limits = isRecord(obj.usage_limits) ? obj.usage_limits : undefined;
     return {
         keyId: obj.key_id,
-        label: stringOr(obj.label, ''),
+        label: isString(obj.label) ? obj.label : undefined,
         creationTime: parseOptionalUtcTimestamp(obj.creation_time),
         deactivatedTime: parseOptionalUtcTimestamp(obj.deactivated_time),
         isDeactivated: obj.is_deactivated === true,
-        usageLimits: {
-            characters: numberOr(limits?.characters, null),
-            speechToTextMilliseconds: numberOr(limits?.speech_to_text_milliseconds, null),
-            speechToSpeechMilliseconds: numberOr(limits?.speech_to_speech_milliseconds, null),
-        },
+        usageLimits:
+            limits === undefined
+                ? undefined
+                : {
+                      characters: numberOr(limits.characters, null),
+                      speechToTextMilliseconds: numberOr(limits.speech_to_text_milliseconds, null),
+                      speechToSpeechMilliseconds: numberOr(
+                          limits.speech_to_speech_milliseconds,
+                          null,
+                      ),
+                  },
     };
 }
 
@@ -1293,7 +1299,7 @@ function parseAdminUsageBreakdown(obj?: AdminUsageBreakdownApiResponse): AdminUs
 function parseKeyUsage(obj: KeyUsageApiResponse): KeyUsage {
     return {
         apiKey: stringOr(obj.api_key, ''),
-        apiKeyLabel: stringOr(obj.api_key_label, ''),
+        apiKeyLabel: isString(obj.api_key_label) ? obj.api_key_label : undefined,
         usage: parseAdminUsageBreakdown(obj.usage),
         usageDate: parseOptionalUtcTimestamp(obj.usage_date),
     };

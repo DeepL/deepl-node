@@ -1106,6 +1106,8 @@ await adminClient.deactivateDeveloperKey(key);
 `renameDeveloperKey()`, `setDeveloperKeyUsageLimits()` and
 `deactivateDeveloperKey()` accept either a key ID or a `DeveloperKey` object.
 These three and `createDeveloperKey()` return the resulting `DeveloperKey`.
+Its `label` and `usageLimits` are `undefined` when the API does not return
+them.
 `createDeveloperKey()` takes optional `CreateDeveloperKeyOptions`: `label`, the
 label of the new key (the API uses "DeepL API Key" if it is omitted). All four
 take a trailing options argument (`CreateDeveloperKeyOptions`,

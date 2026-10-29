@@ -231,7 +231,7 @@ describe('DeepLAdminClient', () => {
             speechToSpeechMilliseconds: 60000,
         });
 
-        expect(key.usageLimits.speechToSpeechMilliseconds).toBe(60000);
+        expect(key.usageLimits?.speechToSpeechMilliseconds).toBe(60000);
     });
 
     it('sends a group_by and aggregate_by value outside the known set unchanged', async () => {
@@ -416,9 +416,29 @@ describe('DeepLAdminClient', () => {
         expect(keys).toHaveLength(2);
         expect(keys[0].creationTime).toBeUndefined();
         expect(keys[0].keyId).toBe(KEY_ID);
-        expect(keys[0].usageLimits.speechToSpeechMilliseconds).toBe(60000);
-        expect(keys[1].usageLimits.characters).toBeNull();
+        expect(keys[0].usageLimits?.speechToSpeechMilliseconds).toBe(60000);
+        expect(keys[1].usageLimits?.characters).toBeNull();
         expect(keys[1].label).toBe('developer key prod');
+    });
+
+    it('leaves a missing label and usage limits undefined', async () => {
+        const withoutLabelAndLimits: Record<string, unknown> = { ...DEVELOPER_KEY_JSON };
+        delete withoutLabelAndLimits.label;
+        delete withoutLabelAndLimits.usage_limits;
+        nock(serverUrl)
+            .get('/v2/admin/developer-keys')
+            .reply(200, [withoutLabelAndLimits, { ...DEVELOPER_KEY_JSON, label: '' }]);
+
+        const keys = await makeAdminClient().listDeveloperKeys();
+
+        expect(keys[0].label).toBeUndefined();
+        expect(keys[0].usageLimits).toBeUndefined();
+        expect(keys[1].label).toBe('');
+        expect(keys[1].usageLimits).toEqual({
+            characters: 5000,
+            speechToTextMilliseconds: null,
+            speechToSpeechMilliseconds: 60000,
+        });
     });
 
     it.each([
@@ -504,7 +524,8 @@ describe('DeepLAdminClient', () => {
         expect(report.startDate).toBeUndefined();
         expect(report.groupBy).toBe('keyAndDay');
         expect(report.keyAndDayUsages).toHaveLength(1);
-        expect(report.keyAndDayUsages[0]).toMatchObject({ apiKey: 'k', apiKeyLabel: '' });
+        expect(report.keyAndDayUsages[0]).toMatchObject({ apiKey: 'k' });
+        expect(report.keyAndDayUsages[0].apiKeyLabel).toBeUndefined();
         expect(report.keyAndDayUsages[0].usageDate).toBeUndefined();
         expect(tags.aggregateBy).toBe('day');
         expect(tags.nextPage).toBeUndefined();

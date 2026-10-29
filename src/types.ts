@@ -1526,16 +1526,16 @@ export interface DeveloperKeyUsageLimitsUpdate {
 export interface DeveloperKey {
     /** Unique ID of the key. */
     readonly keyId: string;
-    /** Label assigned to the key. */
-    readonly label: string;
+    /** Label assigned to the key, undefined if the API returned none. */
+    readonly label?: string;
     /** Time when the key was created. */
     readonly creationTime?: Date;
     /** Time when the key was deactivated, undefined if the key is active. */
     readonly deactivatedTime?: Date;
     /** True if the key is deactivated. */
     readonly isDeactivated: boolean;
-    /** Usage limits configured for the key. */
-    readonly usageLimits: DeveloperKeyUsageLimits;
+    /** Usage limits configured for the key, undefined if the API returned none. */
+    readonly usageLimits?: DeveloperKeyUsageLimits;
 }
 
 /**
@@ -1556,8 +1556,8 @@ export interface AdminUsageBreakdown {
 export interface KeyUsage {
     /** Masked API key. */
     readonly apiKey: string;
-    /** Label of the API key. */
-    readonly apiKeyLabel: string;
+    /** Label of the API key, undefined if the API returned none. */
+    readonly apiKeyLabel?: string;
     /** Usage of the API key. */
     readonly usage: AdminUsageBreakdown;
     /** Day of the usage, defined only when grouped by key and day. */
