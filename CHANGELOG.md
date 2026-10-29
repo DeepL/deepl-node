@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- The style rule methods `getStyleRule()`, `updateStyleRuleName()`,
+  `updateStyleRuleConfiguredRules()`, `deleteStyleRule()` and the four custom
+  instruction methods accept the style rule as an ID or a `StyleRuleInfo`
+  object. `getStyleRuleCustomInstruction()`, `updateStyleRuleCustomInstruction()`
+  and `deleteStyleRuleCustomInstruction()` accept the custom instruction as an
+  ID or a `CustomInstruction` object.
+- Added an optional last `options` argument with `extraBodyParameters` to
+  `createStyleRule()`, `updateStyleRuleName()`, `updateStyleRuleConfiguredRules()`,
+  `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`
+  (types `CreateStyleRuleOptions`, `UpdateStyleRuleNameOptions`,
+  `UpdateStyleRuleConfiguredRulesOptions`, `CreateStyleRuleCustomInstructionOptions`
+  and `UpdateStyleRuleCustomInstructionOptions`).
 - Added `translateDocumentUpload()`, `translateDocumentGetStatus()` and
   `translateDocumentDownload()`, which replace `uploadDocument()`,
   `getDocumentStatus()` and `downloadDocument()` and behave the same.

@@ -678,6 +678,25 @@ Passing a single `CreateStyleRuleRequestBody` object
 (`{ name, language, configured_rules, custom_instructions }`) is deprecated and
 will be removed in the next major version.
 
+Every method that takes a style rule accepts its ID or a `StyleRuleInfo`
+object, and every method that takes a custom instruction accepts its ID or a
+`CustomInstruction` object, for example `deleteStyleRule(rule)`.
+
+The methods that send a request body (`createStyleRule()`,
+`updateStyleRuleName()`, `updateStyleRuleConfiguredRules()`,
+`createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`)
+take an optional last `options` argument (`CreateStyleRuleOptions`,
+`UpdateStyleRuleNameOptions`, `UpdateStyleRuleConfiguredRulesOptions`,
+`CreateStyleRuleCustomInstructionOptions`, `UpdateStyleRuleCustomInstructionOptions`)
+with `extraBodyParameters`: extra fields added to the JSON body after the
+library-set ones.
+
+```javascript
+await deeplClient.updateStyleRuleName(rule, 'New Name', {
+    extraBodyParameters: { some_new_field: 'value' },
+});
+```
+
 #### Retrieving and listing style rules
 
 Use `getStyleRule()` to retrieve a single style rule by ID, or
@@ -741,9 +760,8 @@ const instruction = await deeplClient.createStyleRuleCustomInstruction(
     'YOUR_STYLE_ID', 'Formal tone', 'Always use formal language', 'de');
 console.log(`Created instruction: ${instruction.id}`);
 
-// Get a custom instruction
-const fetched = await deeplClient.getStyleRuleCustomInstruction(
-    'YOUR_STYLE_ID', instruction.id);
+// Get a custom instruction, passing the objects instead of the IDs
+const fetched = await deeplClient.getStyleRuleCustomInstruction(rule, instruction);
 
 // Update a custom instruction
 const updated = await deeplClient.updateStyleRuleCustomInstruction(

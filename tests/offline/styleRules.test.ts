@@ -319,3 +319,130 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
         await expect(call()).rejects.toThrow(deepl.ArgumentError);
     });
 });
+
+describe('DeepLClient style rule methods taking objects', () => {
+    const client = () => makeDeeplClient();
+    const styleRule: deepl.StyleRuleInfo = {
+        styleId: 'a/b',
+        name: 'my rule',
+        creationTime: new Date('2025-01-02T03:04:05Z'),
+        updatedTime: new Date('2025-01-03T03:04:05Z'),
+        language: 'en',
+        version: 2,
+    };
+    const customInstruction: deepl.CustomInstruction = { id: 'i/1', label: 'L', prompt: 'P' };
+    const rulePath = '/v3/style_rules/a%2Fb';
+    const instructionPath = `${rulePath}/custom_instructions/i%2F1`;
+
+    it.each([
+        ['getStyleRule', 'get', rulePath, () => client().getStyleRule(styleRule)],
+        [
+            'updateStyleRuleName',
+            'patch',
+            rulePath,
+            () => client().updateStyleRuleName(styleRule, 'n'),
+        ],
+        ['deleteStyleRule', 'delete', rulePath, () => client().deleteStyleRule(styleRule)],
+        [
+            'updateStyleRuleConfiguredRules',
+            'put',
+            `${rulePath}/configured_rules`,
+            () => client().updateStyleRuleConfiguredRules(styleRule, {}),
+        ],
+        [
+            'createStyleRuleCustomInstruction',
+            'post',
+            `${rulePath}/custom_instructions`,
+            () => client().createStyleRuleCustomInstruction(styleRule, 'L', 'P'),
+        ],
+        [
+            'getStyleRuleCustomInstruction',
+            'get',
+            instructionPath,
+            () => client().getStyleRuleCustomInstruction(styleRule, customInstruction),
+        ],
+        [
+            'updateStyleRuleCustomInstruction',
+            'put',
+            instructionPath,
+            () => client().updateStyleRuleCustomInstruction(styleRule, customInstruction, 'L', 'P'),
+        ],
+        [
+            'deleteStyleRuleCustomInstruction',
+            'delete',
+            instructionPath,
+            () => client().deleteStyleRuleCustomInstruction(styleRule, customInstruction),
+        ],
+    ] as const)('%s uses the IDs of the passed objects', async (_, method, path, call) => {
+        const scope = nock(serverUrl)[method](path).reply(200, {});
+
+        await call();
+
+        expect(scope.isDone()).toBe(true);
+    });
+
+    it('throws ArgumentError for a CustomInstruction without an ID', async () => {
+        await expect(
+            client().getStyleRuleCustomInstruction('s', { label: 'L', prompt: 'P' }),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+});
+
+describe('DeepLClient style rule methods with extraBodyParameters', () => {
+    const client = () => makeDeeplClient();
+    const options = { extraBodyParameters: { extra: 'x', label: 'replaced' } };
+
+    it('createStyleRule merges them into the JSON body last', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules', { name: 'n', language: 'en', extra: 'x', label: 'replaced' })
+            .reply(201, styleRuleReply);
+
+        await client().createStyleRule('n', 'en', undefined, undefined, options);
+    });
+
+    it('updateStyleRuleName merges them into the JSON body last', async () => {
+        nock(serverUrl)
+            .patch('/v3/style_rules/s-1', { name: 'n', extra: 'x', label: 'replaced' })
+            .reply(200, styleRuleReply);
+
+        await client().updateStyleRuleName('s-1', 'n', options);
+    });
+
+    it('updateStyleRuleConfiguredRules merges them into the JSON body last', async () => {
+        const rules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
+        nock(serverUrl)
+            .put('/v3/style_rules/s-1/configured_rules', {
+                ...rules,
+                extra: 'x',
+                label: 'replaced',
+            })
+            .reply(200, styleRuleReply);
+
+        await client().updateStyleRuleConfiguredRules('s-1', rules, options);
+    });
+
+    it('createStyleRuleCustomInstruction merges them into the JSON body last', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules/s-1/custom_instructions', {
+                label: 'replaced',
+                prompt: 'P',
+                extra: 'x',
+            })
+            .reply(201, instructionReply);
+
+        await client().createStyleRuleCustomInstruction('s-1', 'L', 'P', undefined, options);
+    });
+
+    it('updateStyleRuleCustomInstruction merges them into the JSON body last', async () => {
+        nock(serverUrl)
+            .put('/v3/style_rules/s-1/custom_instructions/i-1', {
+                label: 'replaced',
+                prompt: 'P',
+                source_language: 'de',
+                extra: 'x',
+            })
+            .reply(200, instructionReply);
+
+        await client().updateStyleRuleCustomInstruction('s-1', 'i-1', 'L', 'P', 'de', options);
+    });
+});

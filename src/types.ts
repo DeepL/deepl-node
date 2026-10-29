@@ -992,6 +992,21 @@ export interface CustomInstruction {
     readonly sourceLanguage?: string;
 }
 
+/** Options for {@link DeepLClient.createStyleRule}. */
+export type CreateStyleRuleOptions = BaseRequestOptions;
+
+/** Options for {@link DeepLClient.updateStyleRuleName}. */
+export type UpdateStyleRuleNameOptions = BaseRequestOptions;
+
+/** Options for {@link DeepLClient.updateStyleRuleConfiguredRules}. */
+export type UpdateStyleRuleConfiguredRulesOptions = BaseRequestOptions;
+
+/** Options for {@link DeepLClient.createStyleRuleCustomInstruction}. */
+export type CreateStyleRuleCustomInstructionOptions = BaseRequestOptions;
+
+/** Options for {@link DeepLClient.updateStyleRuleCustomInstruction}. */
+export type UpdateStyleRuleCustomInstructionOptions = BaseRequestOptions;
+
 /**
  * Configuration rules for a style rule list.
  */
