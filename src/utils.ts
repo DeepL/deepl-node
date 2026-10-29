@@ -13,7 +13,6 @@ import {
     NonRegionalLanguageCode,
     BaseRequestOptions,
     RequestParameters,
-    SentenceSplittingMode,
     StyleId,
     TagList,
     TranslateTextOptions,
@@ -376,13 +375,13 @@ export function validateAndAppendTextOptions(
         return;
     }
     if (options.splitSentences !== undefined) {
-        options.splitSentences = options.splitSentences.toLowerCase() as SentenceSplittingMode;
-        if (options.splitSentences === 'on' || options.splitSentences === 'default') {
+        const splitSentences = options.splitSentences.toLowerCase();
+        if (splitSentences === 'on' || splitSentences === 'default') {
             data.append('split_sentences', '1');
-        } else if (options.splitSentences === 'off') {
+        } else if (splitSentences === 'off') {
             data.append('split_sentences', '0');
         } else {
-            data.append('split_sentences', options.splitSentences);
+            data.append('split_sentences', splitSentences);
         }
     }
     if (options.preserveFormatting !== undefined) {

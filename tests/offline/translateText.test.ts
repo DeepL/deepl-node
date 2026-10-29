@@ -111,6 +111,17 @@ describe('Translator.translateText', () => {
         });
     });
 
+    it('does not change the splitSentences value of the caller options', async () => {
+        expectTranslateBody({ ...baseBody, split_sentences: '0' });
+        const options: deepl.TranslateTextOptions = {
+            splitSentences: <deepl.SentenceSplittingMode>'OFF',
+        };
+
+        await makeTranslator().translateText('abc', null, 'de', options);
+
+        expect(options.splitSentences).toBe('OFF');
+    });
+
     it.each([
         [true, '1'],
         [false, '0'],
