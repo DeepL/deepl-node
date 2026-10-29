@@ -476,7 +476,7 @@ export class Translator {
             `/v2/document/${handle.documentId}`,
             { data },
         );
-        await checkStatusCode(statusCode, content, false, true);
+        await checkStatusCode(statusCode, content);
         return parseDocumentStatus(content);
     }
 

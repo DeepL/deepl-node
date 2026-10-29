@@ -218,6 +218,18 @@ describe('Translator.translateDocumentGetStatus', () => {
 
         expect([status.status, status.ok(), status.done()]).toEqual([expected, true, false]);
     });
+
+    it('throws DeepLError, not DocumentNotReadyError, when the server answers 503', async () => {
+        nock(serverUrl).post('/v2/document/doc-id').reply(503);
+
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .translateDocumentGetStatus(handle)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error).not.toBeInstanceOf(deepl.DocumentNotReadyError);
+        expect(error.httpStatusCode).toBe(503);
+    });
 });
 
 describe('Translator.getDocumentStatus', () => {
