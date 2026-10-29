@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `CreateSpokenTermsOptions`, `UpdateSpokenTermsOptions` and
   `ReplaceSpokenTermsListOptions` types, which accept `extraBodyParameters`.
   The options of `updateSpokenTerms()` are optional; without them an empty body
-  is sent.
+  is sent. Terms are trimmed, then checked and sent trimmed.
 - Added the API Pro fields of `GET /v2/usage` to `Usage`: `apiKeyCharacter`,
   `speechToTextMinutes` and `speechToSpeechMinutes` (`UsageDetail`), `products`
   (array of the new `UsageProduct` type), and `startTime` and `endTime`

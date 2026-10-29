@@ -83,9 +83,11 @@ import * as path from 'path';
 import * as util from 'util';
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
-    // Terms are sent newline-separated, so a newline inside a term would split it
-    entries.entries.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
-    return { lang: entries.lang, entries: entries.entries.join('\n') };
+    // Terms are trimmed, then validated and sent trimmed. Terms are sent newline-separated, so a
+    // newline inside a term would split it
+    const terms = entries.entries.map((term) => (typeof term === 'string' ? term.trim() : term));
+    terms.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
+    return { lang: entries.lang, entries: terms.join('\n') };
 }
 
 function addExtraBodyParametersToJson(

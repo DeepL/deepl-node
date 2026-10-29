@@ -578,9 +578,9 @@ For examples for the other methods please see [this migration guide](upgrade_to_
 Spoken terms collections improve the speech recognition of names, brands and other
 terms. A collection has a name and one term list per language (for example `'en'`).
 Terms are passed and returned as arrays of strings. Before sending, `createSpokenTerms()`,
-`updateSpokenTerms()` and `replaceSpokenTermsList()` check each term like a glossary term:
-an empty term or one containing a control character such as a newline throws a
-`DeepLError` and sends no request. The API validates the rest (for example, at most 300
+`updateSpokenTerms()` and `replaceSpokenTermsList()` trim each term and check it like a
+glossary term: an empty or whitespace-only term or one containing a control character such
+as a newline throws a `DeepLError` and sends no request; valid terms are sent trimmed. The API validates the rest (for example, at most 300
 characters per list) and rejects invalid terms with a `DeepLError`.
 
 Every method that takes a collection accepts its ID or a `SpokenTerms` object.

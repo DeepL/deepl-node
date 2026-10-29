@@ -55,6 +55,28 @@ describe('DeepLClient spoken terms', () => {
         expect(entries).toEqual({ lang: 'en', entries: ['a', 'b'] });
     });
 
+    it('sends terms trimmed', async () => {
+        nock(serverUrl)
+            .put('/v3/spoken-terms/st-1/term-lists', { lang: 'en', entries: 'a\nb c' })
+            .reply(200, { lang: 'en', entry_count: 2 });
+
+        const termList = await makeDeeplClient().replaceSpokenTermsList('st-1', {
+            lang: 'en',
+            entries: [' a ', '\tb c\n'],
+        });
+
+        expect(termList).toEqual({ lang: 'en', entryCount: 2 });
+    });
+
+    it('rejects a whitespace-only term before sending a request', async () => {
+        // No nock interceptor: any request fails with a network error instead
+        await expect(
+            makeDeeplClient().updateSpokenTerms('st-1', {
+                termLists: [{ lang: 'en', entries: ['a', '   '] }],
+            }),
+        ).rejects.toThrow(new deepl.DeepLError("'' is not a valid term."));
+    });
+
     it('sends an empty body when updateSpokenTerms() has no options', async () => {
         nock(serverUrl).patch('/v3/spoken-terms/st-1', {}).reply(200, spokenTermsResponse);
 
