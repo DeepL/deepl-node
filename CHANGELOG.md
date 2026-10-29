@@ -190,6 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An HTTP 503 response to `translateDocumentGetStatus()` and `getDocumentStatus()`
   now throws `DeepLError`; before it threw `DocumentNotReadyError`, which is meant
   for document downloads only.
+- The document ID is now URL-encoded in the request paths of the document
+  status and download methods.
 - `extraBodyParameters` (and `extraRequestParameters`) of `translateText()` and
   `uploadDocument()`/`translateDocument()` now replace every parameter of the same
   name set by the library. Before, parameters appended after the languages and

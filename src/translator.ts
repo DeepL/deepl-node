@@ -473,7 +473,7 @@ export class Translator {
         const data = new URLSearchParams({ document_key: handle.documentKey });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
-            `/v2/document/${handle.documentId}`,
+            `/v2/document/${encodeURIComponent(handle.documentId)}`,
             { data },
         );
         await checkStatusCode(statusCode, content);
@@ -751,7 +751,7 @@ export class Translator {
         const { statusCode, content } =
             await this.httpClient.sendRequestWithBackoff<IncomingMessage>(
                 'POST',
-                `/v2/document/${handle.documentId}/result`,
+                `/v2/document/${encodeURIComponent(handle.documentId)}/result`,
                 { data },
                 true,
             );

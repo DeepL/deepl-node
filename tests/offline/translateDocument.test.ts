@@ -219,6 +219,17 @@ describe('Translator.translateDocumentGetStatus', () => {
         expect([status.status, status.ok(), status.done()]).toEqual([expected, true, false]);
     });
 
+    it('URL-encodes the document ID in the path', async () => {
+        nock(serverUrl).post('/v2/document/a%2Fb%3F', keyBody).reply(200, { status: 'done' });
+
+        const status = await makeDeeplClient().translateDocumentGetStatus({
+            documentId: 'a/b?',
+            documentKey: handle.documentKey,
+        });
+
+        expect(status.done()).toBe(true);
+    });
+
     it('throws DeepLError, not DocumentNotReadyError, when the server answers 503', async () => {
         nock(serverUrl).post('/v2/document/doc-id').reply(503);
 
@@ -370,11 +381,14 @@ describe('Translator.downloadDocument', () => {
 });
 
 describe('Translator.translateDocumentDownload', () => {
-    it('sends the document key and streams the result to a file', async () => {
-        nock(serverUrl).post('/v2/document/doc-id/result', keyBody).reply(200, 'result');
+    it('sends the document key to the URL-encoded result path and writes the file', async () => {
+        nock(serverUrl).post('/v2/document/a%2Fb/result', keyBody).reply(200, 'result');
         const [, outputPath] = createTextDocument();
 
-        await makeDeeplClient().translateDocumentDownload(handle, outputPath);
+        await makeDeeplClient().translateDocumentDownload(
+            { documentId: 'a/b', documentKey: handle.documentKey },
+            outputPath,
+        );
 
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
     });
