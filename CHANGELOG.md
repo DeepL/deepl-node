@@ -255,6 +255,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `getUsage()` leaves `character`, `document` and `teamDocument` undefined
+  when the response's count or limit for them is not a number, as it already did
+  for the API Pro usage fields. Before, a `null` or string value was returned as
+  the count or limit.
 - `isTranslationMemoryJobComplete()`, `importTranslationMemoryFromFilepath()` and
   `exportTranslationMemoryToFilepath()` keep polling on an unknown status or a
   job without results instead of rejecting, and no longer treat `'downloaded'`

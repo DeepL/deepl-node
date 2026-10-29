@@ -40,6 +40,24 @@ describe('Translator.getUsage', () => {
         expect(usage.anyLimitReached()).toBe(true);
     });
 
+    it('leaves out the usage types whose count or limit is not a number', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, {
+            character_count: null,
+            character_limit: 100,
+            document_count: '1',
+            document_limit: 5,
+            team_document_count: 2,
+            team_document_limit: 50,
+        });
+
+        const usage = await makeTranslator().getUsage();
+
+        expect([usage.character, usage.document]).toEqual([undefined, undefined]);
+        expect(usage.teamDocument).toMatchObject({ count: 2, limit: 50 });
+        expect(usage.anyLimitReached()).toBe(false);
+        expect(usage.toString()).toBe('Usage this billing period:\nTeam documents: 2 of 50');
+    });
+
     it('parses the API Pro usage fields', async () => {
         nock(serverUrl)
             .get('/v2/usage')

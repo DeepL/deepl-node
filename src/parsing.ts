@@ -554,28 +554,21 @@ export function parseDocumentStatus(json: string): DocumentStatus {
 
 /**
  * Parses the given usage API response to a UsageDetail object, which forms part of a Usage object.
+ * Returns undefined if the count or limit is missing or not a number.
  * @private
  */
 function parseUsageDetail(
     obj: UsageApiResponse,
-    prefix: 'character' | 'document' | 'team_document',
+    prefix:
+        | 'character'
+        | 'document'
+        | 'team_document'
+        | 'api_key_character'
+        | 'speech_to_text_minutes'
+        | 'speech_to_speech_minutes',
 ): UsageDetail | undefined {
-    const count = obj[`${prefix}_count`];
-    const limit = obj[`${prefix}_limit`];
-    if (count === undefined || limit === undefined) return undefined;
-    return new UsageDetailImpl(count, limit);
-}
-
-/**
- * Like parseUsageDetail() for the API Pro fields; values that are not numbers are left out.
- * @private
- */
-function parseProUsageDetail(
-    obj: UsageApiResponse,
-    prefix: 'api_key_character' | 'speech_to_text_minutes' | 'speech_to_speech_minutes',
-): UsageDetail | undefined {
-    const count = obj[`${prefix}_count`];
-    const limit = obj[`${prefix}_limit`];
+    const count: unknown = obj[`${prefix}_count`];
+    const limit: unknown = obj[`${prefix}_limit`];
     if (typeof count !== 'number' || typeof limit !== 'number') return undefined;
     return new UsageDetailImpl(count, limit);
 }
@@ -621,9 +614,9 @@ export function parseUsage(json: string): Usage {
             parseUsageDetail(obj, 'document'),
             parseUsageDetail(obj, 'team_document'),
             {
-                apiKeyCharacter: parseProUsageDetail(obj, 'api_key_character'),
-                speechToTextMinutes: parseProUsageDetail(obj, 'speech_to_text_minutes'),
-                speechToSpeechMinutes: parseProUsageDetail(obj, 'speech_to_speech_minutes'),
+                apiKeyCharacter: parseUsageDetail(obj, 'api_key_character'),
+                speechToTextMinutes: parseUsageDetail(obj, 'speech_to_text_minutes'),
+                speechToSpeechMinutes: parseUsageDetail(obj, 'speech_to_speech_minutes'),
                 products: parseUsageProducts(obj.products),
                 startTime: parseOptionalDate(obj.start_time),
                 endTime: parseOptionalDate(obj.end_time),
