@@ -729,6 +729,26 @@ export interface SpokenTermsEntries {
 }
 
 /**
+ * Options for {@link DeepLClient.createSpokenTerms}.
+ */
+export type CreateSpokenTermsOptions = BaseRequestOptions;
+
+/**
+ * Options for {@link DeepLClient.updateSpokenTerms}. Only the fields that are set are sent.
+ */
+export interface UpdateSpokenTermsOptions extends BaseRequestOptions {
+    /** New name of the collection. */
+    name?: string;
+    /** Term lists to merge into the existing lists of the same languages. */
+    termLists?: SpokenTermsEntries[];
+}
+
+/**
+ * Options for {@link DeepLClient.replaceSpokenTermsList}.
+ */
+export type ReplaceSpokenTermsListOptions = BaseRequestOptions;
+
+/**
  * Information about a glossary dictionary, including the entry list
  */
 export interface MultilingualGlossaryDictionaryEntries {

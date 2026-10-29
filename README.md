@@ -584,6 +584,11 @@ an empty term or one containing a control character such as a newline throws a
 characters per list) and rejects invalid terms with a `DeepLError`.
 
 Every method that takes a collection accepts its ID or a `SpokenTerms` object.
+`createSpokenTerms()`, `updateSpokenTerms()` and `replaceSpokenTermsList()` take an optional
+last `options` argument (`CreateSpokenTermsOptions`, `UpdateSpokenTermsOptions` and
+`ReplaceSpokenTermsListOptions`) with `extraBodyParameters`: extra fields added last to the
+JSON request body, replacing fields of the same name. `UpdateSpokenTermsOptions` also holds
+`name` and `termLists`; only the fields that are set are sent.
 
 ```javascript
 // Create a collection; returns a SpokenTerms object

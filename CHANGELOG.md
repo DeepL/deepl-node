@@ -46,7 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `createSpokenTerms()`, `listSpokenTerms()`, `getSpokenTerms()`,
   `updateSpokenTerms()`, `getSpokenTermsEntries()`, `replaceSpokenTermsList()`,
   `deleteSpokenTerms()` and `deleteSpokenTermsList()`. Added the `SpokenTerms`,
-  `SpokenTermsList` and `SpokenTermsEntries` types.
+  `SpokenTermsList` and `SpokenTermsEntries` types, and the
+  `CreateSpokenTermsOptions`, `UpdateSpokenTermsOptions` and
+  `ReplaceSpokenTermsListOptions` types, which accept `extraBodyParameters`.
+  The options of `updateSpokenTerms()` are optional; without them an empty body
+  is sent.
 - Added the API Pro fields of `GET /v2/usage` to `Usage`: `apiKeyCharacter`,
   `speechToTextMinutes` and `speechToSpeechMinutes` (`UsageDetail`), `products`
   (array of the new `UsageProduct` type), and `startTime` and `endTime`

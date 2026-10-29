@@ -10,9 +10,12 @@ import {
     MultilingualGlossaryInfo,
     MultilingualGlossaryDictionaryInfo,
     GlossaryId,
+    CreateSpokenTermsOptions,
+    ReplaceSpokenTermsListOptions,
     SpokenTerms,
     SpokenTermsEntries,
     SpokenTermsList,
+    UpdateSpokenTermsOptions,
     StyleProfile,
     StyleProfileOptions,
     StyleProfileUpdateOptions,
@@ -83,6 +86,15 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
     // Terms are sent newline-separated, so a newline inside a term would split it
     entries.entries.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang: entries.lang, entries: entries.entries.join('\n') };
+}
+
+function addExtraBodyParametersToJson(
+    body: Record<string, unknown>,
+    options: CreateSpokenTermsOptions | undefined,
+): Record<string, unknown> {
+    // Added last, so they replace library-set fields with the same key
+    const extraBodyParameters = resolveExtraBodyParameters(options);
+    return extraBodyParameters === undefined ? body : { ...body, ...extraBodyParameters };
 }
 
 function styleProfileOptionsToJson(
@@ -728,15 +740,24 @@ export class DeepLClient extends Translator {
      * @param name User-defined name of the collection.
      * @param termLists The term lists of the collection, one per language,
      *     see {@link SpokenTermsEntries}.
+     * @param options Additional options, see {@link CreateSpokenTermsOptions}.
      * @returns {Promise<SpokenTerms>} Object with details about the new collection.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async createSpokenTerms(name: string, termLists: SpokenTermsEntries[]): Promise<SpokenTerms> {
+    async createSpokenTerms(
+        name: string,
+        termLists: SpokenTermsEntries[],
+        options?: CreateSpokenTermsOptions,
+    ): Promise<SpokenTerms> {
+        const body = addExtraBodyParametersToJson(
+            { name, term_lists: termLists.map(spokenTermsEntriesToJson) },
+            options,
+        );
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/spoken-terms',
-            { jsonBody: { name, term_lists: termLists.map(spokenTermsEntriesToJson) } },
+            { jsonBody: body },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTerms(content);
@@ -781,28 +802,28 @@ export class DeepLClient extends Translator {
      * list are merged into the existing list of that language; fields left unset are not changed.
      *
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
-     * @param options.name New name of the collection.
-     * @param options.termLists Term lists to merge into the collection.
+     * @param options Fields to change, see {@link UpdateSpokenTermsOptions}. If omitted or
+     *     empty, an empty body is sent.
      * @returns {Promise<SpokenTerms>} Object with details about the updated collection.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async updateSpokenTerms(
         spokenTerms: string | SpokenTerms,
-        options: { name?: string; termLists?: SpokenTermsEntries[] },
+        options?: UpdateSpokenTermsOptions,
     ): Promise<SpokenTerms> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const body: Record<string, unknown> = {};
-        if (options.name !== undefined) {
+        if (options?.name !== undefined) {
             body.name = options.name;
         }
-        if (options.termLists !== undefined) {
+        if (options?.termLists !== undefined) {
             body.term_lists = options.termLists.map(spokenTermsEntriesToJson);
         }
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
-            { jsonBody: body },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTerms(content);
@@ -837,6 +858,7 @@ export class DeepLClient extends Translator {
      *
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
      * @param entries The language and its new terms.
+     * @param options Additional options, see {@link ReplaceSpokenTermsListOptions}.
      * @returns {Promise<SpokenTermsList>} Details about the new term list.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -844,12 +866,13 @@ export class DeepLClient extends Translator {
     async replaceSpokenTermsList(
         spokenTerms: string | SpokenTerms,
         entries: SpokenTermsEntries,
+        options?: ReplaceSpokenTermsListOptions,
     ): Promise<SpokenTermsList> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists`,
-            { jsonBody: spokenTermsEntriesToJson(entries) },
+            { jsonBody: addExtraBodyParametersToJson(spokenTermsEntriesToJson(entries), options) },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTermsList(content);
