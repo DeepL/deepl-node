@@ -21,7 +21,7 @@ describe('DeepLAdminClient', () => {
         expect(report.groupBy).toBeDefined();
         expect(report.groupBy).toBe('keyAndDay');
         expect(Array.isArray(report.keyAndDayUsages)).toBe(true);
-    });
+    }, 15000);
 
     it('sends GET /v2/admin/analytics/custom-tags and parses the report', async () => {
         const report = await makeAdminClient().getCustomTagUsageAnalytics(weekAgo, today, 'day');
@@ -30,7 +30,7 @@ describe('DeepLAdminClient', () => {
         expect(report.endDate).toBeDefined();
         expect(report.aggregateBy).toBe('day');
         expect(Array.isArray(report.usage)).toBe(true);
-    });
+    }, 15000);
 
     it(
         'sends the developer key requests: create, list, rename, set limits and deactivate',
