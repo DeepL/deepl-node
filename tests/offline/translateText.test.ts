@@ -56,6 +56,27 @@ describe('Translator.translateText', () => {
         });
     });
 
+    it('parses tag_handling_version, and leaves it undefined when it is not a string', async () => {
+        const reply = (version: unknown) => ({
+            translations: [
+                {
+                    detected_source_language: 'EN',
+                    text: 'out',
+                    billed_characters: 3,
+                    tag_handling_version: version,
+                },
+            ],
+        });
+        expectTranslateBody(baseBody, reply('v2'));
+        expectTranslateBody(baseBody, reply(2));
+        const translator = makeTranslator();
+
+        expect((await translator.translateText('abc', null, 'de')).tagHandlingVersion).toBe('v2');
+        expect(
+            (await translator.translateText('abc', null, 'de')).tagHandlingVersion,
+        ).toBeUndefined();
+    });
+
     it('sends every text of an array and parses one result per text', async () => {
         expectTranslateBody(
             { ...baseBody, text: ['a', 'b'] },
@@ -103,6 +124,8 @@ describe('Translator.translateText', () => {
         ['off', '0'],
         ['nonewlines', 'nonewlines'],
         ['OFF', '0'],
+        ['1', '1'],
+        ['0', '0'],
     ])('sends splitSentences %s as %s', async (splitSentences, sent) => {
         expectTranslateBody({ ...baseBody, split_sentences: sent });
 
@@ -113,13 +136,30 @@ describe('Translator.translateText', () => {
 
     it('does not change the splitSentences value of the caller options', async () => {
         expectTranslateBody({ ...baseBody, split_sentences: '0' });
-        const options: deepl.TranslateTextOptions = {
-            splitSentences: <deepl.SentenceSplittingMode>'OFF',
-        };
+        const options: deepl.TranslateTextOptions = { splitSentences: 'OFF' };
 
         await makeTranslator().translateText('abc', null, 'de', options);
 
         expect(options.splitSentences).toBe('OFF');
+    });
+
+    it('sends enum option values that are not listed in their types', async () => {
+        expectTranslateBody({
+            ...baseBody,
+            formality: 'future_formality',
+            split_sentences: 'future_mode',
+            tag_handling: 'future_markup',
+            tag_handling_version: 'v3',
+            model_type: 'future_model',
+        });
+
+        await makeTranslator().translateText('abc', null, 'de', {
+            formality: 'future_formality',
+            splitSentences: 'future_mode',
+            tagHandling: 'future_markup',
+            tagHandlingVersion: 'v3',
+            modelType: 'future_model',
+        });
     });
 
     it.each([

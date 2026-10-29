@@ -139,6 +139,8 @@ following properties:
 - `billedCharacters` is the number of characters billed for the text.
 - `modelTypeUsed` indicates the translation model used, but is `undefined`
   unless the `modelType` option is specified.
+- `tagHandlingVersion` is the tag handling version used (for example `'v2'`), or
+  `undefined` unless the `tagHandling` option is specified.
 
 ```javascript
 // Translate text into a target language, in this case, French:
@@ -166,13 +168,14 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
 #### Text translation options
 
 -   `splitSentences`: specify how input text should be split into sentences,
-    default: `'on'`.
-    -   `'on'`: input text will be split into sentences using both newlines and
+    default: `'1'`.
+    -   `'1'`: input text will be split into sentences using both newlines and
         punctuation.
-    -   `'off'`: input text will not be split into sentences. Use this for
+    -   `'0'` or `'off'`: input text will not be split into sentences. Use this for
         applications where each input text contains only one sentence.
     -   `'nonewlines'`: input text will be split into sentences using punctuation
         but not newlines.
+    -   `'on'` and `'default'` are deprecated aliases of `'1'`.
 -   `preserveFormatting`: controls automatic-formatting-correction. Set to `true`
     to prevent automatic-correction of formatting, default: `false`.
 -   `formality`: controls whether translations should lean toward informal or
@@ -230,6 +233,10 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
     and `'xml'`.
 -   `tagHandlingVersion`: specifies which version of the tag handling algorithm to use.
     Options are `v1` and `v2`.
+
+`formality`, `splitSentences`, `modelType`, `tagHandling` and `tagHandlingVersion`
+also accept any other string, which is sent to the API unchanged; this allows values
+the API adds later to be used without a library update.
 
 The following options are only used if `tagHandling` is `'xml'`:
 

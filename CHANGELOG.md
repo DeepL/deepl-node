@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `tagHandlingVersion` to `TextResult`: the tag handling version used, parsed
+  from the response; `undefined` when the API does not return it.
+- `SentenceSplittingMode` accepts `'1'` and `'0'`, the API values, which are sent
+  unchanged.
 - Added the `extraBodyParameters` option to `BaseRequestOptions`, and so to
   `TranslateTextOptions`, `DocumentTranslateOptions` and `RephraseTextOptions`.
   It replaces `extraRequestParameters` and behaves the same. Passing both
@@ -92,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `updateStyleRuleCustomInstruction(styleId, instructionId, label, prompt, sourceLanguage?)`.
 
 ### Changed
+- `Formality`, `SentenceSplittingMode`, `TagHandlingMode`, `TagHandlingVersion`
+  and `ModelType` accept any string in addition to their listed values, so values
+  the API adds later can be passed without a type cast.
 - Every HTTP 404 response now throws `NotFoundError`; before, only glossary
   requests threw an error class of their own (`GlossaryNotFoundError`, which
   is still thrown there) and other requests threw a plain `DeepLError`.
@@ -116,6 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- `SentenceSplittingMode` values `'on'` and `'default'` are deprecated. Use `'1'`
+  instead.
 - `extraRequestParameters` is deprecated; use `extraBodyParameters` instead.
   It will be removed in the next major version.
 - `Translator` and `TranslatorOptions` are deprecated; use `DeepLClient` and

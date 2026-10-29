@@ -88,11 +88,36 @@ export interface DeepLClientOptions extends HttpClientOptions {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface TranslatorOptions extends DeepLClientOptions {}
 
-export type Formality = 'less' | 'more' | 'default' | 'prefer_less' | 'prefer_more';
-export type SentenceSplittingMode = 'off' | 'on' | 'nonewlines' | 'default';
-export type TagHandlingMode = 'html' | 'xml';
-export type TagHandlingVersion = 'v1' | 'v2';
-export type ModelType = 'quality_optimized' | 'latency_optimized' | 'prefer_quality_optimized';
+// `string & Record<never, never>` accepts any string, e.g. values the API adds later, while
+// keeping editor completion for the listed members.
+export type Formality =
+    | 'less'
+    | 'more'
+    | 'default'
+    | 'prefer_less'
+    | 'prefer_more'
+    | (string & Record<never, never>);
+/**
+ * Sentence splitting mode: '1' (split on punctuation and newlines), '0' (no splitting) or
+ * 'nonewlines' (split on punctuation only). 'off' is sent as '0'.
+ * 'on' and 'default' are deprecated: use '1' instead. They will be removed in the next major
+ * version.
+ */
+export type SentenceSplittingMode =
+    | '1'
+    | '0'
+    | 'off'
+    | 'nonewlines'
+    | 'on'
+    | 'default'
+    | (string & Record<never, never>);
+export type TagHandlingMode = 'html' | 'xml' | (string & Record<never, never>);
+export type TagHandlingVersion = 'v1' | 'v2' | (string & Record<never, never>);
+export type ModelType =
+    | 'quality_optimized'
+    | 'latency_optimized'
+    | 'prefer_quality_optimized'
+    | (string & Record<never, never>);
 export type GlossaryId = string;
 export type StyleId = string;
 export type TranslationMemoryId = string;
@@ -151,10 +176,10 @@ export interface GlossaryInfo {
 export interface TranslateTextOptions extends BaseRequestOptions {
     /**
      * Specifies how input translation text should be split into sentences.
-     * - 'on': Input translation text will be split into sentences using both newlines and
+     * - '1': Input translation text will be split into sentences using both newlines and
      *   punctuation, this is the default behaviour.
-     * - 'off': Input translation text will not be split into sentences. This is advisable for
-     *   applications where each input translation text is only one sentence.
+     * - '0' or 'off': Input translation text will not be split into sentences. This is advisable
+     *   for applications where each input translation text is only one sentence.
      * - 'nonewlines': Input translation text will be split into sentences using only punctuation
      *   but not newlines.
      */
@@ -801,6 +826,11 @@ export interface TextResult {
      * The translation model type used, if available.
      */
     readonly modelTypeUsed?: string;
+
+    /**
+     * The tag handling version used, present when tag handling was requested.
+     */
+    readonly tagHandlingVersion?: TagHandlingVersion;
 }
 
 /**

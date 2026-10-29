@@ -126,6 +126,7 @@ interface TextResultApiResponse {
     detected_source_language: string;
     billed_characters: number;
     model_type_used?: string;
+    tag_handling_version?: unknown;
 }
 
 /**
@@ -623,6 +624,10 @@ export function parseUsage(json: string): Usage {
     }
 }
 
+function parseOptionalString(value: unknown): string | undefined {
+    return typeof value === 'string' ? value : undefined;
+}
+
 /**
  * Parses the given JSON string to an array of TextResult objects.
  * @private
@@ -638,6 +643,7 @@ export function parseTextResultArray(json: string): TextResult[] {
                 ) as SourceLanguageCode,
                 billedCharacters: translation.billed_characters,
                 modelTypeUsed: translation.model_type_used,
+                tagHandlingVersion: parseOptionalString(translation.tag_handling_version),
             };
         });
     } catch (error) {
@@ -872,10 +878,6 @@ interface StyleProfileApiResponse {
 
 function parseIdList(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
-}
-
-function parseOptionalString(value: unknown): string | undefined {
-    return typeof value === 'string' ? value : undefined;
 }
 
 function parseRawStyleProfile(obj: StyleProfileApiResponse): StyleProfile {
