@@ -30,6 +30,7 @@ import {
     DocumentStatus,
     DocumentHandle,
     DocumentTranslateOptions,
+    WaitOptions,
     GlossaryId,
     GlossaryInfo,
     GlossaryLanguagePair,
@@ -361,14 +362,16 @@ export class Translator {
 
         let documentHandle = undefined;
         try {
-            documentHandle = await this.uploadDocument(
+            documentHandle = await this.translateDocumentUpload(
                 fileToUpload,
                 sourceLang,
                 targetLang,
                 options,
             );
-            const status = await this.translateDocumentWaitUntilDone(documentHandle);
-            await this.downloadDocument(documentHandle, outputHandle);
+            const status = await this.translateDocumentWaitUntilDone(documentHandle, {
+                timeoutMs: options?.timeoutMs,
+            });
+            await this.translateDocumentDownload(documentHandle, outputHandle);
             if (willMinify) {
                 // Intentionally replace outputFile with a deminified version of the outputFile
                 documentMinifier.deminifyDocument(outputFile, outputFile, true);
@@ -393,7 +396,7 @@ export class Translator {
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with DocumentHandle associated with the in-progress translation.
      */
-    async uploadDocument(
+    async translateDocumentUpload(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
         sourceLang: SourceLanguageCodeInput | null,
         targetLang: TargetLanguageCodeInput,
@@ -449,11 +452,24 @@ export class Translator {
     }
 
     /**
+     * Uploads specified document to DeepL to translate into target language, and returns handle associated with the document.
+     * @deprecated Use {@link translateDocumentUpload} instead. Will be removed in the next major version.
+     */
+    async uploadDocument(
+        inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
+        sourceLang: SourceLanguageCodeInput | null,
+        targetLang: TargetLanguageCodeInput,
+        options?: DocumentTranslateOptions,
+    ): Promise<DocumentHandle> {
+        return this.translateDocumentUpload(inputFile, sourceLang, targetLang, options);
+    }
+
+    /**
      * Retrieves the status of the document translation associated with the given document handle.
      * @param handle Document handle associated with document.
      * @return Fulfills with a DocumentStatus giving the document translation status.
      */
-    async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+    async translateDocumentGetStatus(handle: DocumentHandle): Promise<DocumentStatus> {
         const data = new URLSearchParams({ document_key: handle.documentKey });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -465,12 +481,21 @@ export class Translator {
     }
 
     /**
+     * Retrieves the status of the document translation associated with the given document handle.
+     * @deprecated Use {@link translateDocumentGetStatus} instead. Will be removed in the next major version.
+     */
+    async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+        return this.translateDocumentGetStatus(handle);
+    }
+
+    /**
      * Downloads the translated document associated with the given document handle to the specified output file path or stream.handle.
      * @param handle Document handle associated with document.
      * @param outputFile String containing output file path, or Stream or FileHandle to store file data.
      * @return Fulfills with undefined, or rejects if the document translation has not been completed.
+     * @throws {DocumentNotReadyError} If the document translation has not completed yet.
      */
-    async downloadDocument(
+    async translateDocumentDownload(
         handle: DocumentHandle,
         outputFile: string | fs.WriteStream | fs.promises.FileHandle,
     ): Promise<void> {
@@ -499,20 +524,47 @@ export class Translator {
     }
 
     /**
-     * Polls the status of the given document translation until it completes.
-     * @param handle {DocumentHandle} Handle to the document translation.
-     * @return Fulfills with the final DocumentStatus when the document translation completes
-     * successfully, rejects with a DeepLError if the translation fails or a communication error
-     * occurs.
+     * Downloads the translated document associated with the given document handle.
+     * @deprecated Use {@link translateDocumentDownload} instead. Will be removed in the next major version.
      */
-    async translateDocumentWaitUntilDone(handle: DocumentHandle): Promise<DocumentStatus> {
-        let status = await this.getDocumentStatus(handle);
+    async downloadDocument(
+        handle: DocumentHandle,
+        outputFile: string | fs.WriteStream | fs.promises.FileHandle,
+    ): Promise<void> {
+        return this.translateDocumentDownload(handle, outputFile);
+    }
+
+    /**
+     * Polls the status of the given document translation every 5 seconds until it completes.
+     * Statuses this library does not know are polled through.
+     * @param handle {DocumentHandle} Handle to the document translation.
+     * @param options {WaitOptions} Optional `timeoutMs`: maximum time to wait in milliseconds.
+     * @return Fulfills with the final DocumentStatus when the document translation completes
+     * successfully, rejects with a DeepLError if the translation fails, the timeout expires or a
+     * communication error occurs.
+     */
+    async translateDocumentWaitUntilDone(
+        handle: DocumentHandle,
+        options?: WaitOptions,
+    ): Promise<DocumentStatus> {
+        const timeoutMs = options?.timeoutMs;
+        const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
+        let status = await this.translateDocumentGetStatus(handle);
         while (!status.done() && status.ok()) {
             // status.secondsRemaining is currently unreliable, so just poll equidistantly
-            const secs = 5.0;
-            await timeout(secs * 1000);
-            logInfo(`Rechecking document translation status after sleeping for ${secs} seconds.`);
-            status = await this.getDocumentStatus(handle);
+            let sleepMs = 5000;
+            if (deadline !== undefined) {
+                const remainingMs = deadline - Date.now();
+                if (remainingMs <= 0) {
+                    throw new DeepLError(
+                        `Timeout of ${timeoutMs}ms exceeded for document translation`,
+                    );
+                }
+                sleepMs = Math.min(sleepMs, remainingMs);
+            }
+            await timeout(sleepMs);
+            logInfo(`Rechecking document translation status after sleeping for ${sleepMs} ms.`);
+            status = await this.translateDocumentGetStatus(handle);
         }
         if (!status.ok()) {
             const message = status.errorMessage || 'unknown error';

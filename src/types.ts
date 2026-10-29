@@ -338,6 +338,13 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
      * supported for `docx` and `pdf` output; the API ignores it for other output formats.
      */
     enableWatermark?: boolean;
+
+    /**
+     * Used by `translateDocument()` only: maximum time in milliseconds to wait for the document
+     * translation between upload and download. When it expires, `translateDocument()` rejects
+     * with a DocumentTranslationError. If unset, it waits without limit.
+     */
+    timeoutMs?: number;
 }
 
 /**
@@ -765,9 +772,25 @@ export interface DocumentHandle {
 export type DocumentStatusCode = 'queued' | 'translating' | 'error' | 'done';
 
 /**
+ * Options for methods that poll until an operation completes.
+ */
+export interface WaitOptions {
+    /**
+     * Maximum time to wait in milliseconds; when it expires, the method rejects with a
+     * DeepLError. Status is polled every 5 seconds. If unset, the method waits without limit.
+     */
+    timeoutMs?: number;
+}
+
+/**
  * Status of a document translation request.
  */
 export interface DocumentStatus {
+    /**
+     * ID of the document, or undefined if the response does not contain it.
+     */
+    readonly documentId?: string;
+
     /**
      * One of the status values defined in DocumentStatusCode.
      * @see DocumentStatusCode

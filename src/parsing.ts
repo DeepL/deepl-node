@@ -184,6 +184,7 @@ interface MultilingualGlossaryInfoApiResponse {
  * @private
  */
 interface DocumentStatusApiResponse {
+    document_id?: unknown;
     status: string;
     seconds_remaining?: number;
     billed_characters?: number;
@@ -291,17 +292,20 @@ class DocumentStatusImpl implements DocumentStatus {
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
+    public documentId?: string;
 
     constructor(
         status: DocumentStatusCode,
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,
+        documentId?: string,
     ) {
         this.status = status;
         this.secondsRemaining = secondsRemaining;
         this.billedCharacters = billedCharacters;
         this.errorMessage = errorMessage;
+        this.documentId = documentId;
     }
 
     ok(): boolean {
@@ -524,6 +528,10 @@ export function parseGlossaryInfoList(json: string): GlossaryInfo[] {
     }
 }
 
+function parseOptionalString(value: unknown): string | undefined {
+    return typeof value === 'string' ? value : undefined;
+}
+
 /**
  * Parses the given JSON string to a DocumentStatus object.
  * @private
@@ -536,6 +544,7 @@ export function parseDocumentStatus(json: string): DocumentStatus {
             obj.seconds_remaining,
             obj.billed_characters,
             obj.error_message,
+            parseOptionalString(obj.document_id),
         );
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
@@ -622,10 +631,6 @@ export function parseUsage(json: string): Usage {
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }
-}
-
-function parseOptionalString(value: unknown): string | undefined {
-    return typeof value === 'string' ? value : undefined;
 }
 
 /**

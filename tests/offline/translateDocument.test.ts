@@ -7,7 +7,7 @@ import * as deepl from 'deepl-node';
 import fs from 'fs';
 import nock from 'nock';
 
-import { makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, makeTranslator, serverUrl } from './client';
 import { createTextDocument } from '../fixtures';
 
 const handle = { documentId: 'doc-id', documentKey: 'doc-key' };
@@ -165,6 +165,51 @@ describe('Translator.uploadDocument', () => {
     });
 });
 
+describe('Translator.translateDocumentUpload', () => {
+    it('sends the file and target language and parses the handle', async () => {
+        const upload = expectUpload();
+
+        const result = await makeDeeplClient().translateDocumentUpload(
+            Buffer.from('abc'),
+            null,
+            'de',
+            { filename: 'a.txt' },
+        );
+
+        expect(result).toEqual(handle);
+        expect(upload.body()).toContain('name="target_lang"\r\n\r\nde\r\n');
+        expect(upload.body()).toContain('filename="a.txt"');
+    });
+});
+
+describe('Translator.translateDocumentGetStatus', () => {
+    it('sends the document key and parses the status and document ID', async () => {
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .reply(200, { document_id: 'doc-id', status: 'translating', seconds_remaining: 3 });
+
+        const status = await makeDeeplClient().translateDocumentGetStatus(handle);
+
+        expect(status.documentId).toBe('doc-id');
+        expect([status.status, status.ok(), status.secondsRemaining]).toEqual([
+            'translating',
+            true,
+            3,
+        ]);
+    });
+
+    it('leaves documentId undefined when document_id is not a string', async () => {
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .reply(200, { document_id: 42, status: 'done', billed_characters: 11 });
+
+        const status = await makeDeeplClient().translateDocumentGetStatus(handle);
+
+        expect(status.documentId).toBeUndefined();
+        expect([status.done(), status.billedCharacters]).toEqual([true, 11]);
+    });
+});
+
 describe('Translator.getDocumentStatus', () => {
     it('sends the document key and parses the status', async () => {
         nock(serverUrl)
@@ -233,6 +278,8 @@ describe('Translator.translateDocumentWaitUntilDone', () => {
     });
 });
 
+describe('Translator.translateDocumentWaitUntilDone timeoutMs', () => {});
+
 describe('Translator.isDocumentTranslationComplete', () => {
     it('polls until the document is done', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'queued' });
@@ -277,6 +324,17 @@ describe('Translator.downloadDocument', () => {
     });
 });
 
+describe('Translator.translateDocumentDownload', () => {
+    it('sends the document key and streams the result to a file', async () => {
+        nock(serverUrl).post('/v2/document/doc-id/result', keyBody).reply(200, 'result');
+        const [, outputPath] = createTextDocument();
+
+        await makeDeeplClient().translateDocumentDownload(handle, outputPath);
+
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
+    });
+});
+
 describe('Translator.translateDocument', () => {
     it('uploads, polls and downloads the document', async () => {
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
@@ -304,6 +362,25 @@ describe('Translator.translateDocument', () => {
         expect(error.message).toContain('Source and target language match');
         expect(error.documentHandle).toEqual(handle);
         expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('rejects with DocumentTranslationError when timeoutMs expires', async () => {
+        nock(serverUrl).post('/v2/document').reply(200, handleReply);
+        // A second poll happens only if the first status request took under 1 ms.
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'translating' });
+        nock(serverUrl)
+            .post('/v2/document/doc-id', keyBody)
+            .optionally()
+            .reply(200, { status: 'translating' });
+        const [exampleDocument, outputPath] = createTextDocument();
+
+        const error = await makeDeeplClient()
+            .translateDocument(exampleDocument, outputPath, null, 'de', { timeoutMs: 1 })
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.message).toContain('Timeout of 1ms exceeded');
+        expect(error.documentHandle).toEqual(handle);
     });
 
     it('throws Error when the output file already exists', async () => {

@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `translateDocumentUpload()`, `translateDocumentGetStatus()` and
+  `translateDocumentDownload()`, which replace `uploadDocument()`,
+  `getDocumentStatus()` and `downloadDocument()` and behave the same.
+- Added `documentId` to `DocumentStatus`, parsed from the response field
+  `document_id`; `undefined` when absent or not a string.
+- Added the `timeoutMs` option to `DocumentTranslateOptions`: the maximum time
+  `translateDocument()` waits for the translation between upload and download.
+  When it expires, `translateDocument()` rejects with a `DocumentTranslationError`.
+- Added the `WaitOptions` type with `timeoutMs`.
 - Added `tagHandlingVersion` to `TextResult`: the tag handling version used, parsed
   from the response; `undefined` when the API does not return it.
 - `SentenceSplittingMode` accepts `'1'` and `'0'`, the API values, which are sent
@@ -77,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docx` and `pdf` output.
 - Added `translateDocumentWaitUntilDone()`, which polls a document translation
   until it is done and resolves with the final `DocumentStatus`, or rejects with
-  a `DeepLError` if the translation fails.
+  a `DeepLError` if the translation fails. Its optional second argument
+  (`WaitOptions`) takes `timeoutMs`, after which it rejects with a `DeepLError`.
 - Added the `RephraseTextOptions` type with `writingStyle` and `tone`. It
   extends `BaseRequestOptions`, so it also accepts `extraRequestParameters`,
   which are added to the request body and override parameters of the same
@@ -123,6 +133,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit and links to the DeepL API usage limits instead.
 
 ### Deprecated
+- `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
+  deprecated; use `translateDocumentUpload()`, `translateDocumentGetStatus()`
+  and `translateDocumentDownload()` instead. They will be removed in the next
+  major version.
 - `SentenceSplittingMode` values `'on'` and `'default'` are deprecated. Use `'1'`
   instead.
 - `extraRequestParameters` is deprecated; use `extraBodyParameters` instead.

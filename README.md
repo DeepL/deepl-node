@@ -302,12 +302,23 @@ the translation is complete, and downloading. If your application needs to
 execute these steps individually, you can instead use the following functions
 directly:
 
--   `uploadDocument()`,
--   `getDocumentStatus()`, or `translateDocumentWaitUntilDone()` to poll the
-    status until the translation is done; it resolves with the final
-    `DocumentStatus` and rejects with a `DeepLError` if the translation fails
-    (`isDocumentTranslationComplete()` is deprecated in favour of it), and
--   `downloadDocument()`
+-   `translateDocumentUpload()`, which resolves with a `DocumentHandle`,
+-   `translateDocumentGetStatus()`, or `translateDocumentWaitUntilDone()` to poll
+    the status every 5 seconds until the translation is done; it resolves with
+    the final `DocumentStatus` and rejects with a `DeepLError` if the
+    translation fails (`isDocumentTranslationComplete()` is deprecated in favour
+    of it). Pass `{ timeoutMs }` as its second argument to reject with a
+    `DeepLError` once that many milliseconds have passed, and
+-   `translateDocumentDownload()`, which rejects with a `DocumentNotReadyError`
+    if the translation is not done yet.
+
+`uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
+deprecated aliases of these methods and will be removed in the next major
+version.
+
+A `DocumentStatus` has `documentId`, `status`, `secondsRemaining`,
+`billedCharacters` and `errorMessage`. `done()` is true when the translation
+completed successfully; `ok()` is true unless an error occurred.
 
 #### Document translation options
 
@@ -328,6 +339,10 @@ directly:
 -   `enableWatermark`: set to `true` to add a "Translated by DeepL" watermark to
     the translated document. Only supported for `docx` and `pdf` output; for
     other output formats the API ignores this option.
+-   `timeoutMs`: used by `translateDocument()` only, not sent to the API. Maximum
+    time in milliseconds to wait for the translation between upload and
+    download; when it expires, `translateDocument()` rejects with a
+    `DocumentTranslationError`. By default it waits without limit.
 -   `extraBodyParameters`: same as in [Text translation options](#text-translation-options).
 -   `enableDocumentMinification`: **deprecated**, will be removed in the next
     major version. A `bool` value. If set to `true`, the library will try to
@@ -360,8 +375,8 @@ await deeplClient.translateDocument(
     inFile, outFile, "en", "de", { enableDocumentMinification: true }
 );
 ```
-In order to use document minification with the lower-level `uploadDocument()`,
-`translateDocumentWaitUntilDone()` and `downloadDocument()` methods as well as other details,
+In order to use document minification with the lower-level `translateDocumentUpload()`,
+`translateDocumentWaitUntilDone()` and `translateDocumentDownload()` methods as well as other details,
 see the `DocumentMinifier` class.
 
 
