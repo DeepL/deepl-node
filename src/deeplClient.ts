@@ -1182,9 +1182,12 @@ export class DeepLClient extends Translator {
         );
 
         if (statusCode < 200 || statusCode >= 300) {
-            throw new DeepLError(
+            const error = new DeepLError(
                 `Error uploading translation memory file, HTTP status: ${statusCode}, content: ${content}`,
             );
+            error.httpStatusCode = statusCode;
+            error.shouldRetry = statusCode === 429 || statusCode >= 500;
+            throw error;
         }
     }
 

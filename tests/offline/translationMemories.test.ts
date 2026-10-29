@@ -245,6 +245,18 @@ describe('DeepLClient.uploadTranslationMemoryFile', () => {
         ).rejects.toThrow('HTTP status: 403, content: expired');
     });
 
+    it('throws DeepLError with httpStatusCode and shouldRetry after storage server errors', async () => {
+        nock(storageUrl).put('/upload').reply(500, 'down');
+
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .uploadTranslationMemoryFile(`${storageUrl}/upload`, Buffer.from(tmx))
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.httpStatusCode).toBe(500);
+        expect(error.shouldRetry).toBe(true);
+    });
+
     it('throws ArgumentError when the upload URL is empty', async () => {
         await expect(
             makeDeeplClient().uploadTranslationMemoryFile('', Buffer.from(tmx)),
