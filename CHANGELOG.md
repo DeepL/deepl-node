@@ -126,6 +126,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accept the label, prompt and optional source language as separate arguments:
   `createStyleRuleCustomInstruction(styleId, label, prompt, sourceLanguage?)` and
   `updateStyleRuleCustomInstruction(styleId, instructionId, label, prompt, sourceLanguage?)`.
+- Added `updateMultilingualGlossary(glossary, options?)`, which changes the
+  name and merges dictionaries of a multilingual glossary in one request. The new
+  `UpdateMultilingualGlossaryOptions` holds `name` and `dictionaries`; only the
+  fields that are set are sent, as JSON.
+- Added `createMultilingualGlossaryFromCsv()`,
+  `updateMultilingualGlossaryDictionaryFromCsv()` and
+  `replaceMultilingualGlossaryDictionaryFromCsv()`, which replace the `*WithCsv()`
+  methods of the same name and behave the same.
+- `createMultilingualGlossary()`, `createMultilingualGlossaryFromCsv()`,
+  `updateMultilingualGlossaryName()`, `updateMultilingualGlossaryDictionary()`,
+  `updateMultilingualGlossaryDictionaryFromCsv()`,
+  `replaceMultilingualGlossaryDictionary()` and
+  `replaceMultilingualGlossaryDictionaryFromCsv()` take an optional last
+  `options` argument with `extraBodyParameters` (new types
+  `CreateMultilingualGlossaryOptions` and
+  `ReplaceMultilingualGlossaryDictionaryOptions`).
+- `getMultilingualGlossary()` accepts a `MultilingualGlossaryInfo` object as well
+  as a glossary ID.
 
 ### Changed
 - `Formality`, `SentenceSplittingMode`, `TagHandlingMode`, `TagHandlingVersion`
@@ -199,6 +217,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TranslationMemoryImportApiResponse`, `TranslationMemoryExportApiResponse`,
   `TranslationMemoryJobApiResponse` and `LanguageResourceApiResponse`) are
   deprecated. They are internal and will no longer be exported in the next
+  major version.
+- `createMultilingualGlossaryWithCsv()`,
+  `updateMultilingualGlossaryDictionaryWithCsv()` and
+  `replaceMultilingualGlossaryDictionaryWithCsv()` are deprecated; use the
+  `*FromCsv()` methods of the same name instead. They will be removed in the next
   major version.
 
 ### Fixed

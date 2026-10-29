@@ -450,7 +450,8 @@ const glossaryEnToDe = await deeplClient.createMultilingualGlossary('My glossary
 ```
 
 You can also upload a glossary downloaded from the DeepL website using
-`createGlossaryWithCsv()`. Instead of supplying the entries as a dictionary,
+`createMultilingualGlossaryFromCsv()` (`createMultilingualGlossaryWithCsv()` is
+deprecated and behaves the same). Instead of supplying the entries as a dictionary,
 provide the CSV content as a string.
 
 ```javascript
@@ -464,7 +465,7 @@ try {
     throw error;
 }
 const csvContent = await readCsvFile(filePath);
-const glossaryEnToDe = await deeplClient.createMultilingualGlossaryWithCsv('My glossary', 'en', 'de', csvContent);
+const glossaryEnToDe = await deeplClient.createMultilingualGlossaryFromCsv('My glossary', 'en', 'de', csvContent);
 ```
 
 The [API documentation][api-docs-csv-format] explains the expected CSV format in
@@ -501,7 +502,8 @@ console.log(resultWithGlossary.text); // 'Der Maler wurde mit einem Gewinn ausge
 
 Functions to get, list, and delete stored glossaries are also provided:
 
-- `getMultilingualGlossary()` takes a glossary ID and returns a 
+- `getMultilingualGlossary()` takes a glossary ID or `MultilingualGlossaryInfo`
+  object and returns a 
   `Promise<MultilingualGlossaryInfo>` object for a stored glossary, or raises an
   exception if no such glossary is found.
 - `listMultilingualGlossaries()` returns a promise of a list of `MultilingualGlossaryInfo` objects
@@ -548,6 +550,11 @@ console.log(entriesObj.entries.toTsv()); // 'hello\thallo'
 
 Functions to edit stored glossaries are also provided:
 
+- `updateMultilingualGlossary()` takes a glossary ID or `MultilingualGlossaryInfo`
+  object and an optional `UpdateMultilingualGlossaryOptions` with `name` and
+  `dictionaries`, and changes the name and merges the dictionaries in one request.
+  Only the fields that are set are sent. The methods below are shortcuts for one
+  field.
 - `updateMultilingualGlossaryDictionary()` takes a glossary ID or `MultilingualGlossaryInfo`
   object, plus a source language, target language, and a dictionary of entries.
   It will then either update the list of entries for that dictionary (either
@@ -560,12 +567,26 @@ Functions to edit stored glossaries are also provided:
   replacing any pre-existing entries for that language pair.
 - `updateMultilingualGlossaryName()` takes a glossary ID or `MultilingualGlossaryInfo`
   object, plus the new name of the glossary.
+- `updateMultilingualGlossaryDictionaryFromCsv()` and
+  `replaceMultilingualGlossaryDictionaryFromCsv()` take a glossary ID or
+  `MultilingualGlossaryInfo` object, a source language, target language and the
+  entries as CSV content. The `*WithCsv()` methods of the same name are
+  deprecated and behave the same.
+
+Every method that takes a glossary accepts its ID or a `MultilingualGlossaryInfo`
+object. The methods that send a request body (`createMultilingualGlossary()`,
+`createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossary()`, the
+`updateMultilingualGlossary*()` shortcuts and `replaceMultilingualGlossaryDictionary*()`)
+take an optional last `options` argument with `extraBodyParameters`: extra fields
+added last to the request body, replacing fields of the same name.
 
 ```javascript
 const glossaryDicts = [{sourceLangCode: 'en', targetLangCode: 'de', entries: new deepl.GlossaryEntries({ entries: {"artist": "Maler", "hello": "guten tag"} })}];
 const myGlossary = await deeplClient.createMultilingualGlossary('My Glossary', glossaryDicts);
 const newDict = {sourceLangCode: 'en', targetLangCode: 'de', entries: new deepl.GlossaryEntries({ entries: {"hello": "hallo", "prize": "Gewinn"} })};
 const updatedGlossary = await deeplClient.updateMultilingualGlossaryDictionary(myGlossary, newDict);
+// Rename the glossary and merge entries in one request
+await deeplClient.updateMultilingualGlossary(myGlossary, { name: 'My renamed glossary', dictionaries: [newDict] });
 
 const entriesObj = await deeplClient.getMultilingualGlossaryDictionaryEntries(createdGlossary, 'en', 'de');
 console.log(entriesObj.entries.toTsv()); // {'artist': 'Maler', 'hello': 'hallo', 'prize': 'Gewinn'}

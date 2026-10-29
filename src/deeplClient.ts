@@ -5,7 +5,10 @@
 import { Translator, checkStatusCode } from './translator';
 import {
     BaseRequestOptions,
+    CreateMultilingualGlossaryOptions,
     DeepLClientOptions,
+    ReplaceMultilingualGlossaryDictionaryOptions,
+    UpdateMultilingualGlossaryOptions,
     WriteResult,
     MultilingualGlossaryDictionaryEntries,
     MultilingualGlossaryInfo,
@@ -91,6 +94,10 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
     const terms = entries.entries.map((term) => (typeof term === 'string' ? term.trim() : term));
     terms.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang: entries.lang, entries: terms.join('\n') };
+}
+
+function multilingualGlossaryPath(glossary: GlossaryId | MultilingualGlossaryInfo): string {
+    return `/v3/glossaries/${encodeURIComponent(extractGlossaryId(glossary))}`;
 }
 
 function addExtraBodyParametersToJson(
@@ -316,10 +323,11 @@ export class DeepLClient extends Translator {
      * This function requires the glossary entries for each dictionary to be
      * provided as a dictionary of source-target terms. To create a glossary
      * from a CSV file downloaded from the DeepL website, see
-     * {@link createMultilingualGlossaryWithCsv}.
+     * {@link createMultilingualGlossaryFromCsv}.
      *
      * @param name user-defined name to attach to glossary.
      * @param glossaryDicts the dictionaries of the glossary, see {@link MultilingualGlossaryDictionaryEntries}.
+     * @param options Additional options, see {@link CreateMultilingualGlossaryOptions}.
      * @return {Promise<MultilingualGlossaryInfo>} object with details about the newly created glossary.
      *
      * @throws {ArgumentError} If any argument is invalid.
@@ -328,6 +336,7 @@ export class DeepLClient extends Translator {
     async createMultilingualGlossary(
         name: string,
         glossaryDicts: MultilingualGlossaryDictionaryEntries[],
+        options?: CreateMultilingualGlossaryOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!name) {
             throw new ArgumentError('glossary name must not be empty');
@@ -336,6 +345,7 @@ export class DeepLClient extends Translator {
         const data = new URLSearchParams();
         data.append('name', name);
         appendDictionaryEntries(data, glossaryDicts);
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -361,16 +371,18 @@ export class DeepLClient extends Translator {
      * @param sourceLanguageCode Source language code for the glossary.
      * @param targetLanguageCode Target language code for the glossary.
      * @param csvContent String in CSV format containing the entries.
+     * @param options Additional options, see {@link CreateMultilingualGlossaryOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} Object with details about the newly created glossary.
      *
      * @throws {ArgumentError} If any argument is invalid.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async createMultilingualGlossaryWithCsv(
+    async createMultilingualGlossaryFromCsv(
         name: string,
         sourceLanguageCode: string,
         targetLanguageCode: string,
         csvContent: string,
+        options?: CreateMultilingualGlossaryOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!name) {
             throw new ArgumentError('Parameter "name" must not be empty');
@@ -388,6 +400,7 @@ export class DeepLClient extends Translator {
         const data = new URLSearchParams();
         data.append('name', name);
         appendCsvDictionaryEntries(data, sourceLanguageCode, targetLanguageCode, csvContent);
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -400,20 +413,40 @@ export class DeepLClient extends Translator {
     }
 
     /**
+     * @deprecated Use {@link createMultilingualGlossaryFromCsv} instead. Will be removed in the
+     * next major version.
+     */
+    async createMultilingualGlossaryWithCsv(
+        name: string,
+        sourceLanguageCode: string,
+        targetLanguageCode: string,
+        csvContent: string,
+    ): Promise<MultilingualGlossaryInfo> {
+        return this.createMultilingualGlossaryFromCsv(
+            name,
+            sourceLanguageCode,
+            targetLanguageCode,
+            csvContent,
+        );
+    }
+
+    /**
      * Retrieves information about the glossary with the specified ID.
      * This does not retrieve the glossary entries.
-     * @param glossaryId ID of glossary to retrieve.
+     * @param glossary The ID of the glossary or MultilingualGlossaryInfo object to retrieve.
      * @returns {Promise<MultilingualGlossaryInfo>} object with details about the specified glossary.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async getMultilingualGlossary(glossaryId: string): Promise<MultilingualGlossaryInfo> {
-        if (!glossaryId) {
+    async getMultilingualGlossary(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+    ): Promise<MultilingualGlossaryInfo> {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('glossaryId must not be empty');
         }
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
+            multilingualGlossaryPath(glossary),
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -449,15 +482,13 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "targetLanguageCode" must not be empty');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
         const queryParams = new URLSearchParams();
         queryParams.append('source_lang', sourceLanguageCode);
         queryParams.append('target_lang', targetLanguageCode);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}/entries`,
+            `${multilingualGlossaryPath(glossary)}/entries`,
             { data: queryParams },
         );
 
@@ -507,7 +538,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
+            multilingualGlossaryPath(glossaryId),
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -537,8 +568,6 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "targetLanguageCode" must not be empty');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
         const query = new URLSearchParams({
             source_lang: sourceLanguageCode,
             target_lang: targetLanguageCode,
@@ -546,7 +575,7 @@ export class DeepLClient extends Translator {
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries?${query}`,
+            `${multilingualGlossaryPath(glossary)}/dictionaries?${query}`,
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -555,10 +584,9 @@ export class DeepLClient extends Translator {
     /**
      * Replaces the dictionary entries for a specific source and target language pair in a multilingual glossary.
      *
-     * @param glossary ID of the glossary or MultilingualGlossaryInfo object from which the dictionary will be deleted.
-     * @param sourceLanguageCode Source language code of the dictionary to replace.
-     * @param targetLanguageCode Target language code of the dictionary to replace.
-     * @param entries Dictionary entries to replace, formatted as a string in TSV format.
+     * @param glossary ID of the glossary or MultilingualGlossaryInfo object containing the dictionary.
+     * @param glossaryDict The language pair and the new entries of the dictionary.
+     * @param options Additional options, see {@link ReplaceMultilingualGlossaryDictionaryOptions}.
      * @returns {Promise<MultilingualGlossaryDictionaryInfo>} Object containing details about the updated dictionary.
      *
      * @throws {ArgumentError} If any argument is invalid.
@@ -567,6 +595,7 @@ export class DeepLClient extends Translator {
     async replaceMultilingualGlossaryDictionary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         glossaryDict: MultilingualGlossaryDictionaryEntries,
+        options?: ReplaceMultilingualGlossaryDictionaryOptions,
     ): Promise<MultilingualGlossaryDictionaryInfo> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -575,43 +604,38 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "glossaryDict" must not be null');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
-        const body = {
-            source_lang: glossaryDict.sourceLangCode,
-            target_lang: glossaryDict.targetLangCode,
-            entries: glossaryDict.entries.toTsv(),
-            entries_format: 'tsv',
-        };
-
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'PUT',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries`,
-            { jsonBody: body },
+        return this.putMultilingualGlossaryDictionary(
+            glossary,
+            {
+                source_lang: glossaryDict.sourceLangCode,
+                target_lang: glossaryDict.targetLangCode,
+                entries: glossaryDict.entries.toTsv(),
+                entries_format: 'tsv',
+            },
+            options,
         );
-
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        return parseResponse(content, parseMultilingualGlossaryDictionaryInfo);
     }
 
     /**
      * Replaces the dictionary entries for a specific source and target language pair in a multilingual glossary
      * using entries from a CSV file.
      *
-     * @param glossary ID of the glossary or MultilingualGlossaryInfo object from which the dictionary will be deleted.
+     * @param glossary ID of the glossary or MultilingualGlossaryInfo object containing the dictionary.
      * @param sourceLanguageCode Source language code of the dictionary to replace.
      * @param targetLanguageCode Target language code of the dictionary to replace.
      * @param csvContent String in CSV format containing the new entries.
+     * @param options Additional options, see {@link ReplaceMultilingualGlossaryDictionaryOptions}.
      * @returns {Promise<MultilingualGlossaryDictionaryInfo>} Object containing details about the updated dictionary.
      *
      * @throws {ArgumentError} If any argument is invalid.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async replaceMultilingualGlossaryDictionaryWithCsv(
+    async replaceMultilingualGlossaryDictionaryFromCsv(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         sourceLanguageCode: string,
         targetLanguageCode: string,
         csvContent: string,
+        options?: ReplaceMultilingualGlossaryDictionaryOptions,
     ): Promise<MultilingualGlossaryDictionaryInfo> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -626,19 +650,46 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "csvContent" must not be empty');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
+        return this.putMultilingualGlossaryDictionary(
+            glossary,
+            {
+                source_lang: sourceLanguageCode,
+                target_lang: targetLanguageCode,
+                entries: csvContent,
+                entries_format: 'csv',
+            },
+            options,
+        );
+    }
 
-        const body = {
-            source_lang: sourceLanguageCode,
-            target_lang: targetLanguageCode,
-            entries: csvContent,
-            entries_format: 'csv',
-        };
+    /**
+     * @deprecated Use {@link replaceMultilingualGlossaryDictionaryFromCsv} instead. Will be
+     * removed in the next major version.
+     */
+    async replaceMultilingualGlossaryDictionaryWithCsv(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+        sourceLanguageCode: string,
+        targetLanguageCode: string,
+        csvContent: string,
+    ): Promise<MultilingualGlossaryDictionaryInfo> {
+        return this.replaceMultilingualGlossaryDictionaryFromCsv(
+            glossary,
+            sourceLanguageCode,
+            targetLanguageCode,
+            csvContent,
+        );
+    }
 
+    /** @private */
+    private async putMultilingualGlossaryDictionary(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+        body: Record<string, unknown>,
+        options: ReplaceMultilingualGlossaryDictionaryOptions | undefined,
+    ): Promise<MultilingualGlossaryDictionaryInfo> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}/dictionaries`,
-            { jsonBody: body },
+            `${multilingualGlossaryPath(glossary)}/dictionaries`,
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -646,10 +697,55 @@ export class DeepLClient extends Translator {
     }
 
     /**
+     * Updates the name and/or dictionaries of a multilingual glossary. The entries of each given
+     * dictionary are merged into the existing dictionary of the same language pair, which is
+     * created if it does not exist; fields left unset are not changed.
+     *
+     * @param glossary ID of the glossary or MultilingualGlossaryInfo object to update.
+     * @param options Fields to change, see {@link UpdateMultilingualGlossaryOptions}. If omitted
+     *     or empty, an empty body is sent.
+     * @returns {Promise<MultilingualGlossaryInfo>} Object containing details about the updated glossary.
+     *
+     * @throws {ArgumentError} If any argument is invalid.
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
+    async updateMultilingualGlossary(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+        options?: UpdateMultilingualGlossaryOptions,
+    ): Promise<MultilingualGlossaryInfo> {
+        if (!glossary || !extractGlossaryId(glossary)) {
+            throw new ArgumentError('Parameter "glossary" must not be empty/null');
+        }
+
+        const body: Record<string, unknown> = {};
+        if (options?.name !== undefined) {
+            body.name = options.name;
+        }
+        if (options?.dictionaries !== undefined) {
+            body.dictionaries = options.dictionaries.map((dict) => ({
+                source_lang: dict.sourceLangCode,
+                target_lang: dict.targetLangCode,
+                entries: dict.entries.toTsv(),
+                entries_format: 'tsv',
+            }));
+        }
+
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'PATCH',
+            multilingualGlossaryPath(glossary),
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
+        );
+
+        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        return parseMultilingualGlossaryInfo(content);
+    }
+
+    /**
      * Updates the name of a multilingual glossary.
      *
-     * @param glossary ID of the glossary or MultilingualGlossaryInfo object from which the dictionary will be deleted.
+     * @param glossary ID of the glossary or MultilingualGlossaryInfo object to update.
      * @param name New name for the glossary.
+     * @param options Additional options, see {@link BaseRequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} Object containing details about the updated glossary.
      *
      * @throws {ArgumentError} If the name is invalid.
@@ -658,24 +754,15 @@ export class DeepLClient extends Translator {
     async updateMultilingualGlossaryName(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         name: string,
+        options?: BaseRequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!name) {
             throw new ArgumentError('Parameter "name" must not be empty');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
         const data = new URLSearchParams();
         data.append('name', name);
-
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'PATCH',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
-            { data: data },
-        );
-
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        return parseMultilingualGlossaryInfo(content);
+        return this.patchMultilingualGlossaryForm(glossary, data, options);
     }
 
     /**
@@ -683,6 +770,7 @@ export class DeepLClient extends Translator {
      *
      * @param glossary ID of the glossary or MultilingualGlossaryInfo object to update.
      * @param glossaryDict The new or updated glossary dictionary.
+     * @param options Additional options, see {@link BaseRequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} Object containing details about the updated glossary.
      *
      * @throws {ArgumentError} If any argument is invalid.
@@ -691,6 +779,7 @@ export class DeepLClient extends Translator {
     async updateMultilingualGlossaryDictionary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         glossaryDict: MultilingualGlossaryDictionaryEntries,
+        options?: BaseRequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -699,19 +788,9 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "glossaryDict" must not be null');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
         const data = new URLSearchParams();
         appendDictionaryEntries(data, [glossaryDict]);
-
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'PATCH',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
-            { data: data },
-        );
-
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
-        return parseMultilingualGlossaryInfo(content);
+        return this.patchMultilingualGlossaryForm(glossary, data, options);
     }
 
     /**
@@ -722,16 +801,18 @@ export class DeepLClient extends Translator {
      * @param sourceLanguageCode Source language code of the dictionary to update.
      * @param targetLanguageCode Target language code of the dictionary to update.
      * @param csvContent String in CSV format containing the new entries.
+     * @param options Additional options, see {@link BaseRequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} Object containing details about the updated glossary.
      *
      * @throws {ArgumentError} If any argument is invalid.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async updateMultilingualGlossaryDictionaryWithCsv(
+    async updateMultilingualGlossaryDictionaryFromCsv(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         sourceLanguageCode: string,
         targetLanguageCode: string,
         csvContent: string,
+        options?: BaseRequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -746,14 +827,40 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "csvContent" must not be empty');
         }
 
-        const glossaryId = extractGlossaryId(glossary);
-
         const data = new URLSearchParams();
         appendCsvDictionaryEntries(data, sourceLanguageCode, targetLanguageCode, csvContent);
+        return this.patchMultilingualGlossaryForm(glossary, data, options);
+    }
+
+    /**
+     * @deprecated Use {@link updateMultilingualGlossaryDictionaryFromCsv} instead. Will be
+     * removed in the next major version.
+     */
+    async updateMultilingualGlossaryDictionaryWithCsv(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+        sourceLanguageCode: string,
+        targetLanguageCode: string,
+        csvContent: string,
+    ): Promise<MultilingualGlossaryInfo> {
+        return this.updateMultilingualGlossaryDictionaryFromCsv(
+            glossary,
+            sourceLanguageCode,
+            targetLanguageCode,
+            csvContent,
+        );
+    }
+
+    /** @private */
+    private async patchMultilingualGlossaryForm(
+        glossary: GlossaryId | MultilingualGlossaryInfo,
+        data: URLSearchParams,
+        options: BaseRequestOptions | undefined,
+    ): Promise<MultilingualGlossaryInfo> {
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
-            `/v3/glossaries/${encodeURIComponent(glossaryId)}`,
+            multilingualGlossaryPath(glossary),
             { data: data },
         );
 

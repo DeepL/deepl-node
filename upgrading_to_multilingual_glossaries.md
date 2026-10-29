@@ -12,7 +12,7 @@ To support these new v3 APIs, we have created new methods to interact with these
 | Monolingual glossary methods         | Multilingual glossary methods        | Changes Summary                                           |
 |--------------------------------------|--------------------------------------|----------------------------------------------------------|
 | `createGlossary()`                  | `createMultilingualGlossary()`              | Accepts an array of `MultilingualGlossaryDictionaryEntries` for multi-lingual support and now returns a `MultilingualGlossaryInfo` object. |
-| `createGlossaryWithCsv()`         | `createMultilingualGlossaryWithCsv()`     | Similar functionality, but now returns a `MultilingualGlossaryInfo` object |
+| `createGlossaryWithCsv()`         | `createMultilingualGlossaryFromCsv()`     | Similar functionality, but now returns a `MultilingualGlossaryInfo` object |
 | `getGlossary()`                     | `getMultilingualGlossary()`                 | Similar functionality, but now returns `MultilingualGlossaryInfo`. Also can accept a `MultilingualGlossaryInfo` object as the glossary parameter instead of a `GlossaryInfo` object.|
 | `listGlossaries()`                  | `listMultilingualGlossaries()`              | Similar functionality, but now returns a list of `MultilingualGlossaryInfo` objects.        |
 | `getGlossaryEntries()`             | `getMultilingualGlossaryDictionaryEntries()`         | Requires specifying source and target languages. Also returns a `MultilingualGlossaryDictionaryEntries` object as the response.         |
@@ -112,7 +112,7 @@ did not exist for the given language pair.
   ```
 
 ### Update Multilingual Glossary Dictionary from CSV
-- **Method**: `async updateMultilingualGlossaryDictionaryWithCsv(glossary: GlossaryId | MultilingualGlossaryInfo, sourceLanguageCode: string, targetLanguageCode: string, csvContent: string): Promise<MultilingualGlossaryInfo>`
+- **Method**: `async updateMultilingualGlossaryDictionaryFromCsv(glossary: GlossaryId | MultilingualGlossaryInfo, sourceLanguageCode: string, targetLanguageCode: string, csvContent: string): Promise<MultilingualGlossaryInfo>`
 - **Description**: This method allows you to update or create a glossary dictionary using entries in CSV format.
 - **Parameters**:
   - `glossary`: The ID or `MultilingualGlossaryInfo` of the glossary to update.
@@ -132,7 +132,7 @@ did not exist for the given language pair.
         throw error;
     }
     const csvContent = await readCsvFile(filePath);
-    const updatedGlossary = await deeplClient.updateMultilingualGlossaryDictionaryWithCsv('4c81ffb4-2e...', 'en', 'de', csvContent);
+    const updatedGlossary = await deeplClient.updateMultilingualGlossaryDictionaryFromCsv('4c81ffb4-2e...', 'en', 'de', csvContent);
   ```
 
 ### Update Multilingual Glossary Name
@@ -162,7 +162,7 @@ did not exist for the given language pair.
   ```
 
 ### Replace Multilingual Glossary Dictionary from CSV
-- **Method**: `async replaceMultilingualGlossaryDictionaryWithCsv(glossary: GlossaryId | MultilingualGlossaryInfo, sourceLanguageCode: string, targetLanguageCode: string, csvContent: string): Promise<MultilingualGlossaryDictionaryInfo>`
+- **Method**: `async replaceMultilingualGlossaryDictionaryFromCsv(glossary: GlossaryId | MultilingualGlossaryInfo, sourceLanguageCode: string, targetLanguageCode: string, csvContent: string): Promise<MultilingualGlossaryDictionaryInfo>`
 - **Description**: This method allows you to replace or create a glossary dictionary using entries in CSV format.
 - **Parameters**:
   - `glossary`: The ID or `MultilingualGlossaryInfo` of the glossary to update.
@@ -182,7 +182,7 @@ did not exist for the given language pair.
         throw error;
     }
     const csvContent = await readCsvFile(filePath);
-    const myCsvGlossary = await deeplClient.replaceMultilingualGlossaryDictionaryWithCsv('4c81ffb4-2e...', 'en', 'de', csvContent);
+    const myCsvGlossary = await deeplClient.replaceMultilingualGlossaryDictionaryFromCsv('4c81ffb4-2e...', 'en', 'de', csvContent);
   ```
 
 ### Delete a Multilingual Glossary Dictionary

@@ -761,6 +761,31 @@ export interface MultilingualGlossaryDictionaryEntries {
 }
 
 /**
+ * Options for {@link DeepLClient.createMultilingualGlossary} and
+ * {@link DeepLClient.createMultilingualGlossaryFromCsv}.
+ */
+export type CreateMultilingualGlossaryOptions = BaseRequestOptions;
+
+/**
+ * Options for {@link DeepLClient.replaceMultilingualGlossaryDictionary} and
+ * {@link DeepLClient.replaceMultilingualGlossaryDictionaryFromCsv}.
+ */
+export type ReplaceMultilingualGlossaryDictionaryOptions = BaseRequestOptions;
+
+/**
+ * Options for {@link DeepLClient.updateMultilingualGlossary}. Only the fields that are set are sent.
+ */
+export interface UpdateMultilingualGlossaryOptions extends BaseRequestOptions {
+    /** New name of the glossary. */
+    name?: string;
+    /**
+     * Dictionaries to merge into the glossary: the entries of each are merged into the existing
+     * dictionary of the same language pair, which is created if it does not exist.
+     */
+    dictionaries?: MultilingualGlossaryDictionaryEntries[];
+}
+
+/**
  * Information about a pair of languages supported for DeepL glossaries.
  */
 export interface GlossaryLanguagePair {
