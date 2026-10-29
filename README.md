@@ -1254,6 +1254,9 @@ To correct grammar, spelling and punctuation, call `correctText()`. The first ar
 
 The second argument is optional and is the target language code, for example `'de'` or `'en-US'`. If it is omitted or `null`, the language of the input text is used.
 
+The third argument is optional and is a `CorrectTextOptions` object (it is `BaseRequestOptions`) with the following property:
+-   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library. `extraRequestParameters` is the deprecated old name of this option.
+
 `correctText()` returns a Promise that fulfills with a `WriteResult` object or an array of `WriteResult` objects corresponding to your input text(s). The `WriteResult` object has the following properties:
 - `text`: the corrected text,
 - `detectedSourceLang`: the detected source language code,

@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SentenceSplittingMode` accepts `'1'` and `'0'`, the API values, which are sent
   unchanged.
 - Added the `extraBodyParameters` option to `BaseRequestOptions`, and so to
-  `TranslateTextOptions`, `DocumentTranslateOptions` and `RephraseTextOptions`.
+  `TranslateTextOptions`, `DocumentTranslateOptions`, `RephraseTextOptions` and
+  `CorrectTextOptions`.
   It replaces `extraRequestParameters` and behaves the same. Passing both
   throws `ArgumentError`.
 - Added `NotFoundError`, thrown when the API answers HTTP 404 on any endpoint.
@@ -93,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `de-CH`, `de-DE`, `es-ES`, `fr-CA`, and `fr-FR` to `TargetLanguageCode`.
 - Added `correctText()` to `DeepLClient`, which corrects grammar, spelling and punctuation
   of a string or an array of strings via `POST /v2/write/correct`. Takes an optional
-  target language and returns `WriteResult` objects, like `rephraseText()`.
+  target language and an optional `CorrectTextOptions` object (`BaseRequestOptions`, so
+  `extraBodyParameters`), and returns `WriteResult` objects, like `rephraseText()`.
 - Added the `outputFormat` option to `DocumentTranslateOptions`, which requests the file
   format of the translated document, for example `'docx'`. By default the translated
   document has the same format as the input document.

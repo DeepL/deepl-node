@@ -11,6 +11,7 @@ import {
     MultilingualGlossaryInfo,
     MultilingualGlossaryDictionaryInfo,
     GlossaryId,
+    CorrectTextOptions,
     CreateSpokenTermsOptions,
     ReplaceSpokenTermsListOptions,
     SpokenTerms,
@@ -269,9 +270,18 @@ export class DeepLClient extends Translator {
             : WriteResult[];
     }
 
+    /**
+     * Corrects grammar, spelling and punctuation of the given text(s).
+     * @param texts Text to correct, or an array of texts.
+     * @param targetLang Target language code, or `null` to keep the language of the input text.
+     * @param options Additional options, see {@link CorrectTextOptions}.
+     * @return Promise of a {@link WriteResult}, or an array of them if `texts` is an array.
+     * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
+     */
     async correctText<T extends string | string[]>(
         texts: T,
         targetLang?: string | null,
+        options?: CorrectTextOptions,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
         const data = new URLSearchParams();
         if (targetLang) {
@@ -279,6 +289,7 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
+        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/correct',

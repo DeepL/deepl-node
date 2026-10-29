@@ -887,6 +887,11 @@ export interface RephraseTextOptions extends BaseRequestOptions {
 }
 
 /**
+ * Options that can be specified when correcting text with `correctText()`.
+ */
+export type CorrectTextOptions = BaseRequestOptions;
+
+/**
  * Holds the result of a text rephrasing request.
  */
 export interface WriteResult {

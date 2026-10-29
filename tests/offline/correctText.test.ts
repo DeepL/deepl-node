@@ -49,6 +49,16 @@ describe('DeepLClient.correctText', () => {
         await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(/non-empty string/);
     });
 
+    it('sends the extraBodyParameters of the options last, overriding built-in parameters', async () => {
+        nock(serverUrl)
+            .post('/v2/write/correct', { text: 'abc', target_lang: 'fr', extra: 'x' })
+            .reply(200, corrected);
+
+        await makeDeeplClient().correctText('abc', 'de', {
+            extraBodyParameters: { target_lang: 'fr', extra: 'x' },
+        });
+    });
+
     it('throws DeepLError when the response has no improvement for a single text', async () => {
         nock(serverUrl).post('/v2/write/correct').reply(200, { improvements: [] });
 
