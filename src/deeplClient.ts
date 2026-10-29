@@ -263,7 +263,7 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content);
-        const writeResults = parseWriteResultArray(content);
+        const writeResults = parseWriteResultArray(content, singular ? 1 : texts.length);
         return (singular ? writeResults[0] : writeResults) as T extends string
             ? WriteResult
             : WriteResult[];
@@ -286,7 +286,7 @@ export class DeepLClient extends Translator {
         );
 
         await checkStatusCode(statusCode, content);
-        const writeResults = parseWriteResultArray(content);
+        const writeResults = parseWriteResultArray(content, singular ? 1 : texts.length);
         return (singular ? writeResults[0] : writeResults) as T extends string
             ? WriteResult
             : WriteResult[];

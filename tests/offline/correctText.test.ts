@@ -4,6 +4,7 @@
 
 import nock from 'nock';
 
+import { DeepLError } from '../../src/errors';
 import { makeDeeplClient, serverUrl } from './client';
 
 const corrected = {
@@ -46,5 +47,19 @@ describe('DeepLClient.correctText', () => {
 
     it('throws DeepLError when a text is empty', async () => {
         await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(/non-empty string/);
+    });
+
+    it('throws DeepLError when the response has no improvement for a single text', async () => {
+        nock(serverUrl).post('/v2/write/correct').reply(200, { improvements: [] });
+
+        await expect(makeDeeplClient().correctText('abc')).rejects.toThrow(DeepLError);
+    });
+
+    it('throws DeepLError when the response has fewer improvements than texts', async () => {
+        nock(serverUrl).post('/v2/write/correct').reply(200, corrected);
+
+        await expect(makeDeeplClient().correctText(['a', 'b'])).rejects.toThrow(
+            /Expected 2 improvements/,
+        );
     });
 });

@@ -5,7 +5,7 @@
 import nock from 'nock';
 
 import { WritingStyle, WritingTone } from '../../src/deeplClient';
-import { ArgumentError } from '../../src/errors';
+import { ArgumentError, DeepLError } from '../../src/errors';
 import { makeDeeplClient, serverUrl } from './client';
 
 const rephrased = {
@@ -116,5 +116,19 @@ describe('DeepLClient.rephraseText', () => {
 
     it('throws DeepLError when a text is empty', async () => {
         await expect(makeDeeplClient().rephraseText('')).rejects.toThrow(/texts parameter/);
+    });
+
+    it('throws DeepLError when the response has no improvement for a single text', async () => {
+        nock(serverUrl).post('/v2/write/rephrase').reply(200, { improvements: [] });
+
+        await expect(makeDeeplClient().rephraseText('abc')).rejects.toThrow(DeepLError);
+    });
+
+    it('throws DeepLError when the response has fewer improvements than texts', async () => {
+        nock(serverUrl).post('/v2/write/rephrase').reply(200, rephrased);
+
+        await expect(makeDeeplClient().rephraseText(['a', 'b'])).rejects.toThrow(
+            /Expected 2 improvements/,
+        );
     });
 });

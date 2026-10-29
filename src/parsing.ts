@@ -657,10 +657,11 @@ export function parseTextResultArray(json: string): TextResult[] {
     }
 }
 
-export function parseWriteResultArray(json: string): WriteResult[] {
+export function parseWriteResultArray(json: string, expectedCount?: number): WriteResult[] {
+    let results: WriteResult[];
     try {
         const obj = JSON.parse(json) as WriteResultArrayApiResponse;
-        return obj.improvements.map((improvement: WriteResultApiResponse) => {
+        results = obj.improvements.map((improvement: WriteResultApiResponse) => {
             return {
                 text: improvement.text,
                 detectedSourceLang: standardizeLanguageCode(
@@ -672,6 +673,12 @@ export function parseWriteResultArray(json: string): WriteResult[] {
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }
+    if (expectedCount !== undefined && results.length !== expectedCount) {
+        throw new DeepLError(
+            `Expected ${expectedCount} improvements in the response, received ${results.length}`,
+        );
+    }
+    return results;
 }
 
 /**
