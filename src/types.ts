@@ -835,9 +835,9 @@ export interface WaitOptions {
  */
 export interface DocumentStatus {
     /**
-     * ID of the document, or undefined if the response does not contain it.
+     * ID of the document.
      */
-    readonly documentId?: string;
+    readonly documentId: string;
 
     /**
      * One of the status values defined in DocumentStatusCode.
@@ -1309,8 +1309,10 @@ export interface TranslationMemoryJob {
     readonly product: string;
     /** Results of the job; the API returns exactly one. */
     readonly results: TranslationMemoryJobResult[];
-    readonly creationTime?: Date;
-    readonly updatedTime?: Date;
+    /** Time the job was created. */
+    readonly creationTime: Date;
+    /** Time the job was last updated. */
+    readonly updatedTime: Date;
     /** Translation memory an export job reads from. */
     readonly translationMemoryId?: string;
     /** Display name an import job assigns to the new translation memory. */

@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `translateDocumentUpload()`, `translateDocumentGetStatus()` and
   `translateDocumentDownload()`, which replace `uploadDocument()`,
   `getDocumentStatus()` and `downloadDocument()` and behave the same.
-- Added `documentId` to `DocumentStatus`, parsed from the response field
-  `document_id`; `undefined` when absent or not a string.
+- Added `documentId` to `DocumentStatus`, parsed from the required response
+  field `document_id`.
 - Added the `timeoutMs` option to `DocumentTranslateOptions`: the maximum time
   `translateDocument()` waits for the translation between upload and download.
   When it expires, `translateDocument()` rejects with a `DocumentTranslationError`.
@@ -176,6 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a glossary ID.
 
 ### Changed
+- `TranslationMemoryJob.creationTime` and `updatedTime` are typed as required
+  `Date`, as the API always returns them.
 - `translateText()` accepts the `glossary` and `glossaryIds` options without a
   source language; the API detects the source language and uses the glossary's
   dictionary for the detected language pair. Document translation with a

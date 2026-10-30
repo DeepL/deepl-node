@@ -1528,7 +1528,7 @@ export class DeepLClient extends Translator {
      * never one of its subclasses.
      */
     async downloadTranslationMemoryExport(
-        job: Omit<TranslationMemoryJob, 'done' | 'ok'>,
+        job: Omit<TranslationMemoryJob, 'done' | 'ok' | 'creationTime' | 'updatedTime'>,
         outputFile: string | fs.WriteStream,
     ): Promise<void> {
         const downloadUrl = job.results[0]?.downloadUrl;

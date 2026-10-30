@@ -29,6 +29,8 @@ function jobReply(status: string, extra: Record<string, unknown> = {}) {
         job_id: 'job-1',
         operation: 'import',
         product: 'translation_memory',
+        creation_time: '2025-01-02T03:04:05Z',
+        updated_time: '2025-01-03T03:04:05Z',
         results: [{ status, ...extra }],
     };
 }
@@ -314,7 +316,12 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect(job).toMatchObject({ jobId: 'job-1', operation: 'import' });
+        expect(job).toMatchObject({
+            jobId: 'job-1',
+            operation: 'import',
+            creationTime: new Date('2025-01-02T03:04:05Z'),
+            updatedTime: new Date('2025-01-03T03:04:05Z'),
+        });
         expect(job.results).toEqual([
             {
                 status: 'completed',
@@ -377,6 +384,21 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
             false,
             true,
         ]);
+    });
+
+    it('gives an invalid Date for a missing or malformed creation or update time', async () => {
+        const { updated_time: updatedTime, ...withoutUpdatedTime } = jobReply('processing');
+        void updatedTime;
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, { ...withoutUpdatedTime, creation_time: 'not a timestamp' });
+
+        const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
+
+        expect(job.creationTime).toBeInstanceOf(Date);
+        expect(job.creationTime.getTime()).toBeNaN();
+        expect(job.updatedTime).toBeInstanceOf(Date);
+        expect(job.updatedTime.getTime()).toBeNaN();
     });
 
     it('throws ArgumentError when the job ID is empty', async () => {
@@ -472,7 +494,10 @@ describe('DeepLClient.createTranslationMemoryExport', () => {
 });
 
 describe('DeepLClient.downloadTranslationMemoryExport', () => {
-    const job = (downloadUrl?: string): Omit<deepl.TranslationMemoryJob, 'done' | 'ok'> => ({
+    // A hand-built job without done(), ok() or the timestamps, as callers may pass one
+    const job = (
+        downloadUrl?: string,
+    ): Omit<deepl.TranslationMemoryJob, 'done' | 'ok' | 'creationTime' | 'updatedTime'> => ({
         jobId: 'job-2',
         operation: 'export',
         product: 'translation_memory',

@@ -292,14 +292,14 @@ class DocumentStatusImpl implements DocumentStatus {
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
-    public documentId?: string;
+    public documentId: string;
 
     constructor(
         status: DocumentStatusCode,
+        documentId: string,
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,
-        documentId?: string,
     ) {
         this.status = status;
         this.secondsRemaining = secondsRemaining;
@@ -542,10 +542,11 @@ export function parseDocumentStatus(json: string): DocumentStatus {
         const obj = JSON.parse(json) as DocumentStatusApiResponse;
         return new DocumentStatusImpl(
             obj.status as DocumentStatusCode,
+            // Required on the wire; a missing or malformed value gives '', never a throw
+            parseOptionalString(obj.document_id) ?? '',
             obj.seconds_remaining,
             obj.billed_characters,
             obj.error_message,
-            parseOptionalString(obj.document_id),
         );
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
@@ -1062,8 +1063,9 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             operation: (obj.operation ?? '') as 'import' | 'export',
             product: obj.product ?? 'translation_memory',
             results,
-            creationTime: parseOptionalTimestamp(obj.creation_time),
-            updatedTime: parseOptionalTimestamp(obj.updated_time),
+            // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
+            creationTime: new Date(parseOptionalString(obj.creation_time) ?? NaN),
+            updatedTime: new Date(parseOptionalString(obj.updated_time) ?? NaN),
             translationMemoryId: obj.parameters?.translation_memory_id,
             displayName: obj.parameters?.display_name,
             sourceContentType: obj.source_file?.content_type,
