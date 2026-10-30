@@ -516,6 +516,18 @@ describe('Translator.translateDocument', () => {
         expect(fs.existsSync(outputPath)).toBe(false);
     });
 
+    it('copies httpStatusCode and shouldRetry from the cause into DocumentTranslationError', async () => {
+        nock(serverUrl).post('/v2/document').reply(503);
+        const [exampleDocument, outputPath] = createTextDocument();
+
+        const error = await makeTranslator({ maxRetries: 0 })
+            .translateDocument(exampleDocument, outputPath, null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect([error.httpStatusCode, error.shouldRetry]).toEqual([503, true]);
+    });
+
     it('rejects with ConnectionError wrapped in DocumentTranslationError when the download connection fails', async () => {
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });

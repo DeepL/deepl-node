@@ -314,7 +314,8 @@ export class Translator {
      * @throws {ArgumentError} If no file exists at the input file path; no request is sent.
      * @throws {DocumentTranslationError} If any other error occurs, including a file already
      *     existing at the output file path, minification, upload, translation or download. The
-     *     `documentHandle` property of the error may be used to recover the document.
+     *     `documentHandle` property of the error may be used to recover the document, and
+     *     `httpStatusCode` and `shouldRetry` are copied from a DeepLError cause.
      */
     async translateDocument(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,

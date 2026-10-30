@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `DocumentTranslationError` copies `httpStatusCode` and `shouldRetry` from its
+  cause when the cause is a `DeepLError`.
 - Added `waitUntilTranslationMemoryJobDone()`, which replaces
   `isTranslationMemoryJobComplete()`. It accepts the job as an ID or a
   `TranslationMemoryJob`, and `WaitOptions` or the timeout in milliseconds, and

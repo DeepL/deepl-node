@@ -305,7 +305,8 @@ try {
 If no file exists at the input file path, `translateDocument()` rejects with an
 `ArgumentError` before sending any request. Every other failure, including an
 existing file at the output path, rejects with a `DocumentTranslationError`
-whose `error` property holds the cause.
+whose `error` property holds the cause; its `httpStatusCode` and `shouldRetry`
+are copied from the cause when that is a `DeepLError`.
 
 `translateDocument()` wraps multiple API calls: uploading, polling status until
 the translation is complete, and downloading. If your application needs to
@@ -1478,7 +1479,9 @@ connections, unreachable hosts or networks and connect timeouts), as resending i
 -   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
 -   `DocumentNotReadyError`: HTTP 503 while downloading a translated document.
 -   `ConnectionError`: the request got no HTTP response, for example a timeout.
--   `DocumentTranslationError`: a document translation failed.
+-   `DocumentTranslationError`: a document translation failed. The cause is in
+    its `error` property, and `httpStatusCode` and `shouldRetry` are copied
+    from it when it is a `DeepLError`.
 -   `ArgumentError`: an argument failed client-side validation.
 
 Other failed responses, and responses that cannot be parsed, throw a

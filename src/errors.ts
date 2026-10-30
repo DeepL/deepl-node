@@ -37,12 +37,20 @@ export class ConnectionError extends DeepLError {
     }
 }
 
+/**
+ * Thrown by translateDocument() for any failure except a missing input file. The cause is in
+ * `error`; `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
+ */
 export class DocumentTranslationError extends DeepLError {
     public readonly documentHandle?: DocumentHandle;
 
     constructor(message: string, handle?: DocumentHandle, error?: Error) {
         super(message, error);
         this.documentHandle = handle;
+        if (error instanceof DeepLError) {
+            this.httpStatusCode = error.httpStatusCode;
+            this.shouldRetry = error.shouldRetry;
+        }
     }
 }
 
