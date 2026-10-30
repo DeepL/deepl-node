@@ -183,6 +183,28 @@ describe('DeepLAdminClient', () => {
         expect(report.keyUsages[0].usage.speechToSpeechMinutes).toBeUndefined();
     });
 
+    it('leaves a custom tag speechToSpeechMinutes undefined when the API omits it', async () => {
+        nock(serverUrl)
+            .get('/v2/admin/analytics/custom-tags')
+            .query(true)
+            .reply(200, {
+                custom_tag_usage_report: {
+                    usage: [
+                        {
+                            custom_tag: 't',
+                            breakdown: { total_characters: 10, speech_to_text_minutes: 1.5 },
+                        },
+                    ],
+                },
+            });
+        const client = makeAdminClient();
+
+        const report = await client.getCustomTagUsageAnalytics('2025-09-29', '2025-10-01');
+
+        expect(report.usage[0].breakdown.totalCharacters).toBe(10);
+        expect(report.usage[0].breakdown.speechToSpeechMinutes).toBeUndefined();
+    });
+
     it('leaves report totals and dates undefined when the API omits them', async () => {
         nock(serverUrl)
             .get('/v2/admin/analytics')

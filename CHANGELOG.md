@@ -106,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SetDeveloperKeyUsageLimitsOptions`) that accepts `extraBodyParameters`.
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
   `DeveloperKey.label`, `DeveloperKey.usageLimits`, `KeyUsage.apiKeyLabel`,
-  `AdminUsageBreakdown.speechToSpeechMinutes`, `AdminUsageReport.totalUsage`
+  `AdminUsageBreakdown.speechToSpeechMinutes`,
+  `CustomTagUsageBreakdown.speechToSpeechMinutes`, `AdminUsageReport.totalUsage`
   and `startDate` and `endDate` of both reports are optional and `undefined`
   when the response does not contain them, never `0`, an all-zero breakdown or
   an invalid `Date`. Report dates are `Date`s at UTC midnight.

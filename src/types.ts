@@ -1684,7 +1684,8 @@ export interface CustomTagUsageBreakdown {
     readonly textTranslationCharacters: number;
     readonly textImprovementCharacters: number;
     readonly speechToTextMinutes: number;
-    readonly speechToSpeechMinutes: number;
+    /** Speech-to-speech usage in minutes, undefined if the API did not report it. */
+    readonly speechToSpeechMinutes?: number;
 }
 
 /**

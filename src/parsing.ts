@@ -1354,7 +1354,7 @@ function parseCustomTagUsageBreakdown(
         textTranslationCharacters: numberOr(b?.text_translation_characters, 0),
         textImprovementCharacters: numberOr(b?.text_improvement_characters, 0),
         speechToTextMinutes: numberOr(b?.speech_to_text_minutes, 0),
-        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, 0),
+        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, undefined),
     };
 }
 

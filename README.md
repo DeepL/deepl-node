@@ -1266,7 +1266,8 @@ is the raw string the API reports, for example `'keyAndDay'`. The `startDate` an
 contain the characters per product plus `speechToTextMinutes` and
 `speechToSpeechMinutes`. Fields the API leaves out of a report are `undefined`,
 never `0` or an empty breakdown: `totalUsage`, `startDate` and `endDate` of a
-report, and `speechToSpeechMinutes` of an `AdminUsageBreakdown`.
+report, and `speechToSpeechMinutes` of an `AdminUsageBreakdown` or a
+`CustomTagUsageBreakdown`.
 
 ```javascript
 const report = await adminClient.getUsageAnalytics('2026-06-01', '2026-07-01', 'key');
