@@ -302,6 +302,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   job without results instead of rejecting, and no longer treat `'downloaded'`
   as finished; the timeout bounds the wait.
 - Translation memory and job IDs are URL-encoded in request paths.
+- `downloadTranslationMemoryExport()` and `exportTranslationMemoryToFilepath()`
+  throw a plain `DeepLError` with `httpStatusCode` (and `shouldRetry` true for
+  429 and 5xx) when the pre-signed download URL answers an error. Before, the
+  status went through the DeepL API mapping, so for example an expired URL (403)
+  threw `AuthorizationError` and a 503 threw `DocumentNotReadyError`.
 - `rephraseText()` and `correctText()` now throw `DeepLError` when the response
   contains a different number of improvements than texts sent. Before, a single
   text resolved to `undefined` and an array to a shorter array.

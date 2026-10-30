@@ -998,6 +998,10 @@ const job = await deeplClient.exportTranslationMemoryToFilepath(
 );
 ```
 
+Errors from the pre-signed upload and download URLs, which are not part of the
+DeepL API, are thrown as a plain `DeepLError` carrying `httpStatusCode`, with
+`shouldRetry` true for HTTP 429 and 5xx.
+
 As with import, the individual steps are available separately. Note that the API
 may reuse a previously completed export of an unchanged translation memory,
 indicated by `reusedExisting`.

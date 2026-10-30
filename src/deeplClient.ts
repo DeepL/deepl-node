@@ -84,6 +84,7 @@ import {
     extractTranslationMemoryId,
     isString,
     streamToBuffer,
+    streamToString,
     logInfo,
     resolveExtraBodyParameters,
     buildQueryString,
@@ -104,6 +105,26 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
     const terms = entries.entries.map((term) => (typeof term === 'string' ? term.trim() : term));
     terms.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang: entries.lang, entries: terms.join('\n') };
+}
+
+/**
+ * Throws a plain DeepLError for a failed response from a pre-signed storage URL. These are not
+ * DeepL API responses, so the API's status code mapping (e.g. 403 to AuthorizationError) does
+ * not apply.
+ */
+async function throwStorageError(
+    action: string,
+    statusCode: number,
+    content: string | IncomingMessage,
+): Promise<never> {
+    if (content instanceof IncomingMessage) {
+        // Reading the body drains the response, so the socket is not left held
+        content = await streamToString(content).catch((e) => `error reading response: ${e}`);
+    }
+    const error = new DeepLError(`${action}, HTTP status: ${statusCode}, content: ${content}`);
+    error.httpStatusCode = statusCode;
+    error.shouldRetry = statusCode === 429 || statusCode >= 500;
+    throw error;
 }
 
 function multilingualGlossaryPath(glossary: GlossaryId | MultilingualGlossaryInfo): string {
@@ -1350,7 +1371,8 @@ export class DeepLClient extends Translator {
      * @param contentType: MIME type of the file, which must match the content type declared when
      * the import job was created. Defaults to 'application/xml'.
      *
-     * @throws {DeepLError} If any error occurs while uploading the file.
+     * @throws {DeepLError} If any error occurs while uploading the file. An error response from the
+     * upload URL is a plain DeepLError carrying httpStatusCode, never one of its subclasses.
      */
     async uploadTranslationMemoryFile(
         translationMemoryImport: string | TranslationMemoryImport,
@@ -1372,12 +1394,7 @@ export class DeepLClient extends Translator {
         );
 
         if (statusCode < 200 || statusCode >= 300) {
-            const error = new DeepLError(
-                `Error uploading translation memory file, HTTP status: ${statusCode}, content: ${content}`,
-            );
-            error.httpStatusCode = statusCode;
-            error.shouldRetry = statusCode === 429 || statusCode >= 500;
-            throw error;
+            await throwStorageError('Error uploading translation memory file', statusCode, content);
         }
     }
 
@@ -1497,6 +1514,8 @@ export class DeepLClient extends Translator {
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      *
      * @throws {DeepLError} If the job has no download URL, or any error occurs while downloading.
+     * An error response from the download URL is a plain DeepLError carrying httpStatusCode,
+     * never one of its subclasses.
      */
     async downloadTranslationMemoryExport(
         job: Omit<TranslationMemoryJob, 'done' | 'ok'>,
@@ -1530,9 +1549,13 @@ export class DeepLClient extends Translator {
                     {},
                     true,
                 );
-            // Routed through checkStatusCode so the storage service's error body ends up in the
-            // message and the response stream is drained rather than left holding the socket.
-            await checkStatusCode(statusCode, content, false, true);
+            if (statusCode < 200 || statusCode >= 300) {
+                await throwStorageError(
+                    'Error downloading translation memory export',
+                    statusCode,
+                    content,
+                );
+            }
 
             if (fd === undefined) {
                 return await pipeToStream(content, outputFile as fs.WriteStream);
