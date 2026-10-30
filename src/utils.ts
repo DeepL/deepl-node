@@ -3,7 +3,8 @@
 // license that can be found in the LICENSE file.
 
 import loglevel from 'loglevel';
-import { ArgumentError, DeepLError } from './errors';
+import { IncomingMessage } from 'http';
+import { ArgumentError, ConnectionError, DeepLError } from './errors';
 import {
     Formality,
     GlossaryInfo,
@@ -95,6 +96,31 @@ export function buildQueryString(params: Record<string, string>): string {
     return Object.entries(params)
         .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`)
         .join('&');
+}
+
+/**
+ * Pipes a response stream to the given writable, rejecting if either side errors and destroying
+ * the other so neither is left dangling. A response-stream error means the connection failed
+ * mid-download, so it rejects with a ConnectionError.
+ * @private
+ */
+export function pipeToStream(
+    content: IncomingMessage,
+    outputStream: NodeJS.WritableStream & { destroy(error?: Error): unknown },
+): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        const fail = (error: Error) => {
+            content.destroy();
+            outputStream.destroy();
+            reject(error);
+        };
+        content.on('error', (error: Error) =>
+            fail(new ConnectionError(`Connection failure: ${error.message}`, true, error)),
+        );
+        outputStream.on('error', fail);
+        outputStream.on('finish', resolve);
+        content.pipe(outputStream);
+    });
 }
 
 /**

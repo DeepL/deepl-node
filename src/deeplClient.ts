@@ -89,6 +89,7 @@ import {
     buildQueryString,
     setExtraBodyParameters,
     timeout,
+    pipeToStream,
 } from './utils';
 import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
 import { GlossaryEntries } from './glossaryEntries';
@@ -1534,13 +1535,13 @@ export class DeepLClient extends Translator {
             await checkStatusCode(statusCode, content, false, true);
 
             if (fd === undefined) {
-                return await DeepLClient.pipeToStream(content, outputFile as fs.WriteStream);
+                return await pipeToStream(content, outputFile as fs.WriteStream);
             }
             // The stream owns the descriptor from here on and closes it when it finishes or is
             // destroyed, so it must not be closed a second time.
             fileStream = fs.createWriteStream(outputFile as string, { fd });
             streamClosed = new Promise<void>((resolve) => fileStream?.once('close', resolve));
-            await DeepLClient.pipeToStream(content, fileStream);
+            await pipeToStream(content, fileStream);
             await streamClosed;
         } catch (e) {
             if (fd !== undefined) {
@@ -1557,25 +1558,6 @@ export class DeepLClient extends Translator {
             }
             throw e;
         }
-    }
-
-    /**
-     * Pipes a response stream to the given writable, rejecting if either side errors and
-     * destroying the other so neither is left dangling.
-     * @private
-     */
-    private static pipeToStream(content: IncomingMessage, outputStream: fs.WriteStream) {
-        return new Promise<void>((resolve, reject) => {
-            const fail = (error: Error) => {
-                content.destroy();
-                outputStream.destroy();
-                reject(error);
-            };
-            content.on('error', fail);
-            outputStream.on('error', fail);
-            outputStream.on('finish', resolve);
-            content.pipe(outputStream);
-        });
     }
 
     /**

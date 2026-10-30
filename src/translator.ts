@@ -4,6 +4,7 @@
 
 import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
 import {
+    ArgumentError,
     AuthorizationError,
     DeepLError,
     DocumentNotReadyError,
@@ -53,6 +54,7 @@ import {
     setExtraBodyParameters,
     isString,
     logInfo,
+    pipeToStream,
     streamToBuffer,
     streamToString,
     timeout,
@@ -309,9 +311,10 @@ export class Translator {
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with a DocumentStatus object for the completed translation. You can use the
      *     billedCharacters property to check how many characters were billed for the document.
-     * @throws {Error} If no file exists at the input file path, or a file already exists at the output file path.
-     * @throws {DocumentTranslationError} If any error occurs during document upload, translation or
-     *     download. The `documentHandle` property of the error may be used to recover the document.
+     * @throws {ArgumentError} If no file exists at the input file path; no request is sent.
+     * @throws {DocumentTranslationError} If any other error occurs, including a file already
+     *     existing at the output file path, minification, upload, translation or download. The
+     *     `documentHandle` property of the error may be used to recover the document.
      */
     async translateDocument(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
@@ -320,48 +323,53 @@ export class Translator {
         targetLang: TargetLanguageCodeInput,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentStatus> {
-        // Helper function to open output file if provided as filepath and remove it on error
-        async function getOutputHandleAndOnError(): Promise<{
-            outputHandle: fs.WriteStream | fs.promises.FileHandle;
-            onError?: () => Promise<void>;
-        }> {
+        if (isString(inputFile)) {
+            try {
+                await fs.promises.access(inputFile, fs.constants.R_OK);
+            } catch (error) {
+                throw new ArgumentError(
+                    `Input file could not be read: ${(error as Error).message}`,
+                    error as Error,
+                );
+            }
+        }
+
+        let onError: (() => Promise<void>) | undefined;
+        let documentHandle = undefined;
+        try {
+            let outputHandle: fs.WriteStream | fs.promises.FileHandle;
             if (isString(outputFile)) {
-                // Open output file path, fail if file already exists
-                const outputHandle = await fs.promises.open(outputFile, 'wx');
-                // Set up error handler to remove created file
-                const onError = async () => {
+                // Fails if the file already exists; only a file created here is removed on error.
+                const createdHandle = await fs.promises.open(outputFile, 'wx');
+                outputHandle = createdHandle;
+                onError = async () => {
                     try {
-                        // remove created output file
-                        await outputHandle.close();
+                        await createdHandle.close();
                         await util.promisify(fs.unlink)(outputFile);
                     } catch {
                         // Ignore errors
                     }
                 };
-                return { outputHandle, onError };
             } else {
-                return { outputHandle: outputFile };
+                outputHandle = outputFile;
             }
-        }
 
-        const { outputHandle, onError } = await getOutputHandleAndOnError();
+            const documentMinifier = new DocumentMinifier();
+            const inputExt = isString(inputFile)
+                ? path.extname(inputFile).slice(1).toLowerCase()
+                : '';
+            const willMinify =
+                (options?.enableDocumentMinification ?? false) &&
+                isString(inputFile) &&
+                DocumentMinifier.canMinifyFile(inputFile) &&
+                isString(outputFile) &&
+                (options?.outputFormat === undefined ||
+                    options.outputFormat.toLowerCase() === inputExt);
 
-        const documentMinifier = new DocumentMinifier();
-        const inputExt = isString(inputFile) ? path.extname(inputFile).slice(1).toLowerCase() : '';
-        const willMinify =
-            (options?.enableDocumentMinification ?? false) &&
-            isString(inputFile) &&
-            DocumentMinifier.canMinifyFile(inputFile) &&
-            isString(outputFile) &&
-            (options?.outputFormat === undefined ||
-                options.outputFormat.toLowerCase() === inputExt);
+            const fileToUpload = willMinify
+                ? documentMinifier.minifyDocument(inputFile, true)
+                : inputFile;
 
-        const fileToUpload = willMinify
-            ? documentMinifier.minifyDocument(inputFile, true)
-            : inputFile;
-
-        let documentHandle = undefined;
-        try {
             documentHandle = await this.translateDocumentUpload(
                 fileToUpload,
                 sourceLang,
@@ -374,12 +382,15 @@ export class Translator {
             await this.translateDocumentDownload(documentHandle, outputHandle);
             if (willMinify) {
                 // Intentionally replace outputFile with a deminified version of the outputFile
-                documentMinifier.deminifyDocument(outputFile, outputFile, true);
+                documentMinifier.deminifyDocument(outputFile as string, outputFile as string, true);
             }
             return status;
         } catch (errorUnknown: unknown) {
             if (onError) await onError();
-            const error = errorUnknown instanceof Error ? errorUnknown : undefined;
+            const error =
+                errorUnknown instanceof Error || util.types.isNativeError(errorUnknown)
+                    ? (errorUnknown as Error)
+                    : undefined;
             const message =
                 'Error occurred while translating document: ' +
                 (error?.message ? error?.message : errorUnknown);
@@ -494,18 +505,27 @@ export class Translator {
      * @param outputFile String containing output file path, or Stream or FileHandle to store file data.
      * @return Fulfills with undefined, or rejects if the document translation has not been completed.
      * @throws {DocumentNotReadyError} If the document translation has not completed yet.
+     * @throws {ConnectionError} If the connection fails while the document is downloaded.
+     * @throws {Error} If the output file path already exists or cannot be created; this happens
+     *     before any request is sent.
      */
     async translateDocumentDownload(
         handle: DocumentHandle,
         outputFile: string | fs.WriteStream | fs.promises.FileHandle,
     ): Promise<void> {
         if (isString(outputFile)) {
-            const fileStream = await fs.createWriteStream(outputFile, { flags: 'wx' });
+            // Created before the request, so an existing or unwritable path rejects at once
+            // instead of emitting an unhandled 'error' event on the stream later.
+            const fd = await util.promisify(fs.open)(outputFile, 'wx');
+            const fileStream = fs.createWriteStream(outputFile, { fd });
+            const streamClosed = new Promise<void>((resolve) => fileStream.once('close', resolve));
             try {
                 await this.internalDownloadDocument(handle, fileStream);
+                await streamClosed;
             } catch (e) {
-                await new Promise((resolve) => fileStream.close(resolve));
-                await fs.promises.unlink(outputFile);
+                fileStream.destroy();
+                await streamClosed;
+                await fs.promises.unlink(outputFile).catch(() => undefined);
                 throw e;
             }
         } else if (outputFile instanceof fs.WriteStream) {
@@ -765,11 +785,7 @@ export class Translator {
             );
         await checkStatusCode(statusCode, content, false, true);
 
-        content.pipe(outputStream);
-        return new Promise((resolve, reject) => {
-            outputStream.on('finish', resolve);
-            outputStream.on('error', reject);
-        });
+        return pipeToStream(content, outputStream);
     }
 
     /**

@@ -276,6 +276,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   client is constructed. Before, every request failed by throwing `undefined`.
 - `deleteMultilingualGlossaryDictionary()` and `deleteSpokenTermsList()` encode a
   space in query values as `%20` instead of `+`.
+- `translateDocument()` rejects with a `DocumentTranslationError` when the
+  output file already exists or document minification fails, instead of a raw
+  Node or minification error, and with an `ArgumentError` before any request
+  when the input file does not exist, instead of a `DocumentTranslationError`.
+- `translateDocumentDownload()` with an output file path no longer crashes the
+  process with an uncaught `EEXIST`/`ENOENT` when the path exists or cannot be
+  created: it creates the file before the request and rejects. A connection
+  failure mid-download in `translateDocumentDownload()`, `translateDocument()` and
+  `downloadTranslationMemoryExport()` rejects with a `ConnectionError` instead
+  of an uncaught or raw stream error.
 - Glossary terms are trimmed before they are validated and sent by
   `createGlossary()`, `createMultilingualGlossary()`,
   `updateMultilingualGlossary()`, `updateMultilingualGlossaryDictionary()` and

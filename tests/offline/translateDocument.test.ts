@@ -6,6 +6,7 @@ import * as deepl from 'deepl-node';
 
 import fs from 'fs';
 import nock from 'nock';
+import { Readable } from 'stream';
 
 import { makeDeeplClient, makeTranslator, serverUrl } from './client';
 import { createTextDocument } from '../fixtures';
@@ -13,6 +14,16 @@ import { createTextDocument } from '../fixtures';
 const handle = { documentId: 'doc-id', documentKey: 'doc-key' };
 const handleReply = { document_id: handle.documentId, document_key: handle.documentKey };
 const keyBody = { document_key: handle.documentKey };
+
+/** A response body that sends some bytes and then fails, like a connection dropped mid-download. */
+function failingBody(): Readable {
+    return new Readable({
+        read() {
+            this.push('partial');
+            this.destroy(new Error('socket hang up'));
+        },
+    });
+}
 
 /** Declares POST /v2/document and records the multipart body that the SDK sends. */
 function expectUpload(): { body: () => string } {
@@ -392,6 +403,31 @@ describe('Translator.downloadDocument', () => {
 });
 
 describe('Translator.translateDocumentDownload', () => {
+    it('rejects before any request when the output file already exists', async () => {
+        // No request is declared: nock rejects any request with a different error.
+        const [, outputPath] = createTextDocument();
+        fs.writeFileSync(outputPath, 'existing');
+
+        const error = await makeDeeplClient()
+            .translateDocumentDownload(handle, outputPath)
+            .catch((e) => e);
+
+        expect(error.code).toBe('EEXIST');
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
+    });
+
+    it('rejects with ConnectionError and removes the file when the connection fails mid-download', async () => {
+        nock(serverUrl).post('/v2/document/doc-id/result').reply(200, failingBody);
+        const [, outputPath] = createTextDocument();
+
+        const error = await makeDeeplClient()
+            .translateDocumentDownload(handle, outputPath)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
     it('sends the document key to the URL-encoded result path and writes the file', async () => {
         nock(serverUrl).post('/v2/document/a%2Fb/result', keyBody).reply(200, 'result');
         const [, outputPath] = createTextDocument();
@@ -453,22 +489,45 @@ describe('Translator.translateDocument', () => {
         expect(error.documentHandle).toEqual(handle);
     });
 
-    it('throws Error when the output file already exists', async () => {
+    it('wraps an existing output file in DocumentTranslationError and keeps the file', async () => {
         const [exampleDocument, outputPath] = createTextDocument();
         fs.writeFileSync(outputPath, 'existing');
 
-        await expect(
-            makeTranslator().translateDocument(exampleDocument, outputPath, null, 'de'),
-        ).rejects.toThrow('exists');
+        const error = await makeTranslator()
+            .translateDocument(exampleDocument, outputPath, null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.message).toContain('exists');
+        expect(error.error.code).toBe('EEXIST');
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('throws DocumentTranslationError when the input file does not exist', async () => {
+    it('throws ArgumentError, not DocumentTranslationError, when the input file does not exist', async () => {
         const [, outputPath] = createTextDocument();
 
-        await expect(
-            makeTranslator().translateDocument('nonExistentFile.txt', outputPath, null, 'de'),
-        ).rejects.toThrow('no such file');
+        const error = await makeTranslator()
+            .translateDocument('nonExistentFile.txt', outputPath, null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect(error).not.toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.message).toContain('no such file');
+        expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('rejects with ConnectionError wrapped in DocumentTranslationError when the download connection fails', async () => {
+        nock(serverUrl).post('/v2/document').reply(200, handleReply);
+        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });
+        nock(serverUrl).post('/v2/document/doc-id/result').reply(200, failingBody);
+        const [exampleDocument, outputPath] = createTextDocument();
+
+        const error = await makeTranslator()
+            .translateDocument(exampleDocument, outputPath, null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.error).toBeInstanceOf(deepl.ConnectionError);
         expect(fs.existsSync(outputPath)).toBe(false);
     });
 });

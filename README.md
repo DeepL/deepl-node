@@ -302,6 +302,11 @@ try {
 }
 ```
 
+If no file exists at the input file path, `translateDocument()` rejects with an
+`ArgumentError` before sending any request. Every other failure, including an
+existing file at the output path, rejects with a `DocumentTranslationError`
+whose `error` property holds the cause.
+
 `translateDocument()` wraps multiple API calls: uploading, polling status until
 the translation is complete, and downloading. If your application needs to
 execute these steps individually, you can instead use the following functions
@@ -315,7 +320,10 @@ directly:
     of it). Pass `{ timeoutMs }` as its second argument to reject with a
     `DeepLError` once that many milliseconds have passed, and
 -   `translateDocumentDownload()`, which rejects with a `DocumentNotReadyError`
-    if the translation is not done yet.
+    if the translation is not done yet. Given an output file path, it creates the
+    file before sending the request, so an existing file rejects at once; if the
+    connection fails mid-download it rejects with a `ConnectionError` and removes
+    the partial file.
 
 `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
 deprecated aliases of these methods and will be removed in the next major
