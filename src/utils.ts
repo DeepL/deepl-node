@@ -87,6 +87,17 @@ export async function streamToString(stream: NodeJS.ReadableStream): Promise<str
 export const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Builds a URL query string, encoding names and values with encodeURIComponent, so a space is
+ * sent as %20 rather than the "+" of URLSearchParams.
+ * @private
+ */
+export function buildQueryString(params: Record<string, string>): string {
+    return Object.entries(params)
+        .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`)
+        .join('&');
+}
+
+/**
  * Returns true if the given argument is a string.
  * @param arg Argument to check.
  */

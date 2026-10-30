@@ -564,4 +564,14 @@ describe('DeepLClient multilingual glossary URL encoding', () => {
 
         await makeDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'en', 'de&x=1');
     });
+
+    it('deleteMultilingualGlossaryDictionary encodes a space in the query as %20', async () => {
+        nock(serverUrl)
+            .delete(
+                (uri) => uri === '/v3/glossaries/g-1/dictionaries?source_lang=e%20n&target_lang=de',
+            )
+            .reply(204);
+
+        await makeDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'e n', 'de');
+    });
 });

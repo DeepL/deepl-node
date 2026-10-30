@@ -259,6 +259,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `deleteMultilingualGlossaryDictionary()` and `deleteSpokenTermsList()` encode a
+  space in query values as `%20` instead of `+`.
 - `getUsage()` leaves `character`, `document` and `teamDocument` undefined
   when the response's count or limit for them is not a number, as it already did
   for the API Pro usage fields. Before, a `null` or string value was returned as

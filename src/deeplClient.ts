@@ -86,6 +86,7 @@ import {
     streamToBuffer,
     logInfo,
     resolveExtraBodyParameters,
+    buildQueryString,
     setExtraBodyParameters,
     timeout,
 } from './utils';
@@ -598,10 +599,10 @@ export class DeepLClient extends Translator {
             throw new ArgumentError('Parameter "targetLanguageCode" must not be empty');
         }
 
-        const query = new URLSearchParams({
+        const query = buildQueryString({
             source_lang: sourceLanguageCode,
             target_lang: targetLanguageCode,
-        }).toString();
+        });
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
@@ -1069,7 +1070,7 @@ export class DeepLClient extends Translator {
      */
     async deleteSpokenTermsList(spokenTerms: string | SpokenTerms, lang: string): Promise<void> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
-        const query = new URLSearchParams({ lang }).toString();
+        const query = buildQueryString({ lang });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists?${query}`,
