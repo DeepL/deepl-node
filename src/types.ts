@@ -184,6 +184,8 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      *   for applications where each input translation text is only one sentence.
      * - 'nonewlines': Input translation text will be split into sentences using only punctuation
      *   but not newlines.
+     * The aliases 'on', 'default' and 'off' match in any letter case; any other value is sent as
+     * given.
      */
     splitSentences?: SentenceSplittingMode;
 
@@ -191,7 +193,9 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      * instead leave the formatting unchanged, default is false. */
     preserveFormatting?: boolean;
 
-    /** Controls whether translations should lean toward formal or informal language. */
+    /**
+     * Controls whether translations should lean toward formal or informal language. Sent as given.
+     */
     formality?: Formality;
 
     /** Specifies the ID of a glossary to use with translation. Or
@@ -277,7 +281,9 @@ export interface TranslateTextOptions extends BaseRequestOptions {
  * Options that can be specified when translating documents.
  */
 export interface DocumentTranslateOptions extends BaseRequestOptions {
-    /** Controls whether translations should lean toward formal or informal language. */
+    /**
+     * Controls whether translations should lean toward formal or informal language. Sent as given.
+     */
     formality?: Formality;
 
     /** Specifies the ID of a glossary to use with translation. Or
