@@ -307,6 +307,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   429 and 5xx) when the pre-signed download URL answers an error. Before, the
   status went through the DeepL API mapping, so for example an expired URL (403)
   threw `AuthorizationError` and a 503 threw `DocumentNotReadyError`.
+- `importTranslationMemoryFromFilepath()` throws `ArgumentError` for a missing
+  input file, before any request. Other local read failures are wrapped in a
+  `DeepLError` with the original error in `error`. Before, raw Node errors such
+  as `ENOENT` and `EISDIR` were thrown.
+- `exportTranslationMemoryToFilepath()` throws `DeepLError` for an existing
+  output file or an unwritable or missing output directory before it creates
+  the export job, and wraps local write failures in a `DeepLError` with the
+  original error in `error`. Before, raw Node errors such as `EEXIST` were
+  thrown, after the export had been created and waited for.
 - `rephraseText()` and `correctText()` now throw `DeepLError` when the response
   contains a different number of improvements than texts sent. Before, a single
   text resolved to `undefined` and an array to a shorter array.

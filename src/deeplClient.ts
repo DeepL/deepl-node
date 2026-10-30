@@ -127,6 +127,16 @@ async function throwStorageError(
     throw error;
 }
 
+/** Rethrows a DeepLError unchanged, and wraps any other failure (local I/O) in a DeepLError. */
+function wrapLocalError(action: string, error: unknown): DeepLError {
+    if (error instanceof DeepLError) return error;
+    // Not instanceof Error: errors from another realm (e.g. a VM context) would lose their code
+    const cause = (
+        typeof error === 'object' && error !== null ? error : new Error(String(error))
+    ) as Error;
+    return new DeepLError(`${action}: ${cause.message}`, cause);
+}
+
 function multilingualGlossaryPath(glossary: GlossaryId | MultilingualGlossaryInfo): string {
     return `/v3/glossaries/${encodeURIComponent(extractGlossaryId(glossary))}`;
 }
@@ -1598,8 +1608,9 @@ export class DeepLClient extends Translator {
      * @returns {Promise<TranslationMemoryJob>} The completed import job; its result carries the
      * new translation memory ID.
      *
-     * @throws {DeepLError} If the import fails, the timeout is exceeded, or any error occurs while
-     * communicating with the DeepL API.
+     * @throws {ArgumentError} If the input file does not exist; no request is sent.
+     * @throws {DeepLError} If the import fails, the timeout is exceeded, any error occurs while
+     * communicating with the DeepL API, or reading the input fails (the cause is in `error`).
      */
     async importTranslationMemoryFromFilepath(
         input: string | Buffer | fs.ReadStream,
@@ -1608,7 +1619,9 @@ export class DeepLClient extends Translator {
         let fileBuffer: Buffer;
         let fileName: string | undefined;
         if (isString(input)) {
-            fileBuffer = await fs.promises.readFile(input);
+            if (!fs.existsSync(input)) {
+                throw new ArgumentError(`input file does not exist: ${input}`);
+            }
             fileName = options?.fileName ?? path.basename(input);
         } else {
             fileName = options?.fileName ?? options?.displayName;
@@ -1617,7 +1630,15 @@ export class DeepLClient extends Translator {
                     'options.fileName or options.displayName must be specified unless using an input file path',
                 );
             }
-            fileBuffer = input instanceof fs.ReadStream ? await streamToBuffer(input) : input;
+        }
+        try {
+            if (isString(input)) {
+                fileBuffer = await fs.promises.readFile(input);
+            } else {
+                fileBuffer = input instanceof fs.ReadStream ? await streamToBuffer(input) : input;
+            }
+        } catch (e) {
+            throw wrapLocalError('Error reading translation memory file', e);
         }
         const created = await this.createTranslationMemoryImport(fileName, fileBuffer.length, {
             displayName: options?.displayName,
@@ -1643,17 +1664,34 @@ export class DeepLClient extends Translator {
      * to finish.
      * @returns {Promise<TranslationMemoryJob>} The completed export job.
      *
-     * @throws {DeepLError} If the export fails, the timeout is exceeded, or any error occurs while
-     * communicating with the DeepL API.
+     * @throws {DeepLError} If the export fails, the timeout is exceeded, any error occurs while
+     * communicating with the DeepL API, or writing the output fails (the cause is in `error`). An
+     * existing output file or a missing output directory is rejected before the export job is
+     * created.
      */
     async exportTranslationMemoryToFilepath(
         translationMemory: TranslationMemoryId | TranslationMemoryInfo,
         outputFile: string | fs.WriteStream,
         options?: WaitOptions,
     ): Promise<TranslationMemoryJob> {
+        const action = 'Error writing translation memory export';
+        if (isString(outputFile)) {
+            if (fs.existsSync(outputFile)) {
+                throw new DeepLError(`${action}: output file already exists: ${outputFile}`);
+            }
+            try {
+                await fs.promises.access(path.dirname(outputFile), fs.constants.W_OK);
+            } catch (e) {
+                throw wrapLocalError(action, e);
+            }
+        }
         const created = await this.createTranslationMemoryExport(translationMemory);
         const job = await this.waitUntilTranslationMemoryJobDone(created.jobId, options);
-        await this.downloadTranslationMemoryExport(job, outputFile);
+        try {
+            await this.downloadTranslationMemoryExport(job, outputFile);
+        } catch (e) {
+            throw wrapLocalError(action, e);
+        }
         return job;
     }
 

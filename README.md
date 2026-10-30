@@ -947,6 +947,9 @@ option (otherwise `displayName` is used as the file name). The options
 -   `timeoutMs`: maximum time to wait for the import, in milliseconds.
 -   `extraBodyParameters`: extra fields added last to the JSON request body.
 
+A missing input file throws `ArgumentError` before any request is sent. Any other
+local read failure throws a `DeepLError` with the original error in `error`.
+
 The three steps are also available separately, for example to upload the file
 yourself or to poll for progress. `createTranslationMemoryImport()` returns an
 upload URL that the file must be uploaded to, then `getTranslationMemoryJob()`
@@ -997,6 +1000,11 @@ const job = await deeplClient.exportTranslationMemoryToFilepath(
     '/path/to/exported.tmx',
 );
 ```
+
+The output file must not exist yet and its directory must be writable; both are
+checked before the export job is created, and a failure throws `DeepLError`.
+Local write failures also throw a `DeepLError` with the original error in
+`error`.
 
 Errors from the pre-signed upload and download URLs, which are not part of the
 DeepL API, are thrown as a plain `DeepLError` carrying `httpStatusCode`, with

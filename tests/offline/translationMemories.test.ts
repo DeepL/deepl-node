@@ -611,6 +611,24 @@ describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
         });
     });
 
+    it('throws ArgumentError for a missing input file before any request', async () => {
+        const inputPath = path.join(tempDir(), 'missing.tmx');
+
+        await expect(
+            makeDeeplClient().importTranslationMemoryFromFilepath(inputPath),
+        ).rejects.toThrow(new deepl.ArgumentError(`input file does not exist: ${inputPath}`));
+    });
+
+    it('wraps a local read failure in DeepLError with the cause', async () => {
+        // A directory exists but cannot be read as a file (EISDIR)
+        const error = await makeDeeplClient()
+            .importTranslationMemoryFromFilepath(tempDir())
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.error).toMatchObject({ code: 'EISDIR' });
+    });
+
     it('throws ArgumentError for a Buffer without fileName or displayName', async () => {
         await expect(
             makeDeeplClient().importTranslationMemoryFromFilepath(Buffer.from(tmx)),
@@ -632,5 +650,50 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
         await makeDeeplClient().exportTranslationMemoryToFilepath('tm-1', outputPath);
 
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
+    });
+
+    it('rejects an existing output file with DeepLError before creating the export job', async () => {
+        const outputPath = path.join(tempDir(), 'out.tmx');
+        fs.writeFileSync(outputPath, 'existing');
+
+        await expect(
+            makeDeeplClient().exportTranslationMemoryToFilepath('tm-1', outputPath),
+        ).rejects.toThrow(`output file already exists: ${outputPath}`);
+        expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
+    });
+
+    it('wraps a missing output directory in DeepLError before creating the export job', async () => {
+        const outputPath = path.join(tempDir(), 'missing-dir', 'out.tmx');
+
+        const error = await makeDeeplClient()
+            .exportTranslationMemoryToFilepath('tm-1', outputPath)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.error).toMatchObject({ code: 'ENOENT' });
+    });
+
+    it('wraps a local write failure during the download in DeepLError with the cause', async () => {
+        const outputPath = path.join(tempDir(), 'out.tmx');
+        nock(serverUrl)
+            .post('/v3/translation_memories/tm-1/export')
+            .reply(202, { job_id: 'job-2' });
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-2')
+            .reply(200, jobReply('completed', { download_url: `${storageUrl}/download` }));
+        // The output file appears while the job runs, so opening it fails with EEXIST
+        const client = makeDeeplClient();
+        const wait = client.waitUntilTranslationMemoryJobDone.bind(client);
+        jest.spyOn(client, 'waitUntilTranslationMemoryJobDone').mockImplementation(async (j, o) => {
+            fs.writeFileSync(outputPath, 'appeared');
+            return wait(j, o);
+        });
+
+        const error = await client
+            .exportTranslationMemoryToFilepath('tm-1', outputPath)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.error).toMatchObject({ code: 'EEXIST' });
     });
 });
