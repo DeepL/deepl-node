@@ -1639,7 +1639,8 @@ export interface AdminUsageBreakdown {
     readonly documentTranslationCharacters: number;
     readonly textImprovementCharacters: number;
     readonly speechToTextMinutes: number;
-    readonly speechToSpeechMinutes: number;
+    /** Speech-to-speech usage in minutes, undefined if the API did not report it. */
+    readonly speechToSpeechMinutes?: number;
 }
 
 /**
@@ -1661,12 +1662,12 @@ export interface KeyUsage {
  * `DeepLAdminClient.getUsageAnalytics()`.
  */
 export interface AdminUsageReport {
-    /** Usage totals over the whole date range. */
-    readonly totalUsage: AdminUsageBreakdown;
-    /** First day of the report period, at UTC midnight. */
-    readonly startDate: Date;
-    /** Last day of the report period, at UTC midnight. */
-    readonly endDate: Date;
+    /** Usage totals over the whole date range, undefined if the API did not report them. */
+    readonly totalUsage?: AdminUsageBreakdown;
+    /** First day of the report period, at UTC midnight; undefined if the API did not report it. */
+    readonly startDate?: Date;
+    /** Last day of the report period, at UTC midnight; undefined if the API did not report it. */
+    readonly endDate?: Date;
     /** Grouping as reported by the API, if any: the raw string, for example 'keyAndDay'. */
     readonly groupBy?: string;
     /** Usage per key when grouped by 'key', otherwise empty. */
@@ -1703,10 +1704,10 @@ export interface CustomTagUsage {
 export interface CustomTagUsageReport {
     /** Aggregation reported by the API. */
     readonly aggregateBy?: string;
-    /** First day of the report period, at UTC midnight. */
-    readonly startDate: Date;
-    /** Last day of the report period, at UTC midnight. */
-    readonly endDate: Date;
+    /** First day of the report period, at UTC midnight; undefined if the API did not report it. */
+    readonly startDate?: Date;
+    /** Last day of the report period, at UTC midnight; undefined if the API did not report it. */
+    readonly endDate?: Date;
     /** Page number to request the next page, or undefined if this is the last page. */
     readonly nextPage?: number;
     /** Usage entries per custom tag. */

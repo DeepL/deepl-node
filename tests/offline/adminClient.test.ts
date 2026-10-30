@@ -78,9 +78,9 @@ describe('DeepLAdminClient', () => {
             'key_and_day',
         );
 
-        expect(report.totalUsage.totalCharacters).toBe(9619);
-        expect(report.totalUsage.speechToTextMinutes).toBe(107.46);
-        expect(report.totalUsage.speechToSpeechMinutes).toBe(3.5);
+        expect(report.totalUsage?.totalCharacters).toBe(9619);
+        expect(report.totalUsage?.speechToTextMinutes).toBe(107.46);
+        expect(report.totalUsage?.speechToSpeechMinutes).toBe(3.5);
         expect(report.groupBy).toBe('key_and_day');
         expect(report.startDate).toEqual(new Date('2025-09-29T00:00:00Z'));
         expect(report.keyUsages).toEqual([]);
@@ -95,7 +95,7 @@ describe('DeepLAdminClient', () => {
                     documentTranslationCharacters: 0,
                     textImprovementCharacters: 156,
                     speechToTextMinutes: 11.94,
-                    speechToSpeechMinutes: 0,
+                    speechToSpeechMinutes: undefined,
                 },
             },
         ]);
@@ -158,6 +158,50 @@ describe('DeepLAdminClient', () => {
         expect(report.usage[0].customTag).toBe('example-custom-tag');
         expect(report.usage[0].breakdown.speechToSpeechMinutes).toBe(4.2);
         expect(report.usage[0].usageDate).toEqual(new Date('2026-05-04T00:00:00Z'));
+    });
+
+    it('leaves speechToSpeechMinutes undefined when the API omits it', async () => {
+        const breakdown = { total_characters: 10, speech_to_text_minutes: 1.5 };
+        nock(serverUrl)
+            .get('/v2/admin/analytics')
+            .query(true)
+            .reply(200, {
+                usage_report: {
+                    total_usage: breakdown,
+                    start_date: '2025-09-29T00:00:00',
+                    end_date: '2025-10-01T00:00:00',
+                    group_by: 'key',
+                    key_usages: [{ api_key: 'k1', usage: breakdown }],
+                },
+            });
+        const client = makeAdminClient();
+
+        const report = await client.getUsageAnalytics('2025-09-29', '2025-10-01', 'key');
+
+        expect(report.totalUsage?.totalCharacters).toBe(10);
+        expect(report.totalUsage?.speechToSpeechMinutes).toBeUndefined();
+        expect(report.keyUsages[0].usage.speechToSpeechMinutes).toBeUndefined();
+    });
+
+    it('leaves report totals and dates undefined when the API omits them', async () => {
+        nock(serverUrl)
+            .get('/v2/admin/analytics')
+            .query(true)
+            .reply(200, { usage_report: { group_by: 'none' } });
+        nock(serverUrl)
+            .get('/v2/admin/analytics/custom-tags')
+            .query(true)
+            .reply(200, { custom_tag_usage_report: { usage: [] } });
+        const client = makeAdminClient();
+
+        const report = await client.getUsageAnalytics('2025-09-29', '2025-10-01');
+        const tagReport = await client.getCustomTagUsageAnalytics('2025-09-29', '2025-10-01');
+
+        expect(report.totalUsage).toBeUndefined();
+        expect(report.startDate).toBeUndefined();
+        expect(report.endDate).toBeUndefined();
+        expect(tagReport.startDate).toBeUndefined();
+        expect(tagReport.endDate).toBeUndefined();
     });
 
     it('creates a developer key', async () => {
@@ -524,12 +568,11 @@ describe('DeepLAdminClient', () => {
         const report = await client.getUsageAnalytics('2025-01-01', '2025-02-01', 'key_and_day');
         const tags = await client.getCustomTagUsageAnalytics('2025-01-01', '2025-02-01');
 
-        expect(report.totalUsage.totalCharacters).toBe(0);
-        expect(report.totalUsage.textTranslationCharacters).toBe(5);
-        expect(report.totalUsage.speechToSpeechMinutes).toBe(0);
-        expect(report.startDate).toBeInstanceOf(Date);
-        expect(report.startDate.getTime()).toBeNaN();
-        expect(report.endDate.getTime()).toBeNaN();
+        expect(report.totalUsage?.totalCharacters).toBe(0);
+        expect(report.totalUsage?.textTranslationCharacters).toBe(5);
+        expect(report.totalUsage?.speechToSpeechMinutes).toBeUndefined();
+        expect(report.startDate).toBeUndefined();
+        expect(report.endDate).toBeUndefined();
         expect(report.groupBy).toBe('keyAndDay');
         expect(report.keyAndDayUsages).toHaveLength(1);
         expect(report.keyAndDayUsages[0]).toMatchObject({ apiKey: 'k' });
@@ -537,7 +580,7 @@ describe('DeepLAdminClient', () => {
         expect(report.keyAndDayUsages[0].usageDate).toBeUndefined();
         expect(tags.aggregateBy).toBe('day');
         expect(tags.nextPage).toBeUndefined();
-        expect(tags.startDate.getTime()).toBeNaN();
+        expect(tags.startDate).toBeUndefined();
         expect(tags.usage).toHaveLength(1);
         expect(tags.usage[0].customTag).toBe('t');
         expect(tags.usage[0].breakdown.totalCharacters).toBe(0);

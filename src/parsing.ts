@@ -1204,7 +1204,7 @@ function recordList<T>(value: unknown): T[] {
     return Array.isArray(value) ? (value.filter(isRecord) as T[]) : [];
 }
 
-function numberOr<T extends number | null>(value: unknown, fallback: T): number | T {
+function numberOr<T extends number | null | undefined>(value: unknown, fallback: T): number | T {
     return typeof value === 'number' && isFinite(value) ? value : fallback;
 }
 
@@ -1298,7 +1298,7 @@ function parseAdminUsageBreakdown(obj?: AdminUsageBreakdownApiResponse): AdminUs
         documentTranslationCharacters: numberOr(b?.document_translation_characters, 0),
         textImprovementCharacters: numberOr(b?.text_improvement_characters, 0),
         speechToTextMinutes: numberOr(b?.speech_to_text_minutes, 0),
-        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, 0),
+        speechToSpeechMinutes: numberOr(b?.speech_to_speech_minutes, undefined),
     };
 }
 
@@ -1326,10 +1326,11 @@ export function parseAdminUsageReport(json: string): AdminUsageReport {
             ? parsed
             : {};
         return {
-            totalUsage: parseAdminUsageBreakdown(report.total_usage),
-            // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
-            startDate: parseOptionalUtcTimestamp(report.start_date) ?? new Date(NaN),
-            endDate: parseOptionalUtcTimestamp(report.end_date) ?? new Date(NaN),
+            totalUsage: isRecord(report.total_usage)
+                ? parseAdminUsageBreakdown(report.total_usage)
+                : undefined,
+            startDate: parseOptionalUtcTimestamp(report.start_date),
+            endDate: parseOptionalUtcTimestamp(report.end_date),
             groupBy: isString(report.group_by) ? report.group_by : undefined,
             keyUsages: recordList<KeyUsageApiResponse>(report.key_usages).map(parseKeyUsage),
             keyAndDayUsages: recordList<KeyUsageApiResponse>(report.key_and_day_usages).map(
@@ -1380,9 +1381,8 @@ export function parseCustomTagUsageReport(json: string): CustomTagUsageReport {
             isRecord(parsed) ? parsed : {};
         return {
             aggregateBy: isString(report.aggregate_by) ? report.aggregate_by : undefined,
-            // Required on the wire; a missing or malformed value gives an invalid Date, never a throw
-            startDate: parseOptionalUtcTimestamp(report.start_date) ?? new Date(NaN),
-            endDate: parseOptionalUtcTimestamp(report.end_date) ?? new Date(NaN),
+            startDate: parseOptionalUtcTimestamp(report.start_date),
+            endDate: parseOptionalUtcTimestamp(report.end_date),
             nextPage: typeof report.next_page === 'number' ? report.next_page : undefined,
             usage: recordList<CustomTagUsageApiResponse>(report.usage).map(parseCustomTagUsage),
         };

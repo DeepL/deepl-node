@@ -105,10 +105,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DeactivateDeveloperKeyOptions`, `RenameDeveloperKeyOptions`,
   `SetDeveloperKeyUsageLimitsOptions`) that accepts `extraBodyParameters`.
   `AdminUsageBreakdown` includes `speechToSpeechMinutes`.
-  `DeveloperKey.label`, `DeveloperKey.usageLimits` and `KeyUsage.apiKeyLabel`
-  are `undefined` when the response does not contain them.
-  `startDate` and `endDate` of both reports are required `Date`s at UTC
-  midnight.
+  `DeveloperKey.label`, `DeveloperKey.usageLimits`, `KeyUsage.apiKeyLabel`,
+  `AdminUsageBreakdown.speechToSpeechMinutes`, `AdminUsageReport.totalUsage`
+  and `startDate` and `endDate` of both reports are optional and `undefined`
+  when the response does not contain them, never `0`, an all-zero breakdown or
+  an invalid `Date`. Report dates are `Date`s at UTC midnight.
 - Added `getLanguageResources()` to `DeepLClient`, which retrieves the resources
   supported by the DeepL API and, for each feature, whether the source and/or
   target language must support it. Added the `LanguageResource` and

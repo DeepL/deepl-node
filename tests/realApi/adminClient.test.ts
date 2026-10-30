@@ -14,8 +14,8 @@ describe('DeepLAdminClient', () => {
     it('sends GET /v2/admin/analytics and parses the report', async () => {
         const report = await makeAdminClient().getUsageAnalytics(weekAgo, today, 'key_and_day');
 
-        expect(typeof report.totalUsage.totalCharacters).toBe('number');
-        expect(typeof report.totalUsage.speechToSpeechMinutes).toBe('number');
+        expect(typeof report.totalUsage?.totalCharacters).toBe('number');
+        expect(typeof report.totalUsage?.speechToSpeechMinutes).toBe('number');
         expect(report.startDate).toBeDefined();
         expect(report.endDate).toBeDefined();
         expect(report.groupBy).toBeDefined();

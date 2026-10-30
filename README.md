@@ -1264,11 +1264,13 @@ unchanged. The `groupBy` of the returned report
 is the raw string the API reports, for example `'keyAndDay'`. The `startDate` and
 `endDate` of both report types are `Date`s at UTC midnight. Usage breakdowns
 contain the characters per product plus `speechToTextMinutes` and
-`speechToSpeechMinutes`.
+`speechToSpeechMinutes`. Fields the API leaves out of a report are `undefined`,
+never `0` or an empty breakdown: `totalUsage`, `startDate` and `endDate` of a
+report, and `speechToSpeechMinutes` of an `AdminUsageBreakdown`.
 
 ```javascript
 const report = await adminClient.getUsageAnalytics('2026-06-01', '2026-07-01', 'key');
-console.log(`Total characters: ${report.totalUsage.totalCharacters}`);
+console.log(`Total characters: ${report.totalUsage?.totalCharacters}`);
 for (const keyUsage of report.keyUsages) {
     console.log(`${keyUsage.apiKeyLabel}: ${keyUsage.usage.totalCharacters}`);
 }
