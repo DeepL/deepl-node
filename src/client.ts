@@ -12,6 +12,7 @@ import { IncomingMessage } from 'http';
 import { AppInfo, HttpClientOptions, ProxyConfig } from './types';
 import * as https from 'https';
 import * as http from 'http';
+import * as net from 'net';
 import * as os from 'os';
 
 type HttpMethod = 'GET' | 'DELETE' | 'POST' | 'PUT' | 'PATCH';
@@ -29,20 +30,66 @@ export const RETRYABLE_AXIOS_ERROR_CODES = new Set([
     'EAI_AGAIN',
     'ENOTFOUND',
     'ECONNREFUSED',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+    'ENETDOWN',
 ]);
 
 /**
- * Axios error codes for failures that happen before the request is sent: DNS failures and
- * refused connections.
+ * Axios error codes for failures that happen before the request is sent: DNS failures, refused
+ * connections and unreachable hosts or networks.
  */
-const UNSENT_AXIOS_ERROR_CODES = new Set(['EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED']);
+const UNSENT_AXIOS_ERROR_CODES = new Set([
+    'EAI_AGAIN',
+    'ENOTFOUND',
+    'ECONNREFUSED',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+    'ENETDOWN',
+]);
+
+/** Axios error codes for timeouts; the request was not sent if its socket never connected. */
+const TIMEOUT_AXIOS_ERROR_CODES = new Set(['ETIMEDOUT', 'ECONNABORTED']);
 
 /** Connection errors whose request was never sent, so the server cannot have processed it. */
 const unsentRequestErrors = new WeakSet<ConnectionError>();
 
+/** Sockets created by the agents below, and those of them that connected. */
+const trackedSockets = new WeakSet<object>();
+const connectedSockets = new WeakSet<object>();
+
+type CreateConnection = (this: http.Agent, ...args: unknown[]) => net.Socket | undefined;
+
+/** Makes the agent record which of its sockets connected, to tell connect timeouts apart. */
+function trackConnects<TAgent extends http.Agent>(agent: TAgent): TAgent {
+    const base = Object.getPrototypeOf(agent) as { createConnection: CreateConnection };
+    Object.assign(agent, {
+        createConnection(this: http.Agent, ...args: unknown[]) {
+            const socket = base.createConnection.apply(this, args);
+            if (socket) {
+                trackedSockets.add(socket);
+                socket.once('connect', () => connectedSockets.add(socket));
+            }
+            return socket;
+        },
+    });
+    return agent;
+}
+
+/**
+ * Returns true if the request timed out before it had a connected socket. Sockets this module
+ * did not create (e.g. axios' proxy tunnels) count as connected, as their state is unknown.
+ */
+function timedOutBeforeConnect(request: unknown): boolean {
+    if (request === undefined || request === null) return false;
+    const socket = (request as { socket?: object | null }).socket;
+    if (!socket) return true;
+    return trackedSockets.has(socket) && !connectedSockets.has(socket);
+}
+
 const axiosInstance = axios.create({
-    httpAgent: new http.Agent({ keepAlive: true }),
-    httpsAgent: new https.Agent({ keepAlive: true }),
+    httpAgent: trackConnects(new http.Agent({ keepAlive: true })),
+    httpsAgent: trackConnects(new https.Agent({ keepAlive: true })),
 });
 
 /**
@@ -73,9 +120,9 @@ interface SendRequestOptions {
      */
     rawBody?: Buffer;
     /**
-     * Retry only failures that show the request was not processed (HTTP 429, DNS errors and
-     * refused connections), for
-     * requests that are unsafe to repeat.
+     * Retry only failures that show the request was not processed (HTTP 429, DNS errors,
+     * refused connections, unreachable hosts and connect timeouts), for requests that are unsafe
+     * to repeat.
      */
     retryOnlyUnprocessed?: boolean;
 }
@@ -320,7 +367,13 @@ export class HttpClient {
                 logDebug('Unrecognized axios error', axiosError);
                 error.shouldRetry = false;
             }
-            if (axiosError.code !== undefined && UNSENT_AXIOS_ERROR_CODES.has(axiosError.code)) {
+            const code = axiosError.code;
+            if (
+                code !== undefined &&
+                (UNSENT_AXIOS_ERROR_CODES.has(code) ||
+                    (TIMEOUT_AXIOS_ERROR_CODES.has(code) &&
+                        timedOutBeforeConnect(axiosError.request)))
+            ) {
                 unsentRequestErrors.add(error);
             }
             throw error;
@@ -364,21 +417,27 @@ function constructUserAgentString(sendPlatformInfo: boolean, appInfo: AppInfo | 
 
 /**
  * Builds the headers sent with every DeepL API request: authorization, User-Agent and any
- * custom headers from the options, which take precedence.
+ * custom headers from the options. Custom headers may replace the User-Agent (in any casing) but
+ * not the Authorization header.
  * @private
  */
 export function buildRequestHeaders(
     authKey: string,
     options?: HttpClientOptions,
 ): Record<string, string> {
-    return {
+    const headers: Record<string, string> = {
         Authorization: `DeepL-Auth-Key ${authKey}`,
         'User-Agent': constructUserAgentString(
             options?.sendPlatformInfo !== false,
             options?.appInfo,
         ),
-        ...(options?.headers ?? {}),
     };
+    for (const [name, value] of Object.entries(options?.headers ?? {})) {
+        const lowerName = name.toLowerCase();
+        if (lowerName === 'authorization') continue;
+        headers[lowerName === 'user-agent' ? 'User-Agent' : name] = value;
+    }
+    return headers;
 }
 
 /**
@@ -420,10 +479,14 @@ export function createHttpClient(
     headers: Record<string, string>,
     options?: HttpClientOptions,
 ): HttpClient {
+    const maxRetries = options?.maxRetries ?? 5;
+    if (!Number.isInteger(maxRetries) || maxRetries < 0) {
+        throw new ArgumentError(`maxRetries must be a non-negative integer, got: ${maxRetries}`);
+    }
     return new HttpClient(
         serverUrl,
         headers,
-        options?.maxRetries ?? 5,
+        maxRetries,
         options?.minTimeout ?? 10000,
         parseProxy(options?.proxy),
     );

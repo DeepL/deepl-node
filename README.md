@@ -1298,7 +1298,8 @@ The available options are:
 
 -   `maxRetries`: the maximum `Number` of retries after the first attempt, per
     function call. By default, 5 retries are made (6 attempts in total); 0
-    disables retries. See [Request retries](#request-retries).
+    disables retries. A negative or non-integer value throws an `ArgumentError`.
+    See [Request retries](#request-retries).
 -   `minTimeout`: the `Number` of milliseconds used as connection timeout for each
     HTTP request retry. The default value is 10000 (10 seconds).
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
@@ -1307,7 +1308,8 @@ The available options are:
     returns true for a Free account key (it ends in `:fx`).
 -   `headers`: extra HTTP headers attached to every HTTP request. By default, no
     extra headers are used. Note that Authorization and User-Agent headers are
-    added automatically but may be overridden by this option.
+    added automatically. The User-Agent may be overridden by this option (in any
+    casing); an Authorization header in this option is ignored.
 -   `proxy`: define the hostname, and port of the proxy server, and optionally
     the protocol, and authorization (as an auth object with username and
     password fields). Alternatively, a proxy URL string such as
@@ -1428,14 +1430,16 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 
 Requests to the DeepL API that fail due to transient conditions will be
 retried: HTTP 429 and 5xx responses, and network failures such as timeouts,
-refused or reset connections and DNS lookup failures. The maximum number of
+refused or reset connections, unreachable hosts or networks and DNS lookup
+failures. The maximum number of
 retries can be configured when constructing the `DeepLClient` object using the
 `maxRetries` option. The timeout for each request attempt may be controlled
 using the `minTimeout` option. An exponential-backoff strategy is used, so
 requests that fail multiple times will incur delays.
 
 `DeepLAdminClient.createDeveloperKey()` is retried only after rate limiting
-(HTTP 429), DNS failures and refused connections, as repeating it after other
+(HTTP 429), DNS failures, refused connections, unreachable hosts or networks
+and timeouts before the connection was established, as repeating it after other
 failures could create a second key.
 
 ### Errors
@@ -1446,8 +1450,8 @@ All errors thrown by the library extend `DeepLError`. It has an
 true for failures a later retry could resolve (HTTP 429, 5xx and transient
 network failures), after the library has already retried them `maxRetries`
 times. For `DeepLAdminClient.createDeveloperKey()`, `shouldRetry` is true only
-when the request was not processed (HTTP 429, DNS failures and refused
-connections), as resending it after other failures could create a second key. The subclasses are:
+when the request was not processed (HTTP 429, DNS failures, refused
+connections, unreachable hosts or networks and connect timeouts), as resending it after other failures could create a second key. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
 -   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary

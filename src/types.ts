@@ -34,15 +34,17 @@ export interface AppInfo {
 export interface HttpClientOptions {
     /**
      * HTTP headers attached to every HTTP request. By default, no extra headers are used. Note that
-     * during client initialization headers for Authorization and User-Agent are added, unless
-     * they are overridden in this option.
+     * during client initialization headers for Authorization and User-Agent are added. The
+     * User-Agent may be overridden in this option (in any casing); an Authorization header in
+     * this option is ignored.
      */
     headers?: Record<string, string>;
 
     /**
      * The maximum number of retries after the first attempt, per request. By default, 5 retries
-     * are made (6 attempts in total); 0 disables retries. Note: only errors due to transient
-     * conditions are retried: HTTP 429, 5xx and network failures (connect, DNS, timeout).
+     * are made (6 attempts in total); 0 disables retries. A negative or non-integer value throws
+     * an ArgumentError. Note: only errors due to transient conditions are retried: HTTP 429, 5xx
+     * and network failures (connect, DNS, timeout, unreachable host or network).
      */
     maxRetries?: number;
 

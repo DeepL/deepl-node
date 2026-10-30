@@ -37,7 +37,7 @@ describe('HttpClient retries', () => {
         await makeTranslator().getUsage();
     });
 
-    it.each([['ECONNREFUSED'], ['ENOTFOUND']])(
+    it.each([['ECONNREFUSED'], ['ENOTFOUND'], ['EHOSTUNREACH'], ['ENETUNREACH'], ['ENETDOWN']])(
         'retries after the network error %s',
         async (code) => {
             nock(serverUrl).get('/v2/usage').replyWithError({ code });
@@ -103,6 +103,9 @@ describe('HttpClient retries', () => {
         ['EAI_AGAIN'],
         ['ENOTFOUND'],
         ['ECONNREFUSED'],
+        ['EHOSTUNREACH'],
+        ['ENETUNREACH'],
+        ['ENETDOWN'],
     ])('classifies axios error code %s as retryable', (code) => {
         expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(true);
     });

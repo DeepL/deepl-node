@@ -74,6 +74,21 @@ describe('Translator constructor', () => {
 
         await makeTranslator({ headers: { 'X-Test': 'v' } }).getUsage();
     });
+
+    it.each([['Authorization'], ['authorization'], ['AUTHORIZATION']])(
+        'does not let the headers option replace the %s header',
+        async (name) => {
+            nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+                .get('/v2/usage')
+                .reply(200, usage);
+
+            await makeTranslator({ headers: { [name]: 'Bearer other' } }).getUsage();
+        },
+    );
+
+    it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
+        expect(() => makeTranslator({ maxRetries })).toThrow(deepl.ArgumentError);
+    });
 });
 
 describe('Translator User-Agent', () => {

@@ -4,6 +4,8 @@
 
 import * as deepl from 'deepl-node';
 
+import * as https from 'https';
+import * as net from 'net';
 import nock from 'nock';
 
 import { makeAdminClient, serverUrl } from './client';
@@ -346,20 +348,24 @@ describe('DeepLAdminClient', () => {
         },
     );
 
-    it.each([['EAI_AGAIN'], ['ENOTFOUND'], ['ECONNREFUSED']])(
-        'retries developer key creation after the unsent-request error %s',
-        async (code) => {
-            nock(serverUrl)
-                .post('/v2/admin/developer-keys')
-                .replyWithError({ code })
-                .post('/v2/admin/developer-keys')
-                .reply(200, DEVELOPER_KEY_JSON);
+    it.each([
+        ['EAI_AGAIN'],
+        ['ENOTFOUND'],
+        ['ECONNREFUSED'],
+        ['EHOSTUNREACH'],
+        ['ENETUNREACH'],
+        ['ENETDOWN'],
+    ])('retries developer key creation after the unsent-request error %s', async (code) => {
+        nock(serverUrl)
+            .post('/v2/admin/developer-keys')
+            .replyWithError({ code })
+            .post('/v2/admin/developer-keys')
+            .reply(200, DEVELOPER_KEY_JSON);
 
-            const key = await makeAdminClient().createDeveloperKey();
+        const key = await makeAdminClient().createDeveloperKey();
 
-            expect(key.keyId).toBe(KEY_ID);
-        },
-    );
+        expect(key.keyId).toBe(KEY_ID);
+    });
 
     it('does not retry developer key creation after a connection reset', async () => {
         nock(serverUrl).post('/v2/admin/developer-keys').replyWithError({ code: 'ECONNRESET' });
@@ -542,5 +548,56 @@ describe('DeepLAdminClient', () => {
         const client = makeAdminClient();
 
         await expect(client.listDeveloperKeys()).rejects.toBeInstanceOf(deepl.AuthorizationError);
+    });
+});
+
+describe('DeepLAdminClient developer key creation timeouts', () => {
+    let createConnection: jest.SpyInstance;
+
+    // Real agent sockets are needed to tell a connect timeout apart, so nock steps aside and
+    // the agent gets sockets that never answer
+    function stubSockets(connected: boolean) {
+        nock.restore();
+        createConnection = jest
+            .spyOn(
+                https.Agent.prototype as unknown as { createConnection: () => net.Socket },
+                'createConnection',
+            )
+            .mockImplementation(() => {
+                const socket = new net.Socket();
+                // Writes stay buffered, as on a socket that is still connecting
+                (socket as { connecting: boolean }).connecting = true;
+                if (connected) process.nextTick(() => socket.emit('connect'));
+                return socket;
+            });
+    }
+
+    afterEach(() => {
+        createConnection.mockRestore();
+        nock.activate();
+    });
+
+    it('retries developer key creation after a connect timeout', async () => {
+        stubSockets(false);
+
+        const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
+            .createDeveloperKey()
+            .catch((e) => e);
+
+        expect(createConnection).toHaveBeenCalledTimes(2);
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(true);
+    });
+
+    it('does not retry developer key creation after a timeout on a connected socket', async () => {
+        stubSockets(true);
+
+        const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
+            .createDeveloperKey()
+            .catch((e) => e);
+
+        expect(createConnection).toHaveBeenCalledTimes(1);
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(false);
     });
 });

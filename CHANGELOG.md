@@ -259,9 +259,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- An `Authorization` header in the `headers` option, in any casing, no longer
+  replaces the `DeepL-Auth-Key` authorization header; it is ignored. A
+  `User-Agent` header in the `headers` option replaces the default User-Agent in
+  any casing.
+- `DeepLAdminClient.createDeveloperKey()` is also retried after a timeout that
+  occurred before the connection was established, and its `shouldRetry` is true
+  for such a timeout.
 - A response with a 3xx status that is not followed as a redirect (for example
   300 or 304) throws a `DeepLError` with its `httpStatusCode` instead of being
   parsed as a successful response.
+- Requests failing with `EHOSTUNREACH`, `ENETUNREACH` or `ENETDOWN` (unreachable
+  host or network) are retried, also by `createDeveloperKey()`, and the final
+  `ConnectionError` has `shouldRetry` set to true.
+- A negative or non-integer `maxRetries` option throws an `ArgumentError` when the
+  client is constructed. Before, every request failed by throwing `undefined`.
 - `deleteMultilingualGlossaryDictionary()` and `deleteSpokenTermsList()` encode a
   space in query values as `%20` instead of `+`.
 - `getUsage()` leaves `character`, `document` and `teamDocument` undefined
