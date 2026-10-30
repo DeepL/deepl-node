@@ -204,6 +204,18 @@ describe('Translator.translateDocumentUpload', () => {
         expect(upload.body()).toContain('name="target_lang"\r\n\r\nde\r\n');
         expect(upload.body()).toContain('filename="a.txt"');
     });
+
+    it('sends options.filename instead of the base name of a file path', async () => {
+        const upload = expectUpload();
+        const [exampleDocument] = createTextDocument();
+
+        await makeDeeplClient().translateDocumentUpload(exampleDocument, null, 'de', {
+            filename: 'report.docx',
+        });
+
+        expect(upload.body()).toContain('name="file"; filename="report.docx"');
+        expect(upload.body()).not.toContain('example_document.txt');
+    });
 });
 
 describe('Translator.translateDocumentGetStatus', () => {

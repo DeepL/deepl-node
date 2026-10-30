@@ -265,6 +265,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- `translateDocument()` and `translateDocumentUpload()` send the `filename`
+  option as the file name when the input is a file path, instead of always
+  sending the path's base name. The base name remains the default.
 - An `Authorization` header in the `headers` option, in any casing, no longer
   replaces the `DeepL-Auth-Key` authorization header; it is ignored. A
   `User-Agent` header in the `headers` option replaces the default User-Agent in

@@ -319,7 +319,11 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
     /** Specifies the minimum similarity threshold (0 to 100) for translation memory matches. */
     translationMemoryThreshold?: number;
 
-    /** Filename including extension, only required when translating documents as streams. */
+    /**
+     * File name including extension, sent with the upload; the API uses its extension to
+     * detect the document type. Required unless the input is a file path, where it defaults
+     * to the path's base name.
+     */
     filename?: string;
 
     /**

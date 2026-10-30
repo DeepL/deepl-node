@@ -303,7 +303,8 @@ export class Translator {
      * translation to complete, then downloads translated document to specified output path.
      * @param inputFile String containing file path of document to be translated, or a Stream,
      *     Buffer, or FileHandle containing file data. Note: unless file path is used, then
-     *     `options.filename` must be specified.
+     *     `options.filename` must be specified. For a file path, `options.filename` defaults to
+     *     the path's base name.
      * @param outputFile String containing file path to create translated document, or Stream or
      *     FileHandle to write translated document content.
      * @param sourceLang Language code of input document, or null to use auto-detection.
@@ -403,6 +404,7 @@ export class Translator {
      * Uploads specified document to DeepL to translate into target language, and returns handle associated with the document.
      * @param inputFile String containing file path, stream containing file data, or FileHandle.
      *     Note: if a Buffer, Stream, or FileHandle is used, then `options.filename` must be specified.
+     *     For a file path, `options.filename` defaults to the path's base name.
      * @param sourceLang Language code of input document, or null to use auto-detection.
      * @param targetLang Language code of language to translate into.
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
@@ -420,7 +422,7 @@ export class Translator {
                 buffer,
                 sourceLang,
                 targetLang,
-                path.basename(inputFile),
+                options?.filename ?? path.basename(inputFile),
                 options,
             );
         } else {

@@ -344,8 +344,10 @@ statuses this library does not know.
     `DocumentTranslationError` whose message contains `Style profile not found.`.
 -   `translationMemory`: same as in [Text translation options](#text-translation-options).
 -   `translationMemoryThreshold`: same as in [Text translation options](#text-translation-options).
--   `filename`: if the input file is not provided as file path, this option is
-    needed to specify the file extension.
+-   `filename`: file name sent with the upload; its extension determines the
+    document type. Required if the input file is not provided as file path. For a
+    file path it defaults to the path's base name; set it when the path lacks the
+    right extension, for example `filename: 'report.docx'` for a temporary file.
 -   `outputFormat`: file extension of the desired format of the translated
     document, for example `'docx'`. If unspecified, the translated document has
     the same format as the input document.
