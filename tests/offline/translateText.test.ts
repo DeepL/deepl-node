@@ -109,19 +109,12 @@ describe('Translator.translateText', () => {
         ['prefer_less', 'prefer_less'],
         ['prefer_more', 'prefer_more'],
         ['default', 'default'],
+        ['MORE', 'more'],
     ])('sends formality %s as %s', async (formality, sent) => {
         expectTranslateBody({ ...baseBody, formality: sent });
 
         await makeTranslator().translateText('abc', null, 'de', {
             formality: <deepl.Formality>formality,
-        });
-    });
-
-    it('sends formality as given, without lower-casing it', async () => {
-        expectTranslateBody({ ...baseBody, formality: 'MORE' });
-
-        await makeTranslator().translateText('abc', null, 'de', {
-            formality: <deepl.Formality>'MORE',
         });
     });
 
@@ -138,14 +131,6 @@ describe('Translator.translateText', () => {
 
         await makeTranslator().translateText('abc', null, 'de', {
             splitSentences: <deepl.SentenceSplittingMode>splitSentences,
-        });
-    });
-
-    it('sends a splitSentences value other than an alias as given, without lower-casing it', async () => {
-        expectTranslateBody({ ...baseBody, split_sentences: 'NoNewlines' });
-
-        await makeTranslator().translateText('abc', null, 'de', {
-            splitSentences: <deepl.SentenceSplittingMode>'NoNewlines',
         });
     });
 

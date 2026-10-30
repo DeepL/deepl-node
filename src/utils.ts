@@ -249,7 +249,8 @@ export function buildURLSearchParams(
         searchParams.append('source_lang', sourceLang);
     }
     if (formality !== undefined) {
-        searchParams.append('formality', String(formality));
+        const formalityStr = String(formality).toLowerCase();
+        searchParams.append('formality', formalityStr);
     }
     if (glossary !== undefined) {
         if (!isString(glossary)) {
@@ -407,13 +408,13 @@ export function validateAndAppendTextOptions(
         return;
     }
     if (options.splitSentences !== undefined) {
-        const alias = options.splitSentences.toLowerCase();
-        if (alias === 'on' || alias === 'default') {
+        const splitSentences = options.splitSentences.toLowerCase();
+        if (splitSentences === 'on' || splitSentences === 'default') {
             data.append('split_sentences', '1');
-        } else if (alias === 'off') {
+        } else if (splitSentences === 'off') {
             data.append('split_sentences', '0');
         } else {
-            data.append('split_sentences', options.splitSentences);
+            data.append('split_sentences', splitSentences);
         }
     }
     if (options.preserveFormatting !== undefined) {

@@ -293,10 +293,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `updateMultilingualGlossary()`, `updateMultilingualGlossaryDictionary()` and
   `replaceMultilingualGlossaryDictionary()`, so `' foo '` is sent as `'foo'` and
   a whitespace-only term throws a `DeepLError` before any request.
-- The `formality` option of text and document translation is sent as given,
-  no longer lower-cased.
-- A `splitSentences` value other than the aliases `'on'`, `'default'` and
-  `'off'` is sent as given, no longer lower-cased.
 - `getUsage()` leaves `character`, `document` and `teamDocument` undefined
   when the response's count or limit for them is not a number, as it already did
   for the API Pro usage fields. Before, a `null` or string value was returned as

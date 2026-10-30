@@ -176,9 +176,6 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
     -   `'nonewlines'`: input text will be split into sentences using punctuation
         but not newlines.
     -   `'on'` and `'default'` are deprecated aliases of `'1'`.
-
-    The aliases `'on'`, `'default'` and `'off'` match in any letter case; any
-    other value is sent exactly as given.
 -   `preserveFormatting`: controls automatic-formatting-correction. Set to `true`
     to prevent automatic-correction of formatting, default: `false`.
 -   `formality`: controls whether translations should lean toward informal or
@@ -191,8 +188,6 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
     - `'default'`: use default formality.
     - `'prefer_less'`: use informal language if available, otherwise default.
     - `'prefer_more'`: use formal, more polite language if available, otherwise default.
-
-    The value is sent exactly as given, without changing its letter case.
 -   `glossary`: specifies a glossary to use with translation, either as a string
     containing the glossary ID, or a `MultilingualGlossaryInfo`/`GlossaryInfo` as returned by
     `getMultilingualGlossary()`/`getGlossary()`.
