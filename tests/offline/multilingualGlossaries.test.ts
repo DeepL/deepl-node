@@ -58,6 +58,39 @@ describe('DeepLClient.createMultilingualGlossary', () => {
     });
 });
 
+describe('GlossaryEntries terms in multilingual glossary requests', () => {
+    it('sends terms trimmed of surrounding whitespace', async () => {
+        nock(serverUrl)
+            .post('/v3/glossaries', {
+                name: 'n',
+                'dictionaries[0].source_lang': 'en',
+                'dictionaries[0].target_lang': 'de',
+                'dictionaries[0].entries': 'Apple\tApfel',
+                'dictionaries[0].entries_format': 'tsv',
+            })
+            .reply(201, { dictionaries: [] });
+
+        await makeDeeplClient().createMultilingualGlossary('n', [
+            {
+                sourceLangCode: 'en',
+                targetLangCode: 'de',
+                entries: new deepl.GlossaryEntries({ entries: { ' Apple ': '\tApfel ' } }),
+            },
+        ]);
+    });
+
+    it('throws DeepLError before any request for a whitespace-only term', async () => {
+        // No request is declared: nock rejects any request with a different error.
+        await expect(
+            makeDeeplClient().replaceMultilingualGlossaryDictionary('g-1', {
+                sourceLangCode: 'en',
+                targetLangCode: 'de',
+                entries: new deepl.GlossaryEntries({ entries: { Apple: '   ' } }),
+            }),
+        ).rejects.toThrow("'' is not a valid term.");
+    });
+});
+
 describe('DeepLClient.updateMultilingualGlossaryDictionary', () => {
     it('sends the dictionary with PATCH', async () => {
         nock(serverUrl)

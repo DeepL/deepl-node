@@ -451,6 +451,11 @@ const entries = new deepl.GlossaryEntries({ entries: { artist: 'Maler', prize: '
 const glossaryEnToDe = await deeplClient.createMultilingualGlossary('My glossary', [{sourceLangCode: 'en', targetLangCode: 'de', entries: entries}]);
 ```
 
+Glossary terms are trimmed of leading and trailing whitespace and then
+validated before any request: a term that is empty after trimming or contains a
+control character such as a newline throws a `DeepLError`. The trimmed terms are
+sent.
+
 You can also upload a glossary downloaded from the DeepL website using
 `createMultilingualGlossaryFromCsv()` (`createMultilingualGlossaryWithCsv()` is
 deprecated and behaves the same). Instead of supplying the entries as a dictionary,

@@ -70,16 +70,19 @@ export class GlossaryEntries {
     }
 
     /**
-     * Converts glossary entries to a tab-separated values (TSV) string.
+     * Converts glossary entries to a tab-separated values (TSV) string. Each term is trimmed of
+     * leading and trailing whitespace, then validated; the trimmed term is what is written.
      * @return string containing entries in TSV format.
-     * @throws {Error} If any glossary entries are invalid.
+     * @throws {Error} If any glossary entries are invalid, for example empty after trimming.
      */
     public toTsv(): string {
         return Object.entries(this.implEntries)
             .map(([source, target]) => {
-                GlossaryEntries.validateGlossaryTerm(source);
-                GlossaryEntries.validateGlossaryTerm(target);
-                return `${source}\t${target}`;
+                const trimmedSource = source.trim();
+                const trimmedTarget = target.trim();
+                GlossaryEntries.validateGlossaryTerm(trimmedSource);
+                GlossaryEntries.validateGlossaryTerm(trimmedTarget);
+                return `${trimmedSource}\t${trimmedTarget}`;
             })
             .join('\n');
     }
