@@ -259,6 +259,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
+- A response with a 3xx status that is not followed as a redirect (for example
+  300 or 304) throws a `DeepLError` with its `httpStatusCode` instead of being
+  parsed as a successful response.
 - `deleteMultilingualGlossaryDictionary()` and `deleteSpokenTermsList()` encode a
   space in query values as `%20` instead of `+`.
 - `getUsage()` leaves `character`, `document` and `teamDocument` undefined

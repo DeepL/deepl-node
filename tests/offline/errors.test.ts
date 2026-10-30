@@ -32,6 +32,21 @@ describe('error mapping', () => {
         expect(error.shouldRetry).toBe(shouldRetry);
     });
 
+    it.each([[300], [304]])(
+        'throws DeepLError carrying the status for an unfollowed %i response',
+        async (status) => {
+            nock(serverUrl).get('/v2/usage').reply(status);
+
+            const error = await makeTranslator()
+                .getUsage()
+                .catch((e) => e);
+
+            expect(error).toBeInstanceOf(deepl.DeepLError);
+            expect(error.httpStatusCode).toBe(status);
+            expect(error.shouldRetry).toBe(false);
+        },
+    );
+
     it('throws NotFoundError when a non-glossary request answers 404', async () => {
         nock(serverUrl).get('/v3/style_rules/s-1').reply(404, { message: 'm' });
 

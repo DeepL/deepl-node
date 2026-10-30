@@ -115,7 +115,7 @@ export async function checkStatusCode(
     usingGlossary = false,
     inDocumentDownload = false,
 ): Promise<void> {
-    if (200 <= statusCode && statusCode < 400) return;
+    if (200 <= statusCode && statusCode < 300) return;
 
     if (content instanceof IncomingMessage) {
         try {
