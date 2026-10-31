@@ -840,9 +840,9 @@ export interface WaitOptions {
  */
 export interface DocumentStatus {
     /**
-     * ID of the document.
+     * ID of the document, or undefined if the response does not contain it.
      */
-    readonly documentId: string;
+    readonly documentId?: string;
 
     /**
      * One of the status values defined in DocumentStatusCode.
@@ -1314,10 +1314,10 @@ export interface TranslationMemoryJob {
     readonly product: string;
     /** Results of the job; the API returns exactly one. */
     readonly results: TranslationMemoryJobResult[];
-    /** Time the job was created. */
-    readonly creationTime: Date;
-    /** Time the job was last updated. */
-    readonly updatedTime: Date;
+    /** Time the job was created, or undefined if the response does not contain it. */
+    readonly creationTime?: Date;
+    /** Time the job was last updated, or undefined if the response does not contain it. */
+    readonly updatedTime?: Date;
     /** Translation memory an export job reads from. */
     readonly translationMemoryId?: string;
     /** Display name an import job assigns to the new translation memory. */
@@ -1333,15 +1333,17 @@ export interface TranslationMemoryJob {
 
     /**
      * True if the job completed successfully (status is 'completed', or the deprecated
-     * 'downloaded'), otherwise false.
+     * 'downloaded'), otherwise false. Always set on jobs returned by this library; optional so
+     * that objects built without it still compile.
      */
-    done(): boolean;
+    done?(): boolean;
 
     /**
      * True if the job has not failed (status is not 'failed' or 'expired'), otherwise false. Note
-     * that while the job is in progress, this returns true.
+     * that while the job is in progress, this returns true. Always set on jobs returned by this
+     * library; optional so that objects built without it still compile.
      */
-    ok(): boolean;
+    ok?(): boolean;
 }
 
 /**

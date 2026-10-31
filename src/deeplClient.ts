@@ -73,6 +73,8 @@ import {
     parseLanguageResourceList,
     parseLanguageSupportList,
     parseResponse,
+    isTranslationMemoryJobStatusDone,
+    isTranslationMemoryJobStatusOk,
 } from './parsing';
 import {
     appendCsvDictionaryEntries,
@@ -1474,7 +1476,11 @@ export class DeepLClient extends Translator {
         const timeoutMs = typeof options === 'number' ? options : options?.timeoutMs;
         const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
         let current = await this.getTranslationMemoryJob(job);
-        while (!current.done() && current.ok()) {
+        // Tested on the status: done() and ok() are optional members of the interface.
+        while (
+            !isTranslationMemoryJobStatusDone(current.status) &&
+            isTranslationMemoryJobStatusOk(current.status)
+        ) {
             let sleepMs = 5000;
             if (deadline !== undefined) {
                 const remainingMs = deadline - Date.now();
@@ -1489,7 +1495,7 @@ export class DeepLClient extends Translator {
             logInfo(`Rechecking translation memory job status after sleeping for ${sleepMs} ms.`);
             current = await this.getTranslationMemoryJob(current.jobId);
         }
-        if (!current.ok()) {
+        if (!isTranslationMemoryJobStatusOk(current.status)) {
             throw new DeepLError(current.result?.errorMessage || `Job ${current.status}`);
         }
         return current;

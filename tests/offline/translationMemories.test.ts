@@ -358,8 +358,8 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         expect(job.status).toBe(status);
         expect(job.result).toBe(job.results[0]);
-        expect(job.done()).toBe(done);
-        expect(job.ok()).toBe(ok);
+        expect(job.done?.()).toBe(done);
+        expect(job.ok?.()).toBe(ok);
     });
 
     it('keeps an unknown status as sent', async () => {
@@ -369,7 +369,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect([job.status, job.done(), job.ok()]).toEqual(['something_new', false, true]);
+        expect([job.status, job.done?.(), job.ok?.()]).toEqual(['something_new', false, true]);
     });
 
     it('parses a job without results as not done and ok', async () => {
@@ -379,7 +379,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect([job.result, job.status, job.done(), job.ok()]).toEqual([
+        expect([job.result, job.status, job.done?.(), job.ok?.()]).toEqual([
             undefined,
             undefined,
             false,
@@ -397,9 +397,9 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
         expect(job.creationTime).toBeInstanceOf(Date);
-        expect(job.creationTime.getTime()).toBeNaN();
+        expect(job.creationTime?.getTime()).toBeNaN();
         expect(job.updatedTime).toBeInstanceOf(Date);
-        expect(job.updatedTime.getTime()).toBeNaN();
+        expect(job.updatedTime?.getTime()).toBeNaN();
     });
 
     it('throws ArgumentError when the job ID is empty', async () => {
@@ -424,9 +424,14 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
     it('accepts a TranslationMemoryJob', async () => {
         nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
 
-        await makeDeeplClient().waitUntilTranslationMemoryJobDone(<deepl.TranslationMemoryJob>{
+        const job: deepl.TranslationMemoryJob = {
             jobId: 'job-1',
-        });
+            operation: 'import',
+            product: 'translation_memory',
+            results: [],
+        };
+
+        await makeDeeplClient().waitUntilTranslationMemoryJobDone(job);
     });
 
     it.each([

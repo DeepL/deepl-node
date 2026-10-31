@@ -292,11 +292,11 @@ class DocumentStatusImpl implements DocumentStatus {
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
-    public documentId: string;
+    public documentId?: string;
 
     constructor(
         status: DocumentStatusCode,
-        documentId: string,
+        documentId: string | undefined,
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,

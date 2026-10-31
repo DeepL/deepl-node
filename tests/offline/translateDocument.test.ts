@@ -245,6 +245,12 @@ describe('Translator.translateDocumentGetStatus', () => {
         expect([status.done(), status.billedCharacters]).toEqual([true, 11]);
     });
 
+    it('accepts a user-built DocumentStatus without documentId', () => {
+        const s: deepl.DocumentStatus = { status: 'done', ok: () => true, done: () => true };
+
+        expect(s.documentId).toBeUndefined();
+    });
+
     it('keeps an unknown status as a string and treats it as ok', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
 
