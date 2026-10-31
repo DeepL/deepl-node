@@ -98,9 +98,27 @@ import { ArgumentError, DeepLError, GlossaryNotFoundError } from './errors';
 import { GlossaryEntries } from './glossaryEntries';
 import { IncomingMessage } from 'http';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import * as util from 'util';
+
+/**
+ * Returns the libuv errno that Node's fs errors carry for the given error name (e.g. -4075 for
+ * EEXIST on Windows, -17 on Linux), or undefined if it cannot be determined.
+ */
+function uvErrno(name: string): number | undefined {
+    const getSystemErrorMap = (
+        util as unknown as { getSystemErrorMap?: () => Map<number, [string, string]> }
+    ).getSystemErrorMap;
+    if (!getSystemErrorMap) {
+        return undefined;
+    }
+    for (const [errno, [errName]] of getSystemErrorMap()) {
+        if (errName === name) {
+            return errno;
+        }
+    }
+    return undefined;
+}
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
     // Terms are trimmed, then validated and sent trimmed. Terms are sent newline-separated, so a
@@ -1670,7 +1688,7 @@ export class DeepLClient extends Translator {
                 throw Object.assign(
                     new Error(`EEXIST: file already exists, open '${outputFile}'`),
                     {
-                        errno: -os.constants.errno.EEXIST,
+                        errno: uvErrno('EEXIST'),
                         code: 'EEXIST',
                         syscall: 'open',
                         path: outputFile,
