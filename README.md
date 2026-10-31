@@ -300,7 +300,8 @@ try {
 An existing file at the output path, or an output directory that is missing or
 not writable, rejects with the Node error (`EEXIST`, `ENOENT`, `EACCES`) before
 any request is sent. A missing input file rejects with a
-`DocumentTranslationError` before any request is sent. Every other failure
+`DocumentTranslationError` before any request is sent. A failed document
+minification rejects with a `DocumentMinificationError`. Every other failure
 rejects with a `DocumentTranslationError` whose `error` property holds the
 cause; its `httpStatusCode` and `shouldRetry` are copied from the cause when
 that is a `DeepLError`.
