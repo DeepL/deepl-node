@@ -34,9 +34,10 @@ export interface AppInfo {
 export interface HttpClientOptions {
     /**
      * HTTP headers attached to every HTTP request. By default, no extra headers are used. Note that
-     * during client initialization headers for Authorization and User-Agent are added. The
-     * User-Agent may be overridden in this option (in any casing); an Authorization header in
-     * this option is ignored.
+     * during client initialization headers for Authorization and User-Agent are added. A header in
+     * this option replaces the library's header of the same name (in any casing), including
+     * Authorization and User-Agent. Content-Type, Content-Length, Transfer-Encoding and Host
+     * headers in this option are ignored.
      */
     headers?: Record<string, string>;
 

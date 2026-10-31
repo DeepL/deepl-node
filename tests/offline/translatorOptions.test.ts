@@ -76,15 +76,29 @@ describe('Translator constructor', () => {
     });
 
     it.each([['Authorization'], ['authorization'], ['AUTHORIZATION']])(
-        'does not let the headers option replace the %s header',
+        'lets the headers option replace the %s header',
         async (name) => {
-            nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+            nock(serverUrl, { reqheaders: { authorization: 'Bearer other' } })
                 .get('/v2/usage')
                 .reply(200, usage);
 
             await makeTranslator({ headers: { [name]: 'Bearer other' } }).getUsage();
         },
     );
+
+    it("keeps the library's Content-Type when the headers option sets one", async () => {
+        nock(serverUrl, {
+            reqheaders: { 'content-type': /^application\/x-www-form-urlencoded/ },
+        })
+            .post('/v2/translate')
+            .reply(200, { translations: [{ detected_source_language: 'EN', text: 'a' }] });
+
+        await makeTranslator({ headers: { 'content-type': 'text/plain' } }).translateText(
+            'a',
+            null,
+            'de',
+        );
+    });
 
     it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
         expect(() => makeTranslator({ maxRetries })).toThrow(deepl.ArgumentError);

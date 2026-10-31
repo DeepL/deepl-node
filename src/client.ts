@@ -415,10 +415,22 @@ function constructUserAgentString(sendPlatformInfo: boolean, appInfo: AppInfo | 
     return libraryInfoString;
 }
 
+const IGNORED_CUSTOM_HEADERS = new Set([
+    'content-type',
+    'content-length',
+    'transfer-encoding',
+    'host',
+]);
+const LIBRARY_HEADER_NAMES: Record<string, string> = {
+    authorization: 'Authorization',
+    'user-agent': 'User-Agent',
+};
+
 /**
  * Builds the headers sent with every DeepL API request: authorization, User-Agent and any
- * custom headers from the options. Custom headers may replace the User-Agent (in any casing) but
- * not the Authorization header.
+ * custom headers from the options. A custom header replaces the library's header of the same
+ * name in any casing, Authorization and User-Agent included; headers describing the request
+ * body or connection (Content-Type, Content-Length, Transfer-Encoding, Host) are ignored.
  * @private
  */
 export function buildRequestHeaders(
@@ -434,8 +446,10 @@ export function buildRequestHeaders(
     };
     for (const [name, value] of Object.entries(options?.headers ?? {})) {
         const lowerName = name.toLowerCase();
-        if (lowerName === 'authorization') continue;
-        headers[lowerName === 'user-agent' ? 'User-Agent' : name] = value;
+        // axios does not overwrite a Content-Type or Content-Length already set for a form body.
+        if (IGNORED_CUSTOM_HEADERS.has(lowerName)) continue;
+        // Stored under the library's spelling: the storage client reads headers['User-Agent'].
+        headers[LIBRARY_HEADER_NAMES[lowerName] ?? name] = value;
     }
     return headers;
 }
