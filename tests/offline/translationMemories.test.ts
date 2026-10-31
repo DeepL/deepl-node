@@ -387,7 +387,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
         ]);
     });
 
-    it('gives an invalid Date for a missing or malformed creation or update time', async () => {
+    it('leaves creationTime and updatedTime undefined when missing or malformed', async () => {
         const { updated_time: updatedTime, ...withoutUpdatedTime } = jobReply('processing');
         void updatedTime;
         nock(serverUrl)
@@ -396,10 +396,8 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect(job.creationTime).toBeInstanceOf(Date);
-        expect(job.creationTime?.getTime()).toBeNaN();
-        expect(job.updatedTime).toBeInstanceOf(Date);
-        expect(job.updatedTime?.getTime()).toBeNaN();
+        expect(job.creationTime).toBeUndefined();
+        expect(job.updatedTime).toBeUndefined();
     });
 
     it('throws ArgumentError when the job ID is empty', async () => {

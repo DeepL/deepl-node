@@ -234,14 +234,14 @@ describe('Translator.translateDocumentGetStatus', () => {
         ]);
     });
 
-    it('gives an empty documentId when document_id is not a string', async () => {
+    it('leaves documentId undefined when document_id is missing', async () => {
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
-            .reply(200, { document_id: 42, status: 'done', billed_characters: 11 });
+            .reply(200, { status: 'done', billed_characters: 11 });
 
         const status = await makeDeeplClient().translateDocumentGetStatus(handle);
 
-        expect(status.documentId).toBe('');
+        expect(status.documentId).toBeUndefined();
         expect([status.done(), status.billedCharacters]).toEqual([true, 11]);
     });
 
