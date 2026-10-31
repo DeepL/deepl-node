@@ -1450,8 +1450,8 @@ export class DeepLClient extends Translator {
     }
 
     /**
-     * Polls a translation memory job every 5 seconds until it completes, and resolves with the
-     * completed job.
+     * Polls a translation memory job every 5 seconds until it completes (status 'completed', or the
+     * deprecated 'downloaded'), and resolves with the completed job.
      *
      * Note that an import job keeps reporting 'awaiting_input' for a while after its file has been
      * uploaded, because the API detects the upload asynchronously. That status, and statuses this

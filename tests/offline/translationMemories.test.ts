@@ -347,6 +347,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
     it.each([
         ['completed', true, true],
+        ['downloaded', true, true],
         ['processing', false, true],
         ['failed', false, false],
         ['expired', false, false],
@@ -441,7 +442,6 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
 
     it.each([
         ['an unknown status', jobReply('something_new')],
-        ['the deprecated downloaded status', jobReply('downloaded')],
         ['no result', { job_id: 'job-1', operation: 'import', results: [] }],
     ])(
         'keeps polling on %s',
@@ -455,6 +455,14 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
         },
         15000,
     );
+
+    it('resolves on the deprecated downloaded status', async () => {
+        nock(serverUrl).get(jobPath).reply(200, jobReply('downloaded'));
+
+        const job = await makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1');
+
+        expect(job.status).toBe('downloaded');
+    });
 
     it.each([
         ['WaitOptions', { timeoutMs: 1 }],

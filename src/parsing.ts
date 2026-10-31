@@ -1041,6 +1041,23 @@ export function parseTranslationMemoryExport(
 }
 
 /**
+ * True if a translation memory job with the given status has finished successfully: 'completed',
+ * or the deprecated 'downloaded'.
+ * @private
+ */
+export function isTranslationMemoryJobStatusDone(status: string | undefined): boolean {
+    return status === 'completed' || status === 'downloaded';
+}
+
+/**
+ * True if a translation memory job with the given status has not failed.
+ * @private
+ */
+export function isTranslationMemoryJobStatusOk(status: string | undefined): boolean {
+    return status !== 'failed' && status !== 'expired';
+}
+
+/**
  * Parses the given JSON string to a TranslationMemoryJob object.
  * @private
  */
@@ -1072,8 +1089,8 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             sourceContentLength: obj.source_file?.content_length,
             result,
             status,
-            done: () => status === 'completed',
-            ok: () => status !== 'failed' && status !== 'expired',
+            done: () => isTranslationMemoryJobStatusDone(status),
+            ok: () => isTranslationMemoryJobStatusOk(status),
         };
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);

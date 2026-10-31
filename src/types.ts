@@ -1276,8 +1276,8 @@ export interface TranslationMemoryExport {
  * Status of a translation memory import or export job, one of 'awaiting_input', 'processing',
  * 'completed', 'failed' or 'expired'.
  *
- * 'downloaded' is deprecated: the API does not report it for translation memory jobs, and it is not
- * treated as a finished status. It will be removed in the next major version.
+ * 'downloaded' is deprecated: the API does not report it for translation memory jobs. It is treated
+ * like 'completed', and will be removed in the next major version.
  */
 export type TranslationMemoryJobStatus =
     | 'awaiting_input'
@@ -1332,7 +1332,8 @@ export interface TranslationMemoryJob {
     readonly status?: TranslationMemoryJobStatus | (string & Record<never, never>);
 
     /**
-     * True if the job completed successfully (status is 'completed'), otherwise false.
+     * True if the job completed successfully (status is 'completed', or the deprecated
+     * 'downloaded'), otherwise false.
      */
     done(): boolean;
 
