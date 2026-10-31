@@ -338,9 +338,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a status the library did not know made `translateDocument()` and
   `translateDocumentWaitUntilDone()` stop polling and reject with
   `unknown error`.
-- An HTTP 503 response to `translateDocumentGetStatus()` and `getDocumentStatus()`
-  now throws `DeepLError`; before it threw `DocumentNotReadyError`, which is meant
-  for document downloads only.
 - The document ID is now URL-encoded in the request paths of the document
   status and download methods.
 - `extraBodyParameters` (and `extraRequestParameters`) of `translateText()` and

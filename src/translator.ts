@@ -492,7 +492,7 @@ export class Translator {
             `/v2/document/${encodeURIComponent(handle.documentId)}`,
             { data },
         );
-        await checkStatusCode(statusCode, content);
+        await checkStatusCode(statusCode, content, false, true);
         return parseDocumentStatus(content);
     }
 
