@@ -636,22 +636,24 @@ describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
         });
     });
 
-    it('throws ArgumentError for a missing input file before any request', async () => {
+    it('rejects with the native ENOENT error for a missing input file before any request', async () => {
         const inputPath = path.join(tempDir(), 'missing.tmx');
 
-        await expect(
-            makeDeeplClient().importTranslationMemoryFromFilepath(inputPath),
-        ).rejects.toThrow(new deepl.ArgumentError(`input file does not exist: ${inputPath}`));
+        const error = await makeDeeplClient()
+            .importTranslationMemoryFromFilepath(inputPath)
+            .catch((e) => e);
+
+        expect(error).toMatchObject({ code: 'ENOENT', path: inputPath });
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
     });
 
-    it('wraps a local read failure in DeepLError with the cause', async () => {
-        // A directory exists but cannot be read as a file (EISDIR)
+    it('rejects with the native EISDIR error when the input path is a directory', async () => {
         const error = await makeDeeplClient()
             .importTranslationMemoryFromFilepath(tempDir())
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error.error).toMatchObject({ code: 'EISDIR' });
+        expect(error).toMatchObject({ code: 'EISDIR' });
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
     });
 
     it('throws ArgumentError for a Buffer without fileName or displayName', async () => {
@@ -677,28 +679,36 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
     });
 
-    it('rejects an existing output file with DeepLError before creating the export job', async () => {
+    it('rejects an existing output file with the native EEXIST error before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         fs.writeFileSync(outputPath, 'existing');
 
-        await expect(
-            makeDeeplClient().exportTranslationMemoryToFilepath('tm-1', outputPath),
-        ).rejects.toThrow(`output file already exists: ${outputPath}`);
+        const error = await makeDeeplClient()
+            .exportTranslationMemoryToFilepath('tm-1', outputPath)
+            .catch((e) => e);
+
+        expect(error).toMatchObject({
+            code: 'EEXIST',
+            syscall: 'open',
+            path: outputPath,
+            message: `EEXIST: file already exists, open '${outputPath}'`,
+        });
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('wraps a missing output directory in DeepLError before creating the export job', async () => {
+    it('rejects a missing output directory with the native ENOENT error before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'missing-dir', 'out.tmx');
 
         const error = await makeDeeplClient()
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error.error).toMatchObject({ code: 'ENOENT' });
+        expect(error).toMatchObject({ code: 'ENOENT' });
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
     });
 
-    it('wraps a local write failure during the download in DeepLError with the cause', async () => {
+    it('rejects with the native EEXIST error when the output file appears during the export', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         nock(serverUrl)
             .post('/v3/translation_memories/tm-1/export')
@@ -718,7 +728,7 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error.error).toMatchObject({ code: 'EEXIST' });
+        expect(error).toMatchObject({ code: 'EEXIST' });
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
     });
 });

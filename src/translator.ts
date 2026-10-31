@@ -4,7 +4,6 @@
 
 import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
 import {
-    ArgumentError,
     AuthorizationError,
     DeepLError,
     DocumentNotReadyError,
@@ -312,9 +311,12 @@ export class Translator {
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with a DocumentStatus object for the completed translation. You can use the
      *     billedCharacters property to check how many characters were billed for the document.
-     * @throws {ArgumentError} If no file exists at the input file path; no request is sent.
-     * @throws {DocumentTranslationError} If any other error occurs, including a file already
-     *     existing at the output file path, minification, upload, translation or download. The
+     * @throws {Error} The Node error (`EEXIST`, `ENOENT`, `EACCES`) if a file already exists at
+     *     the output file path or the output directory is missing or not writable; no request is
+     *     sent.
+     * @throws {DocumentMinificationError} If minifying the input document fails.
+     * @throws {DocumentTranslationError} If any other error occurs, including an input file path
+     *     that cannot be read (checked before any request), upload, translation or download. The
      *     `documentHandle` property of the error may be used to recover the document, and
      *     `httpStatusCode` and `shouldRetry` are copied from a DeepLError cause.
      */
@@ -325,35 +327,30 @@ export class Translator {
         targetLang: TargetLanguageCodeInput,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentStatus> {
-        if (isString(inputFile)) {
-            try {
-                await fs.promises.access(inputFile, fs.constants.R_OK);
-            } catch (error) {
-                throw new ArgumentError(
-                    `Input file could not be read: ${(error as Error).message}`,
-                    error as Error,
-                );
-            }
+        // Opened before the try: an existing output file, or a missing or unwritable output
+        // directory, rejects with the Node error. Only a file created here is removed on error.
+        let onError: (() => Promise<void>) | undefined;
+        let outputHandle: fs.WriteStream | fs.promises.FileHandle;
+        if (isString(outputFile)) {
+            const createdHandle = await fs.promises.open(outputFile, 'wx');
+            outputHandle = createdHandle;
+            onError = async () => {
+                try {
+                    await createdHandle.close();
+                    await util.promisify(fs.unlink)(outputFile);
+                } catch {
+                    // Ignore errors
+                }
+            };
+        } else {
+            outputHandle = outputFile;
         }
 
-        let onError: (() => Promise<void>) | undefined;
         let documentHandle = undefined;
+        let minificationFailed = false;
         try {
-            let outputHandle: fs.WriteStream | fs.promises.FileHandle;
-            if (isString(outputFile)) {
-                // Fails if the file already exists; only a file created here is removed on error.
-                const createdHandle = await fs.promises.open(outputFile, 'wx');
-                outputHandle = createdHandle;
-                onError = async () => {
-                    try {
-                        await createdHandle.close();
-                        await util.promisify(fs.unlink)(outputFile);
-                    } catch {
-                        // Ignore errors
-                    }
-                };
-            } else {
-                outputHandle = outputFile;
+            if (isString(inputFile)) {
+                await fs.promises.access(inputFile, fs.constants.R_OK);
             }
 
             const documentMinifier = new DocumentMinifier();
@@ -368,9 +365,12 @@ export class Translator {
                 (options?.outputFormat === undefined ||
                     options.outputFormat.toLowerCase() === inputExt);
 
-            const fileToUpload = willMinify
-                ? documentMinifier.minifyDocument(inputFile, true)
-                : inputFile;
+            let fileToUpload = inputFile;
+            if (willMinify) {
+                minificationFailed = true;
+                fileToUpload = documentMinifier.minifyDocument(inputFile, true);
+                minificationFailed = false;
+            }
 
             documentHandle = await this.translateDocumentUpload(
                 fileToUpload,
@@ -389,6 +389,8 @@ export class Translator {
             return status;
         } catch (errorUnknown: unknown) {
             if (onError) await onError();
+            // A minification failure keeps its own class (DocumentMinificationError).
+            if (minificationFailed) throw errorUnknown;
             const error =
                 errorUnknown instanceof Error || util.types.isNativeError(errorUnknown)
                     ? (errorUnknown as Error)

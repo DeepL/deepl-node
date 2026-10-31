@@ -4,6 +4,7 @@ import * as path from 'path';
 import AdmZip from 'adm-zip';
 import { createHash } from 'crypto';
 import nock from 'nock';
+import * as deepl from 'deepl-node';
 import { DocumentMinifier } from '../../../src/documentMinifier';
 import { FsHelper } from '../../../src/fsHelper';
 import { makeTranslator, serverUrl } from '../client';
@@ -82,6 +83,20 @@ describe('Translator.translateDocument with enableDocumentMinification', () => {
 
         expect(uploadedBytes()).toBeGreaterThan(fs.statSync(original).size / 10);
         expect(fs.readFileSync(output, 'utf8')).toBe('translated PDF');
+    });
+
+    it('rejects with the raw DocumentMinificationError when minification fails', async () => {
+        const notAZip = path.join(tempDir, 'broken.docx');
+        fs.writeFileSync(notAZip, 'not a zip archive');
+        const output = path.join(tempDir, 'output.docx');
+
+        const error = await makeTranslator()
+            .translateDocument(notAZip, output, 'en', 'de', { enableDocumentMinification: true })
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentMinificationError);
+        expect(error).not.toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(fs.existsSync(output)).toBe(false);
     });
 
     it('uploads a stream unminified', async () => {

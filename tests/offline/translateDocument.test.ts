@@ -501,7 +501,7 @@ describe('Translator.translateDocument', () => {
         expect(error.documentHandle).toEqual(handle);
     });
 
-    it('wraps an existing output file in DocumentTranslationError and keeps the file', async () => {
+    it('rejects with the native EEXIST error for an existing output file and keeps the file', async () => {
         const [exampleDocument, outputPath] = createTextDocument();
         fs.writeFileSync(outputPath, 'existing');
 
@@ -509,22 +509,21 @@ describe('Translator.translateDocument', () => {
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
-        expect(error.message).toContain('exists');
-        expect(error.error.code).toBe('EEXIST');
+        expect(error.code).toBe('EEXIST');
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('throws ArgumentError, not DocumentTranslationError, when the input file does not exist', async () => {
+    it('rejects with DocumentTranslationError before any request when the input file does not exist', async () => {
         const [, outputPath] = createTextDocument();
 
         const error = await makeTranslator()
             .translateDocument('nonExistentFile.txt', outputPath, null, 'de')
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.ArgumentError);
-        expect(error).not.toBeInstanceOf(deepl.DocumentTranslationError);
-        expect(error.message).toContain('no such file');
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.documentHandle).toBeUndefined();
+        expect(error.error.code).toBe('ENOENT');
         expect(fs.existsSync(outputPath)).toBe(false);
     });
 
