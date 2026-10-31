@@ -362,6 +362,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `replaceMultilingualGlossaryDictionaryWithCsv()` now send a JSON body, the only
   format the API documents for this request; before they sent form-encoded data.
 
+### Security
+- Updated `follow-redirects` to 1.16.2 in the lockfile to resolve the
+  high-severity advisory GHSA-mrwp-f3q8-3g9p.
+
 ## [1.28.1] - 2026-10-09
 ### Security
 - Bumped `axios` to `^1.20.0` and `adm-zip` to `^0.6.1` to resolve
