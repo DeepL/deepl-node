@@ -86,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the API Pro fields of `GET /v2/usage` to `Usage`: `apiKeyCharacter`,
   `speechToTextMinutes` and `speechToSpeechMinutes` (`UsageDetail`), `products`
   (array of the new `UsageProduct` type), and `startTime` and `endTime`
-  (`Date`). They are `undefined` when the response does not contain them.
+  (`Date`). They are `undefined` when the response does not contain them, as
+  are the `UsageProduct` fields missing from a `products` entry.
   `anyLimitReached()` still checks only the character, document and team
   document usage.
 - Added the `DeepLAdminClient` class for the Admin API. It must be created with

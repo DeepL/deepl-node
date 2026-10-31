@@ -1091,7 +1091,8 @@ For API Pro accounts, the `Usage` object also contains:
 - `products`: an array of per-product usage, each with `productType` (for
   example `'translate'`, `'write'`, `'speechToText'`), `billingUnit` (for
   example `'characters'`, `'minutes'`), `apiKeyUnitCount` (this API key) and
-  `accountUnitCount` (the whole account).
+  `accountUnitCount` (the whole account). Each of these four fields is
+  `undefined` when the API omits it.
 
 These fields are `undefined` when the response does not contain them, for
 example for API Free accounts. `anyLimitReached()` does not check

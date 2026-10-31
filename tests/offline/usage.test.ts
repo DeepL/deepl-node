@@ -143,7 +143,7 @@ describe('Translator.getUsage', () => {
                 character_limit: 100,
                 start_time: 'not a timestamp',
                 end_time: 42,
-                products: [{ product_type: 'translate' }],
+                products: [{ product_type: 'translate', api_key_unit_count: '5' }, {}],
             });
 
         const usage = await makeTranslator().getUsage();
@@ -151,7 +151,18 @@ describe('Translator.getUsage', () => {
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
         expect([usage.startTime, usage.endTime]).toEqual([undefined, undefined]);
         expect(usage.products).toEqual([
-            { productType: 'translate', billingUnit: '', apiKeyUnitCount: 0, accountUnitCount: 0 },
+            {
+                productType: 'translate',
+                billingUnit: undefined,
+                apiKeyUnitCount: undefined,
+                accountUnitCount: undefined,
+            },
+            {
+                productType: undefined,
+                billingUnit: undefined,
+                apiKeyUnitCount: undefined,
+                accountUnitCount: undefined,
+            },
         ]);
     });
 });

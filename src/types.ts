@@ -645,14 +645,23 @@ export interface UsageDetail {
  * Usage of one product in the current billing period, part of the Usage object.
  */
 export interface UsageProduct {
-    /** The product, for example 'translate', 'write', 'speechToText' or 'speechToSpeech'. */
-    readonly productType: string;
-    /** The unit the product is billed in, for example 'characters' or 'minutes'. */
-    readonly billingUnit: string;
-    /** Units used for this product by this API key. */
-    readonly apiKeyUnitCount: number;
-    /** Units used for this product by the whole account. */
-    readonly accountUnitCount: number;
+    /**
+     * The product, for example 'translate', 'write', 'speechToText' or 'speechToSpeech';
+     * undefined if the response does not contain it.
+     */
+    readonly productType?: string;
+    /**
+     * The unit the product is billed in, for example 'characters' or 'minutes'; undefined if the
+     * response does not contain it.
+     */
+    readonly billingUnit?: string;
+    /** Units used for this product by this API key; undefined if the response does not contain it. */
+    readonly apiKeyUnitCount?: number;
+    /**
+     * Units used for this product by the whole account; undefined if the response does not
+     * contain it.
+     */
+    readonly accountUnitCount?: number;
 }
 
 /**

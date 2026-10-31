@@ -584,15 +584,18 @@ function parseOptionalDate(value: unknown): Date | undefined {
 }
 
 /**
- * Parses the products array of the usage API response; missing or malformed values get defaults.
+ * Parses the products array of the usage API response; missing or malformed values are undefined.
  * @private
  */
 function parseUsageProducts(products: unknown): UsageProduct[] | undefined {
     if (!Array.isArray(products)) return undefined;
-    const str = (value: unknown) => (typeof value === 'string' ? value : '');
-    const num = (value: unknown) => (typeof value === 'number' ? value : 0);
+    const str = (value: unknown) => (typeof value === 'string' ? value : undefined);
+    const num = (value: unknown) => (typeof value === 'number' ? value : undefined);
     return products.map((product) => {
-        const p = (product ?? {}) as Record<string, unknown>;
+        const p = (typeof product === 'object' && product !== null ? product : {}) as Record<
+            string,
+            unknown
+        >;
         return {
             productType: str(p.product_type),
             billingUnit: str(p.billing_unit),
