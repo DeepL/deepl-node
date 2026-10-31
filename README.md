@@ -297,11 +297,13 @@ try {
 }
 ```
 
-If no file exists at the input file path, `translateDocument()` rejects with an
-`ArgumentError` before sending any request. Every other failure, including an
-existing file at the output path, rejects with a `DocumentTranslationError`
-whose `error` property holds the cause; its `httpStatusCode` and `shouldRetry`
-are copied from the cause when that is a `DeepLError`.
+An existing file at the output path, or an output directory that is missing or
+not writable, rejects with the Node error (`EEXIST`, `ENOENT`, `EACCES`) before
+any request is sent. A missing input file rejects with a
+`DocumentTranslationError` before any request is sent. Every other failure
+rejects with a `DocumentTranslationError` whose `error` property holds the
+cause; its `httpStatusCode` and `shouldRetry` are copied from the cause when
+that is a `DeepLError`.
 
 `translateDocument()` wraps multiple API calls: uploading, polling status until
 the translation is complete, and downloading. If your application needs to
@@ -314,7 +316,8 @@ directly:
     the final `DocumentStatus` and rejects with a `DeepLError` if the
     translation fails (`isDocumentTranslationComplete()` is deprecated in favour
     of it). Pass `{ timeoutMs }` as its second argument to reject with a
-    `DeepLError` once that many milliseconds have passed, and
+    `DeepLError` once that many milliseconds have passed. A status this library
+    does not know keeps it polling; pass `timeoutMs` to bound the wait, and
 -   `translateDocumentDownload()`, which rejects with a `DocumentNotReadyError`
     if the translation is not done yet. Given an output file path, it creates the
     file before sending the request, so an existing file rejects at once; if the
@@ -357,7 +360,8 @@ statuses this library does not know.
 -   `timeoutMs`: used by `translateDocument()` only, not sent to the API. Maximum
     time in milliseconds to wait for the translation between upload and
     download; when it expires, `translateDocument()` rejects with a
-    `DocumentTranslationError`. By default it waits without limit.
+    `DocumentTranslationError`. By default it waits without limit. A status this
+    library does not know keeps it polling; pass `timeoutMs` to bound the wait.
 -   `extraBodyParameters`: same as in [Text translation options](#text-translation-options).
 -   `enableDocumentMinification`: **deprecated**, will be removed in the next
     major version. A `bool` value. If set to `true`, the library will try to
@@ -949,8 +953,8 @@ option (otherwise `displayName` is used as the file name). The options
 -   `timeoutMs`: maximum time to wait for the import, in milliseconds.
 -   `extraBodyParameters`: extra fields added last to the JSON request body.
 
-A missing input file throws `ArgumentError` before any request is sent. Any other
-local read failure throws a `DeepLError` with the original error in `error`.
+A file path is read before any request is sent; a missing file or a directory
+rejects with the Node error (`ENOENT`, `EISDIR`).
 
 The three steps are also available separately, for example to upload the file
 yourself or to poll for progress. `createTranslationMemoryImport()` returns an
@@ -975,12 +979,14 @@ const job = await deeplClient.waitUntilTranslationMemoryJobDone(created.jobId, {
 `getTranslationMemoryJob()` and `waitUntilTranslationMemoryJobDone()` accept the
 job ID or a `TranslationMemoryJob`. `waitUntilTranslationMemoryJobDone()` takes
 `WaitOptions` (`{ timeoutMs }`) or the timeout in milliseconds as a number,
-resolves with the job once its status is `'completed'`, and rejects with a
+resolves with the job once its status is `'completed'` (or the deprecated
+`'downloaded'`), and rejects with a
 `DeepLError` carrying the job's error message if it fails or expires.
 `isTranslationMemoryJobComplete()` is deprecated in its favour.
 
 A `TranslationMemoryJob` has `result` (the single entry of `results`), `status`
-(the status of `result`), `done()` (true once the status is `'completed'`) and
+(the status of `result`), `done()` (true once the status is `'completed'`, or
+the deprecated `'downloaded'`) and
 `ok()` (false once the status is `'failed'` or `'expired'`, true while the job
 is in progress). `status` may also be a status this library does not know.
 
@@ -1004,9 +1010,8 @@ const job = await deeplClient.exportTranslationMemoryToFilepath(
 ```
 
 The output file must not exist yet and its directory must be writable; both are
-checked before the export job is created, and a failure throws `DeepLError`.
-Local write failures also throw a `DeepLError` with the original error in
-`error`.
+checked before the export job is created. A failure rejects with the Node error
+(`EEXIST`, `ENOENT`, `EACCES`), as do local write failures.
 
 Errors from the pre-signed upload and download URLs, which are not part of the
 DeepL API, are thrown as a plain `DeepLError` carrying `httpStatusCode`, with
@@ -1339,8 +1344,10 @@ The available options are:
     returns true for a Free account key (it ends in `:fx`).
 -   `headers`: extra HTTP headers attached to every HTTP request. By default, no
     extra headers are used. Note that Authorization and User-Agent headers are
-    added automatically. The User-Agent may be overridden by this option (in any
-    casing); an Authorization header in this option is ignored.
+    added automatically. A header in this option replaces the library's header
+    of the same name in any casing, including Authorization and User-Agent.
+    `Content-Type`, `Content-Length`, `Transfer-Encoding` and `Host` headers in
+    this option are ignored.
 -   `proxy`: define the hostname, and port of the proxy server, and optionally
     the protocol, and authorization (as an auth object with username and
     password fields). Alternatively, a proxy URL string such as
@@ -1466,7 +1473,9 @@ failures. The maximum number of
 retries can be configured when constructing the `DeepLClient` object using the
 `maxRetries` option. The timeout for each request attempt may be controlled
 using the `minTimeout` option. An exponential-backoff strategy is used, so
-requests that fail multiple times will incur delays.
+requests that fail multiple times will incur delays: with the default
+`maxRetries` an unreachable server fails after about 16 seconds. Set
+`maxRetries: 0` to fail at once.
 
 `DeepLAdminClient.createDeveloperKey()` is retried only after rate limiting
 (HTTP 429), DNS failures, refused connections, unreachable hosts or networks

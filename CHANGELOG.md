@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getTranslationMemoryJob()` also accepts a `TranslationMemoryJob`.
 - Added `result`, `status`, `done()` and `ok()` to `TranslationMemoryJob`:
   the single entry of `results`, its status, whether the job completed, and
-  whether it has not failed or expired.
+  whether it has not failed or expired. `done()` and `ok()` are optional members
+  of the type, so objects built without them still compile; `done()` is also true
+  for the deprecated `'downloaded'` status.
 - Added the `CreateTranslationMemoryImportOptions` and
   `ImportTranslationMemoryOptions` types, with `extraBodyParameters` merged last
   into the import request body.
@@ -37,8 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `translateDocumentUpload()`, `translateDocumentGetStatus()` and
   `translateDocumentDownload()`, which replace `uploadDocument()`,
   `getDocumentStatus()` and `downloadDocument()` and behave the same.
-- Added `documentId` to `DocumentStatus`, parsed from the required response
-  field `document_id`.
+- Added `documentId` to `DocumentStatus`, parsed from `document_id`; `undefined`
+  when the response does not contain it.
 - Added the `timeoutMs` option to `DocumentTranslateOptions`: the maximum time
   `translateDocument()` waits for the translation between upload and download.
   When it expires, `translateDocument()` rejects with a `DocumentTranslationError`.
@@ -60,8 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   true for HTTP 429, 5xx and transient network failures. For
   `DeepLAdminClient.createDeveloperKey()` it is true only when the request was
   not processed (HTTP 429, DNS failures and refused connections).
-- The `proxy` option also accepts a proxy URL string, for example
-  `'http://user:pass@proxy.example.com:3128'`.
 - `isFreeAccountAuthKey()` is exported from the package root.
 - Added the `styleProfile` option to `TranslateTextOptions` and
   `DocumentTranslateOptions` to translate text and documents with a style
@@ -125,7 +125,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LanguageResourceName`, `LanguageInclude` and `GetLanguagesForResourceOptions` types.
   `LanguageResourceName` and `LanguageInclude` accept any string in addition to
   their listed values, which is sent unchanged.
-- Added `de-CH`, `de-DE`, `es-ES`, `fr-CA`, and `fr-FR` to `TargetLanguageCode`.
 - Added `correctText()` to `DeepLClient`, which corrects grammar, spelling and punctuation
   of a string or an array of strings via `POST /v2/write/correct`. Takes an optional
   target language and an optional `CorrectTextOptions` object (`BaseRequestOptions`, so
@@ -176,29 +175,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a glossary ID.
 
 ### Changed
-- `TranslationMemoryJob.creationTime` and `updatedTime` are typed as required
-  `Date`, as the API always returns them.
 - `translateText()` accepts the `glossary` and `glossaryIds` options without a
   source language; the API detects the source language and uses the glossary's
   dictionary for the detected language pair. Document translation with a
   glossary still requires a source language.
 - `Formality`, `SentenceSplittingMode`, `TagHandlingMode`, `TagHandlingVersion`
   and `ModelType` accept any string in addition to their listed values, so values
-  the API adds later can be passed without a type cast.
+  the API adds later can be passed without a type cast. A `switch` over one of
+  these types that ends in a `never` check no longer compiles; add a `default`
+  branch.
 - Every HTTP 404 response now throws `NotFoundError`; before, only glossary
   requests threw an error class of their own (`GlossaryNotFoundError`, which
   is still thrown there) and other requests threw a plain `DeepLError`.
 - The default per-attempt timeout (`minTimeout`) is now 10 seconds instead of
   5 seconds.
-- Refused connections (`ECONNREFUSED`) and DNS lookup failures (`ENOTFOUND`)
-  are now retried like other transient network failures.
+- Refused connections (`ECONNREFUSED`), DNS failures (`ENOTFOUND`) and
+  unreachable hosts or networks (`EHOSTUNREACH`, `ENETUNREACH`, `ENETDOWN`) are
+  now retried, also by `createDeveloperKey()`, and the final `ConnectionError`
+  has `shouldRetry` set to true. With the defaults an unreachable server now
+  fails after about 16 seconds instead of at once; set `maxRetries: 0` for the
+  old behaviour.
+- `maxRetries` now counts retries after the first attempt, so every setting
+  makes one more attempt than before (default: 6 attempts instead of 5).
+- A `Content-Type`, `Content-Length`, `Transfer-Encoding` or `Host` header in the
+  `headers` option is now ignored. Before, a `Content-Type` replaced the form
+  content type and broke the request.
+- The `proxy` option now also accepts a proxy URL string, for example
+  `'http://user:pass@proxy.example.com:3128'`, and is typed
+  `ProxyConfig | string`; code that reads `options.proxy.host` must first check
+  that `proxy` is not a string.
+- `TargetLanguageCode` now includes `de-CH`, `de-DE`, `es-ES`, `fr-CA`, `fr-FR`,
+  `en` and `pt`; a `Record<TargetLanguageCode, …>` object literal must list
+  them.
+- `translateDocument()` and `translateDocumentUpload()` now send the `filename`
+  option as the file name when the input is a file path; previously they always
+  sent the path's base name. The base name remains the default.
+- HTTP 401 responses now throw `AuthorizationError`, like 403; previously they
+  threw a `DeepLError` with "Unexpected status code".
+- `rephraseText()` and `correctText()` now throw `DeepLError` when the response
+  contains a different number of improvements than texts sent; previously a
+  single text resolved to `undefined` and an array to a shorter array.
+- Malformed or non-object API responses now throw `DeepLError`; previously some
+  methods (`getSourceLanguages()`, `getTargetLanguages()`, the multilingual
+  glossary, style rule, custom instruction, spoken terms and style profile
+  methods) let a raw `SyntaxError` or `TypeError` escape.
 - `getSourceLanguages()`, `getTargetLanguages()`, and `getGlossaryLanguagePairs()` now call the
   `GET /v3/languages` endpoint instead of the deprecated `GET /v2/languages` and
   `GET /v2/glossary-language-pairs` endpoints. The returned language lists may contain
   additional languages.
 - Target languages `en` and `pt` are no longer rejected client-side as deprecated;
-  the DeepL API translates them as `en-US` and `pt-PT`. `TargetLanguageCode` now
-  includes `en` and `pt`.
+  the DeepL API translates them as `en-US` and `pt-PT`.
 - The language parameters of `translateText()`, `translateDocument()`,
   `uploadDocument()`, `createGlossary()` and `createGlossaryWithCsv()` accept
   any language code string, so languages the API adds can be used without a new
@@ -265,30 +291,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major version.
 
 ### Fixed
-- `translateDocument()` and `translateDocumentUpload()` send the `filename`
-  option as the file name when the input is a file path, instead of always
-  sending the path's base name. The base name remains the default.
-- An `Authorization` header in the `headers` option, in any casing, no longer
-  replaces the `DeepL-Auth-Key` authorization header; it is ignored. A
-  `User-Agent` header in the `headers` option replaces the default User-Agent in
-  any casing.
 - `DeepLAdminClient.createDeveloperKey()` is also retried after a timeout that
   occurred before the connection was established, and its `shouldRetry` is true
   for such a timeout.
 - A response with a 3xx status that is not followed as a redirect (for example
   300 or 304) throws a `DeepLError` with its `httpStatusCode` instead of being
   parsed as a successful response.
-- Requests failing with `EHOSTUNREACH`, `ENETUNREACH` or `ENETDOWN` (unreachable
-  host or network) are retried, also by `createDeveloperKey()`, and the final
-  `ConnectionError` has `shouldRetry` set to true.
 - A negative or non-integer `maxRetries` option throws an `ArgumentError` when the
   client is constructed. Before, every request failed by throwing `undefined`.
 - `deleteMultilingualGlossaryDictionary()` and `deleteSpokenTermsList()` encode a
   space in query values as `%20` instead of `+`.
-- `translateDocument()` rejects with a `DocumentTranslationError` when the
-  output file already exists or document minification fails, instead of a raw
-  Node or minification error, and with an `ArgumentError` before any request
-  when the input file does not exist, instead of a `DocumentTranslationError`.
+- `translateDocument()` checks before any request that the input file is
+  readable; a missing input still rejects with `DocumentTranslationError`.
 - `translateDocumentDownload()` with an output file path no longer crashes the
   process with an uncaught `EEXIST`/`ENOENT` when the path exists or cannot be
   created: it creates the file before the request and rejects. A connection
@@ -306,26 +320,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the count or limit.
 - `isTranslationMemoryJobComplete()`, `importTranslationMemoryFromFilepath()` and
   `exportTranslationMemoryToFilepath()` keep polling on an unknown status or a
-  job without results instead of rejecting, and no longer treat `'downloaded'`
-  as finished; the timeout bounds the wait.
+  job without results instead of rejecting; the timeout bounds the wait.
 - Translation memory and job IDs are URL-encoded in request paths.
 - `downloadTranslationMemoryExport()` and `exportTranslationMemoryToFilepath()`
   throw a plain `DeepLError` with `httpStatusCode` (and `shouldRetry` true for
   429 and 5xx) when the pre-signed download URL answers an error. Before, the
   status went through the DeepL API mapping, so for example an expired URL (403)
   threw `AuthorizationError` and a 503 threw `DocumentNotReadyError`.
-- `importTranslationMemoryFromFilepath()` throws `ArgumentError` for a missing
-  input file, before any request. Other local read failures are wrapped in a
-  `DeepLError` with the original error in `error`. Before, raw Node errors such
-  as `ENOENT` and `EISDIR` were thrown.
-- `exportTranslationMemoryToFilepath()` throws `DeepLError` for an existing
-  output file or an unwritable or missing output directory before it creates
-  the export job, and wraps local write failures in a `DeepLError` with the
-  original error in `error`. Before, raw Node errors such as `EEXIST` were
-  thrown, after the export had been created and waited for.
-- `rephraseText()` and `correctText()` now throw `DeepLError` when the response
-  contains a different number of improvements than texts sent. Before, a single
-  text resolved to `undefined` and an array to a shorter array.
+- `exportTranslationMemoryToFilepath()` checks for an existing output file and
+  an unwritable or missing output directory before it creates the export job,
+  and throws the same Node error (`EEXIST`, `ENOENT`, `EACCES`) as before;
+  before, it was thrown only after the export had been created and waited for.
 - `DocumentStatus.ok()` is now true for every status except `'error'`. Before,
   a status the library did not know made `translateDocument()` and
   `translateDocumentWaitUntilDone()` stop polling and reject with
@@ -342,17 +347,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sent twice.
 - `translateText()` no longer writes the lower-cased `splitSentences` value back into
   the caller's options object.
-- `maxRetries` now counts retries after the first attempt, as documented:
-  before, `maxRetries: N` made only N - 1 retries, so the default of 5 made 5
-  attempts instead of 6 and `maxRetries: 1` made no retry.
-- HTTP 401 responses now throw `AuthorizationError`, like 403; before they
-  threw a `DeepLError` with "Unexpected status code".
 - The authentication key is trimmed before it is checked, used for the free
   account (`:fx`) detection and sent; a whitespace-only key is rejected.
-- Malformed or non-object API responses now throw `DeepLError`; before, some
-  methods (`getSourceLanguages()`, `getTargetLanguages()`, the multilingual
-  glossary, style rule, custom instruction, spoken terms and style profile
-  methods) let a raw `SyntaxError` or `TypeError` escape.
 - `downloadTranslationMemoryExport()` no longer hangs on Node 16 and 17 when the output file
   already exists. It now rejects with `EEXIST` before downloading anything, on every Node
   version, and leaves the existing file unchanged.
