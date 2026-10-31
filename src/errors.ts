@@ -38,8 +38,10 @@ export class ConnectionError extends DeepLError {
 }
 
 /**
- * Thrown by translateDocument() for any failure except a missing input file. The cause is in
- * `error`; `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
+ * Thrown by translateDocument() for any failure, including a missing input file, except an
+ * existing or unwritable output path (the Node error) and a failed minification
+ * (DocumentMinificationError). The cause is in `error`; `httpStatusCode` and `shouldRetry` are
+ * copied from it when it is a DeepLError.
  */
 export class DocumentTranslationError extends DeepLError {
     public readonly documentHandle?: DocumentHandle;

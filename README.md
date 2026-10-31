@@ -792,11 +792,11 @@ const fetched = await deeplClient.getStyleRuleCustomInstruction(rule, instructio
 
 // Update a custom instruction
 const updated = await deeplClient.updateStyleRuleCustomInstruction(
-    'YOUR_STYLE_ID', instruction.id, 'Updated label', 'Use very formal language');
+    'YOUR_STYLE_ID', instruction, 'Updated label', 'Use very formal language');
 
 // Delete a custom instruction
 await deeplClient.deleteStyleRuleCustomInstruction(
-    'YOUR_STYLE_ID', instruction.id);
+    'YOUR_STYLE_ID', instruction);
 ```
 
 #### Deleting a style rule
