@@ -303,6 +303,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   space in query values as `%20` instead of `+`.
 - `translateDocument()` checks before any request that the input file is
   readable; a missing input still rejects with `DocumentTranslationError`.
+- A failed document minification in `translateDocument()` now removes the
+  output file it created; previously the empty file was left behind.
 - `translateDocumentDownload()` with an output file path no longer crashes the
   process with an uncaught `EEXIST`/`ENOENT` when the path exists or cannot be
   created: it creates the file before the request and rejects. A connection
