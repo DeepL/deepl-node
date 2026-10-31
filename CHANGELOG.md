@@ -325,11 +325,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `exportTranslationMemoryToFilepath()` keep polling on an unknown status or a
   job without results instead of rejecting; the timeout bounds the wait.
 - Translation memory and job IDs are URL-encoded in request paths.
-- `downloadTranslationMemoryExport()` and `exportTranslationMemoryToFilepath()`
-  throw a plain `DeepLError` with `httpStatusCode` (and `shouldRetry` true for
-  429 and 5xx) when the pre-signed download URL answers an error. Before, the
-  status went through the DeepL API mapping, so for example an expired URL (403)
-  threw `AuthorizationError` and a 503 threw `DocumentNotReadyError`.
 - `exportTranslationMemoryToFilepath()` checks for an existing output file and
   an unwritable or missing output directory before it creates the export job,
   and throws the same Node error (`EEXIST`, `ENOENT`, `EACCES`) as before;

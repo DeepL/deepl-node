@@ -1500,7 +1500,9 @@ connections, unreachable hosts or networks and connect timeouts), as resending i
     requests throw its deprecated subclass `GlossaryNotFoundError`.
 -   `TooManyRequestsError`: HTTP 429, after all retries.
 -   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
--   `DocumentNotReadyError`: HTTP 503 while downloading a translated document.
+-   `DocumentNotReadyError`: HTTP 503 while getting the status of a document
+    translation, downloading a translated document or downloading a
+    translation memory export.
 -   `ConnectionError`: the request got no HTTP response, for example a timeout.
 -   `DocumentTranslationError`: a document translation failed. The cause is in
     its `error` property, and `httpStatusCode` and `shouldRetry` are copied

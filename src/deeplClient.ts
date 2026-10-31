@@ -129,7 +129,7 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
 }
 
 /**
- * Throws a plain DeepLError for a failed response from a pre-signed storage URL. These are not
+ * Throws a plain DeepLError for a failed upload to a pre-signed storage URL. These are not
  * DeepL API responses, so the API's status code mapping (e.g. 403 to AuthorizationError) does
  * not apply.
  */
@@ -1539,8 +1539,8 @@ export class DeepLClient extends Translator {
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      *
      * @throws {DeepLError} If the job has no download URL, or any error occurs while downloading.
-     * An error response from the download URL is a plain DeepLError carrying httpStatusCode,
-     * never one of its subclasses.
+     * An error response from the download URL is mapped like a document download response
+     * (e.g. 403 to AuthorizationError, 503 to DocumentNotReadyError), with httpStatusCode set.
      */
     async downloadTranslationMemoryExport(
         job: Omit<TranslationMemoryJob, 'done' | 'ok' | 'creationTime' | 'updatedTime'>,
@@ -1574,13 +1574,9 @@ export class DeepLClient extends Translator {
                     {},
                     true,
                 );
-            if (statusCode < 200 || statusCode >= 300) {
-                await throwStorageError(
-                    'Error downloading translation memory export',
-                    statusCode,
-                    content,
-                );
-            }
+            // The released status code mapping (e.g. 403 to AuthorizationError, 503 to
+            // DocumentNotReadyError) is kept until the next major version.
+            await checkStatusCode(statusCode, content, false, true);
 
             if (fd === undefined) {
                 return await pipeToStream(content, outputFile as fs.WriteStream);

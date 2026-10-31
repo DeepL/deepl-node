@@ -556,24 +556,19 @@ describe('DeepLClient.downloadTranslationMemoryExport', () => {
     });
 
     it.each([
-        [403, false],
-        [429, true],
-        [503, true],
-    ])(
-        'throws a plain DeepLError when the storage answers %i, with shouldRetry %s',
-        async (status, shouldRetry) => {
-            nock(storageUrl).get('/download').reply(status, 'storage error');
+        [403, deepl.AuthorizationError, false],
+        [503, deepl.DocumentNotReadyError, true],
+    ])('maps a %i from the storage as released, to %p', async (status, errorClass, shouldRetry) => {
+        nock(storageUrl).get('/download').reply(status, 'storage error');
 
-            const error = await makeDeeplClient({ maxRetries: 0 })
-                .downloadTranslationMemoryExport(job(`${storageUrl}/download`), 'unused.tmx')
-                .catch((e) => e);
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .downloadTranslationMemoryExport(job(`${storageUrl}/download`), 'unused.tmx')
+            .catch((e) => e);
 
-            // Not AuthorizationError (403) or DocumentNotReadyError (503): storage is not the API
-            expect(error.constructor).toBe(deepl.DeepLError);
-            expect(error.message).toContain('storage error');
-            expect(error).toMatchObject({ httpStatusCode: status, shouldRetry });
-        },
-    );
+        expect(error).toBeInstanceOf(errorClass);
+        expect(error.message).toContain('storage error');
+        expect(error).toMatchObject({ httpStatusCode: status, shouldRetry });
+    });
 
     it('throws ArgumentError when the job has no download URL', async () => {
         await expect(
