@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.
 Translation memories, style rules and multilingual glossaries gained many options and fixes.
-Read Changed and Deprecated before upgrading; nothing is removed in this release.
+Read Changed and Deprecated before upgrading; no public API is removed in this release.
 
 ### Added
 - `DocumentTranslationError` copies `httpStatusCode` and `shouldRetry` from its
