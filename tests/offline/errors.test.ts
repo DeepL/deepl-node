@@ -114,3 +114,10 @@ describe('error mapping', () => {
         expect(error.message).toMatch(/Error parsing response JSON/);
     });
 });
+
+describe('DeepLError', () => {
+    it('has no own property for an unset optional field', () => {
+        const error = new deepl.DeepLError('m');
+        expect(Object.prototype.hasOwnProperty.call(error, 'httpStatusCode')).toBe(false);
+    });
+});
