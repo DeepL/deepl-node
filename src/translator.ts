@@ -49,7 +49,6 @@ import {
     nonRegionalLanguageCode,
     buildURLSearchParams,
     isFreeAccountAuthKey,
-    resolveExtraBodyParameters,
     setExtraBodyParameters,
     isString,
     logInfo,
@@ -64,7 +63,6 @@ import { IncomingMessage, STATUS_CODES } from 'http';
 import path from 'path';
 import { URLSearchParams } from 'url';
 import * as util from 'util';
-import { DocumentMinifier } from './documentMinifier';
 
 function createStatusCodeError(
     statusCode: number,
@@ -108,7 +106,6 @@ function createStatusCodeError(
 /**
  * Checks the HTTP status code, and in case of failure, throws an exception with diagnostic information.
  * @private
- * @deprecated Internal; will no longer be exported in the next major version.
  */
 export async function checkStatusCode(
     statusCode: number,
@@ -281,13 +278,11 @@ export class Translator {
         data.append('show_billed_characters', '1');
         const singular = appendTextsAndReturnIsSingular(data, texts);
         validateAndAppendTextOptions(data, options);
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
-
-        const translatePath = options?.__path ?? '/v2/translate';
+        setExtraBodyParameters(data, options?.extraBodyParameters);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
-            translatePath,
+            '/v2/translate',
             { data },
         );
         await checkStatusCode(statusCode, content);
@@ -314,7 +309,6 @@ export class Translator {
      * @throws {Error} The Node error (`EEXIST`, `ENOENT`, `EACCES`) if a file already exists at
      *     the output file path or the output directory is missing or not writable; no request is
      *     sent.
-     * @throws {DocumentMinificationError} If minifying the input document fails.
      * @throws {DocumentTranslationError} If any other error occurs, including an input file path
      *     that cannot be read (checked before any request), upload, translation or download. The
      *     `documentHandle` property of the error may be used to recover the document, and
@@ -347,33 +341,13 @@ export class Translator {
         }
 
         let documentHandle = undefined;
-        let minificationFailed = false;
         try {
             if (isString(inputFile)) {
                 await fs.promises.access(inputFile, fs.constants.R_OK);
             }
 
-            const documentMinifier = new DocumentMinifier();
-            const inputExt = isString(inputFile)
-                ? path.extname(inputFile).slice(1).toLowerCase()
-                : '';
-            const willMinify =
-                (options?.enableDocumentMinification ?? false) &&
-                isString(inputFile) &&
-                DocumentMinifier.canMinifyFile(inputFile) &&
-                isString(outputFile) &&
-                (options?.outputFormat === undefined ||
-                    options.outputFormat.toLowerCase() === inputExt);
-
-            let fileToUpload = inputFile;
-            if (willMinify) {
-                minificationFailed = true;
-                fileToUpload = documentMinifier.minifyDocument(inputFile, true);
-                minificationFailed = false;
-            }
-
             documentHandle = await this.translateDocumentUpload(
-                fileToUpload,
+                inputFile,
                 sourceLang,
                 targetLang,
                 options,
@@ -382,15 +356,9 @@ export class Translator {
                 timeoutMs: options?.timeoutMs,
             });
             await this.translateDocumentDownload(documentHandle, outputHandle);
-            if (willMinify) {
-                // Intentionally replace outputFile with a deminified version of the outputFile
-                documentMinifier.deminifyDocument(outputFile as string, outputFile as string, true);
-            }
             return status;
         } catch (errorUnknown: unknown) {
             if (onError) await onError();
-            // A minification failure keeps its own class (DocumentMinificationError).
-            if (minificationFailed) throw errorUnknown;
             const error =
                 errorUnknown instanceof Error || util.types.isNativeError(errorUnknown)
                     ? (errorUnknown as Error)
@@ -468,19 +436,6 @@ export class Translator {
     }
 
     /**
-     * Uploads specified document to DeepL to translate into target language, and returns handle associated with the document.
-     * @deprecated Use {@link translateDocumentUpload} instead. Will be removed in the next major version.
-     */
-    async uploadDocument(
-        inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
-        sourceLang: SourceLanguageCodeInput | null,
-        targetLang: TargetLanguageCodeInput,
-        options?: DocumentTranslateOptions,
-    ): Promise<DocumentHandle> {
-        return this.translateDocumentUpload(inputFile, sourceLang, targetLang, options);
-    }
-
-    /**
      * Retrieves the status of the document translation associated with the given document handle.
      * @param handle Document handle associated with document.
      * @return Fulfills with a DocumentStatus giving the document translation status.
@@ -494,14 +449,6 @@ export class Translator {
         );
         await checkStatusCode(statusCode, content, false, true);
         return parseDocumentStatus(content);
-    }
-
-    /**
-     * Retrieves the status of the document translation associated with the given document handle.
-     * @deprecated Use {@link translateDocumentGetStatus} instead. Will be removed in the next major version.
-     */
-    async getDocumentStatus(handle: DocumentHandle): Promise<DocumentStatus> {
-        return this.translateDocumentGetStatus(handle);
     }
 
     /**
@@ -549,17 +496,6 @@ export class Translator {
     }
 
     /**
-     * Downloads the translated document associated with the given document handle.
-     * @deprecated Use {@link translateDocumentDownload} instead. Will be removed in the next major version.
-     */
-    async downloadDocument(
-        handle: DocumentHandle,
-        outputFile: string | fs.WriteStream | fs.promises.FileHandle,
-    ): Promise<void> {
-        return this.translateDocumentDownload(handle, outputFile);
-    }
-
-    /**
      * Polls the status of the given document translation every 5 seconds until it completes.
      * Statuses this library does not know are polled through.
      * @param handle {DocumentHandle} Handle to the document translation.
@@ -596,22 +532,6 @@ export class Translator {
             throw new DeepLError(message);
         }
         return status;
-    }
-
-    /**
-     * Returns a promise that resolves when the given document translation completes, or rejects if
-     * there was an error communicating with the DeepL API or the document translation failed.
-     * @param handle {DocumentHandle} Handle to the document translation.
-     * @return Fulfills with input DocumentHandle and DocumentStatus when the document translation
-     * completes successfully, rejects if translation fails or a communication error occurs.
-     * @deprecated Use {@link translateDocumentWaitUntilDone} instead, which resolves with the
-     * DocumentStatus. This method will be removed in the next major version.
-     */
-    async isDocumentTranslationComplete(
-        handle: DocumentHandle,
-    ): Promise<{ handle: DocumentHandle; status: DocumentStatus }> {
-        const status = await this.translateDocumentWaitUntilDone(handle);
-        return { handle, status };
     }
 
     /**
@@ -758,7 +678,7 @@ export class Translator {
             // The API ignores '1'/'0' for this parameter; only 'true'/'false' take effect.
             data.append('enable_watermark', String(options.enableWatermark));
         }
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
+        setExtraBodyParameters(data, options?.extraBodyParameters);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/document',

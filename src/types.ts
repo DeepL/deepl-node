@@ -103,16 +103,12 @@ export type Formality =
 /**
  * Sentence splitting mode: '1' (split on punctuation and newlines), '0' (no splitting) or
  * 'nonewlines' (split on punctuation only). 'off' is sent as '0'.
- * 'on' and 'default' are deprecated: use '1' instead. They will be removed in the next major
- * version.
  */
 export type SentenceSplittingMode =
     | '1'
     | '0'
     | 'off'
     | 'nonewlines'
-    | 'on'
-    | 'default'
     | (string & Record<never, never>);
 export type TagHandlingMode = 'html' | 'xml' | (string & Record<never, never>);
 export type TagHandlingVersion = 'v1' | 'v2' | (string & Record<never, never>);
@@ -141,14 +137,6 @@ export interface BaseRequestOptions {
      * This is mostly used by DeepL employees to test functionality, or for beta programs.
      */
     extraBodyParameters?: RequestParameters;
-
-    /**
-     * Extra parameters to be added to the request body.
-     * Keys in this object will be added to the request body, and can override built-in parameters.
-     * This is mostly used by DeepL employees to test functionality, or for beta programs.
-     * @deprecated Use `extraBodyParameters`. Will be removed in the next major version.
-     */
-    extraRequestParameters?: RequestParameters;
 }
 
 /**
@@ -266,12 +254,6 @@ export interface TranslateTextOptions extends BaseRequestOptions {
      * each with a maximum length of 300 characters.
      */
     customInstructions?: string[];
-
-    /**
-     * (internal only) Override path to send translate request to.
-     * @deprecated For internal use only; will be removed in the next major version.
-     */
-    __path?: string;
 }
 
 /**
@@ -326,14 +308,6 @@ export interface DocumentTranslateOptions extends BaseRequestOptions {
      * to the path's base name.
      */
     filename?: string;
-
-    /**
-     * Controls whether to use Document Minification for translation, if available.
-     * @deprecated Document minification is deprecated and will be removed in the next major
-     * version. The DeepL API accepts larger documents; see the usage limits:
-     * https://developers.deepl.com/docs/resources/usage-limits
-     */
-    enableDocumentMinification?: boolean;
 
     /**
      * File extension of the desired format of the translated document, for example `'docx'`.
@@ -954,48 +928,6 @@ export interface WriteResult {
 }
 
 /**
- * Type used during JSON parsing of API response for getting multilingual glossary dictionary entries.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface MultilingualGlossaryDictionaryEntriesApiResponse {
-    dictionaries: [
-        {
-            source_lang: string;
-            target_lang: string;
-            entries: string;
-        },
-    ];
-}
-
-/**
- * Type used during JSON parsing of API response for multilingual glossary dictionaries.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface MultilingualGlossaryDictionaryApiResponse {
-    source_lang: string;
-    target_lang: string;
-    entry_count: number;
-}
-
-/**
- * Type used during JSON parsing of API response for listing multilingual glossaries.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface ListMultilingualGlossaryApiResponse {
-    glossaries: [
-        {
-            glossary_id: string;
-            name: string;
-            dictionaries: MultilingualGlossaryDictionaryApiResponse[];
-            creation_time: string;
-        },
-    ];
-}
-
-/**
  * Custom instruction for a style rule.
  */
 export interface CustomInstruction {
@@ -1064,44 +996,6 @@ export interface StyleRuleInfo {
     readonly configuredRules?: ConfiguredRules;
     /** Optional list of custom instructions. */
     readonly customInstructions?: CustomInstruction[];
-}
-
-/**
- * Type used during JSON parsing of API response for style rule info.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface StyleRuleInfoApiResponse {
-    style_id: string;
-    name: string;
-    creation_time: string;
-    updated_time: string;
-    language: string;
-    version: number;
-    configured_rules?: {
-        dates_and_times?: Record<string, string>;
-        formatting?: Record<string, string>;
-        numbers?: Record<string, string>;
-        punctuation?: Record<string, string>;
-        spelling_and_grammar?: Record<string, string>;
-        style_and_tone?: Record<string, string>;
-        vocabulary?: Record<string, string>;
-    };
-    custom_instructions?: Array<{
-        id?: string;
-        label: string;
-        prompt: string;
-        source_language?: string;
-    }>;
-}
-
-/**
- * Type used during JSON parsing of API response for listing style rules.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface ListStyleRuleApiResponse {
-    style_rules: StyleRuleInfoApiResponse[];
 }
 
 /**
@@ -1181,30 +1075,6 @@ export interface TranslationMemoryInfo {
     readonly creationTime?: Date;
     /** Undefined if the API did not provide the timestamp. */
     readonly updatedTime?: Date;
-}
-
-/**
- * Type used during JSON parsing of API response for translation memory info.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface TranslationMemoryInfoApiResponse {
-    translation_memory_id: string;
-    name: string;
-    source_language: string;
-    target_languages: string[];
-    segment_count: number;
-    creation_time?: string;
-    updated_time?: string;
-}
-
-/**
- * Type used during JSON parsing of API response for listing translation memories.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface ListTranslationMemoryApiResponse {
-    translation_memories: TranslationMemoryInfoApiResponse[];
 }
 
 /**
@@ -1379,88 +1249,6 @@ export interface ImportTranslationMemoryOptions
 }
 
 /**
- * Type used during JSON parsing of API response for translation memory segments.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface TranslationMemorySegmentsApiResponse {
-    segments?: {
-        source_segment_id: string;
-        source_text: string;
-        creation_time?: string;
-        updated_time?: string;
-        last_used_time?: string;
-        targets?: {
-            target_segment_id: string;
-            target_language: string;
-            target_text: string;
-            creation_time?: string;
-            updated_time?: string;
-            last_used_time?: string;
-        }[];
-    }[];
-    segment_count?: number;
-    next_page_cursor?: string;
-}
-
-/**
- * Type used during JSON parsing of API response for creating a translation memory import.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface TranslationMemoryImportApiResponse {
-    job_id: string;
-    upload_url: string;
-    expires_at?: string;
-}
-
-/**
- * Type used during JSON parsing of API response for creating a translation memory export.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface TranslationMemoryExportApiResponse {
-    job_id: string;
-    parameters?: {
-        translation_memory_id?: string;
-    };
-}
-
-/**
- * Type used during JSON parsing of API response for a translation memory job.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface TranslationMemoryJobApiResponse {
-    job_id: string;
-    product?: string;
-    operation?: string;
-    creation_time?: string;
-    updated_time?: string;
-    source_file?: {
-        content_type?: string;
-        content_length?: number;
-    };
-    parameters?: {
-        translation_memory_id?: string;
-        display_name?: string;
-    };
-    results?: {
-        status?: string;
-        status_metadata?: {
-            required_action?: string;
-        };
-        download_url?: string;
-        expires_at?: string;
-        error?: {
-            message?: string;
-        };
-        translation_memory_id?: string;
-        skipped_segment_count?: number;
-    }[];
-}
-
-/**
  * A feature of a DeepL API resource, as returned by `DeepLClient.getLanguageResources()`.
  */
 export interface ResourceFeature {
@@ -1481,20 +1269,6 @@ export interface LanguageResource {
     readonly name: string;
     /** Features supported by this resource, keyed by feature name. */
     readonly features: Record<string, ResourceFeature>;
-}
-
-/**
- * Type used during JSON parsing of API response for language resources.
- * @private
- * @deprecated Internal; will no longer be exported in the next major version.
- */
-export interface LanguageResourceApiResponse {
-    name: string;
-    features?: {
-        name: string;
-        needs_source_support?: boolean;
-        needs_target_support?: boolean;
-    }[];
 }
 
 /**

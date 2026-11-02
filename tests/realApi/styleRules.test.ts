@@ -13,14 +13,9 @@ describe('DeepLClient style rules', () => {
             const name = getUniqueName('styleRule');
             const rules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
 
-            const styleRule = await client.createStyleRule({
-                name,
-                language: 'en',
-                configured_rules: rules,
-                custom_instructions: [
-                    { label: 'Init', prompt: 'Be formal', source_language: 'de' },
-                ],
-            });
+            const styleRule = await client.createStyleRule(name, 'en', rules, [
+                { label: 'Init', prompt: 'Be formal', source_language: 'de' },
+            ]);
             const styleId = styleRule.styleId;
             try {
                 expect(styleRule.name).toBe(name);
@@ -45,11 +40,12 @@ describe('DeepLClient style rules', () => {
                 const configured = await client.updateStyleRuleConfiguredRules(styleId, rules);
                 expect(configured.styleId).toBe(styleId);
 
-                const instruction = await client.createStyleRuleCustomInstruction(styleId, {
-                    label: 'Label',
-                    prompt: 'Prompt',
-                    source_language: 'de',
-                });
+                const instruction = await client.createStyleRuleCustomInstruction(
+                    styleId,
+                    'Label',
+                    'Prompt',
+                    'de',
+                );
                 const instructionId = instruction.id as string;
                 expect(instructionId).toEqual(expect.any(String));
                 expect(instruction.label).toBe('Label');
@@ -63,7 +59,9 @@ describe('DeepLClient style rules', () => {
                 const updatedInstruction = await client.updateStyleRuleCustomInstruction(
                     styleId,
                     instructionId,
-                    { label: 'New Label', prompt: 'New Prompt', source_language: 'en' },
+                    'New Label',
+                    'New Prompt',
+                    'en',
                 );
                 expect(updatedInstruction.label).toBe('New Label');
 

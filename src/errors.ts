@@ -39,9 +39,8 @@ export class ConnectionError extends DeepLError {
 
 /**
  * Thrown by translateDocument() for any failure, including a missing input file, except an
- * existing or unwritable output path (the Node error) and a failed minification
- * (DocumentMinificationError). The cause is in `error`; `httpStatusCode` and `shouldRetry` are
- * copied from it when it is a DeepLError.
+ * existing or unwritable output path (the Node error). The cause is in `error`;
+ * `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
  */
 export class DocumentTranslationError extends DeepLError {
     public readonly documentHandle?: DocumentHandle;
@@ -67,23 +66,5 @@ export class NotFoundError extends DeepLError {}
 export class GlossaryNotFoundError extends NotFoundError {}
 
 export class DocumentNotReadyError extends DeepLError {}
-
-/**
- * Error thrown if an error occurs during the minification phase.
- * @see DocumentMinifier.minifyDocument
- * @deprecated Document minification is deprecated and will be removed in the next major version.
- * The DeepL API accepts larger documents; see the usage limits:
- * https://developers.deepl.com/docs/resources/usage-limits
- */
-export class DocumentMinificationError extends DeepLError {}
-
-/**
- * Error thrown if an error occurs during the deminification phase.
- * @see DocumentMinifier.deminifyDocument
- * @deprecated Document minification is deprecated and will be removed in the next major version.
- * The DeepL API accepts larger documents; see the usage limits:
- * https://developers.deepl.com/docs/resources/usage-limits
- */
-export class DocumentDeminificationError extends DeepLError {}
 
 export class ArgumentError extends DeepLError {}

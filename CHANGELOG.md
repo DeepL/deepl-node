@@ -5,6 +5,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- `rephraseText()` takes a `RephraseTextOptions` object as its third argument
+  and has no fourth argument. Pass `{ writingStyle, tone }` instead of the
+  writing style and tone as the third and fourth arguments. Any other third
+  argument, such as a string, throws `ArgumentError`.
+- `checkStatusCode()` is no longer exported from the package root. It is
+  internal and has no replacement.
+- The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,
+  `MultilingualGlossaryDictionaryApiResponse`, `ListMultilingualGlossaryApiResponse`,
+  `StyleRuleInfoApiResponse`, `ListStyleRuleApiResponse`,
+  `TranslationMemoryInfoApiResponse`, `ListTranslationMemoryApiResponse`,
+  `TranslationMemorySegmentsApiResponse`, `TranslationMemoryImportApiResponse`,
+  `TranslationMemoryExportApiResponse`, `TranslationMemoryJobApiResponse` and
+  `LanguageResourceApiResponse` are no longer exported. Use the parsed types
+  the methods return (`MultilingualGlossaryInfo`, `StyleRuleInfo`,
+  `TranslationMemoryInfo`, `TranslationMemoryJob`, `LanguageResource`, ...).
+
+### Removed
+- `createMultilingualGlossaryWithCsv()`,
+  `replaceMultilingualGlossaryDictionaryWithCsv()` and
+  `updateMultilingualGlossaryDictionaryWithCsv()`: use
+  `createMultilingualGlossaryFromCsv()`,
+  `replaceMultilingualGlossaryDictionaryFromCsv()` and
+  `updateMultilingualGlossaryDictionaryFromCsv()`, which take the same arguments.
+- The object forms of `createStyleRule(styleRule)`,
+  `createStyleRuleCustomInstruction(styleRule, instruction)` and
+  `updateStyleRuleCustomInstruction(styleRule, instructionId, instruction)`, and
+  the `CreateStyleRuleRequestBody` type: pass the name, language, configured
+  rules and custom instructions, or the label, prompt and source language, as
+  separate arguments.
+- The `__path` option of `TranslateTextOptions`: `translateText()` always sends
+  its request to `/v2/translate`.
+- The `'on'` and `'default'` values of `SentenceSplittingMode`: use `'1'`.
+  Any other string is still sent unchanged, so these values now reach the API
+  as given.
+- `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()`: use
+  `translateDocumentUpload()`, `translateDocumentGetStatus()` and
+  `translateDocumentDownload()`, which behave the same.
+  `isDocumentTranslationComplete(handle)`: use
+  `translateDocumentWaitUntilDone(handle)`, which resolves with the
+  `DocumentStatus` instead of `{ handle, status }`.
+- Document minification: the `enableDocumentMinification` option of
+  `DocumentTranslateOptions`, and `DocumentMinificationError` and
+  `DocumentDeminificationError`. Remove the option; the DeepL API accepts
+  larger documents, see the usage limits.
+- The `extraRequestParameters` option of `BaseRequestOptions` and every options
+  type: rename it to `extraBodyParameters`, which behaves the same.
+- `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
+  which takes the same arguments.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.

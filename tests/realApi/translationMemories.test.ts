@@ -40,7 +40,7 @@ describe('DeepLClient translation memories', () => {
 
                 await client.uploadTranslationMemoryFile(created, Buffer.from(exampleTmx));
 
-                const importJob = await client.isTranslationMemoryJobComplete(
+                const importJob = await client.waitUntilTranslationMemoryJobDone(
                     created.jobId,
                     jobTimeout,
                 );
@@ -69,7 +69,7 @@ describe('DeepLClient translation memories', () => {
 
                 const exported = await client.createTranslationMemoryExport(id);
                 expect(exported.jobId).toEqual(expect.any(String));
-                const exportJob = await client.isTranslationMemoryJobComplete(
+                const exportJob = await client.waitUntilTranslationMemoryJobDone(
                     exported.jobId,
                     jobTimeout,
                 );

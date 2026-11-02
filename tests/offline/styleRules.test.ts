@@ -66,20 +66,6 @@ describe('DeepLClient.getAllStyleRules', () => {
 });
 
 describe('DeepLClient.createStyleRule', () => {
-    it('sends the style rule as JSON', async () => {
-        const body = {
-            name: 'my rule',
-            language: 'en',
-            configured_rules: { dates_and_times: { calendar_era: 'use_bc_and_ad' } },
-            custom_instructions: [{ label: 'Label', prompt: 'Prompt', source_language: 'de' }],
-        };
-        nock(serverUrl, { reqheaders: { 'content-type': 'application/json' } })
-            .post('/v3/style_rules', body)
-            .reply(201, {});
-
-        await makeDeeplClient().createStyleRule(body);
-    });
-
     it('sends the positional configured rules and custom instructions unchanged', async () => {
         const configuredRules = { dates_and_times: { calendar_era: 'use_bc_and_ad' } };
         const customInstructions = [
@@ -114,18 +100,9 @@ describe('DeepLClient.createStyleRule', () => {
     });
 
     it.each([
-        ['name', { name: '', language: 'en' }],
-        ['language', { name: 'n', language: '' }],
-    ])('throws ArgumentError when %s is empty', async (_, styleRule) => {
-        await expect(makeDeeplClient().createStyleRule(styleRule)).rejects.toThrow(
-            deepl.ArgumentError,
-        );
-    });
-
-    it.each([
         ['name', '', 'en'],
         ['language', 'n', ''],
-    ])('throws ArgumentError when the positional %s is empty', async (_, name, language) => {
+    ])('throws ArgumentError when %s is empty', async (_, name, language) => {
         await expect(makeDeeplClient().createStyleRule(name, language)).rejects.toThrow(
             deepl.ArgumentError,
         );
@@ -172,36 +149,13 @@ describe('DeepLClient.updateStyleRuleConfiguredRules', () => {
 describe('DeepLClient custom instructions', () => {
     const instruction = { label: 'Label', prompt: 'Prompt', source_language: 'de' };
 
-    it('createStyleRuleCustomInstruction sends the instruction as JSON and parses the result', async () => {
-        nock(serverUrl)
-            .post('/v3/style_rules/s-1/custom_instructions', instruction)
-            .reply(201, instructionReply);
-
-        const result = await makeDeeplClient().createStyleRuleCustomInstruction('s-1', instruction);
-
-        expect(result).toEqual({
-            id: 'i-1',
-            label: 'Label',
-            prompt: 'Prompt',
-            sourceLanguage: 'de',
-        });
-    });
-
     it('getStyleRuleCustomInstruction sends GET for the URL-encoded IDs', async () => {
         nock(serverUrl).get('/v3/style_rules/a%2Fb/custom_instructions/i%2F1').reply(200, {});
 
         await makeDeeplClient().getStyleRuleCustomInstruction('a/b', 'i/1');
     });
 
-    it('updateStyleRuleCustomInstruction sends the instruction as JSON with PUT', async () => {
-        nock(serverUrl)
-            .put('/v3/style_rules/s-1/custom_instructions/i-1', instruction)
-            .reply(200, {});
-
-        await makeDeeplClient().updateStyleRuleCustomInstruction('s-1', 'i-1', instruction);
-    });
-
-    it('createStyleRuleCustomInstruction sends the same JSON for the positional arguments', async () => {
+    it('createStyleRuleCustomInstruction sends the instruction as JSON and parses the result', async () => {
         nock(serverUrl)
             .post('/v3/style_rules/s-1/custom_instructions', instruction)
             .reply(201, instructionReply);
@@ -213,7 +167,12 @@ describe('DeepLClient custom instructions', () => {
             'de',
         );
 
-        expect(result.id).toBe('i-1');
+        expect(result).toEqual({
+            id: 'i-1',
+            label: 'Label',
+            prompt: 'Prompt',
+            sourceLanguage: 'de',
+        });
     });
 
     it('createStyleRuleCustomInstruction omits source_language when it is not given', async () => {
@@ -224,7 +183,7 @@ describe('DeepLClient custom instructions', () => {
         await makeDeeplClient().createStyleRuleCustomInstruction('s-1', 'Label', 'Prompt');
     });
 
-    it('updateStyleRuleCustomInstruction sends the same JSON for the positional arguments', async () => {
+    it('updateStyleRuleCustomInstruction sends the instruction as JSON with PUT', async () => {
         nock(serverUrl)
             .put('/v3/style_rules/s-1/custom_instructions/i-1', instruction)
             .reply(200, instructionReply);
@@ -247,7 +206,6 @@ describe('DeepLClient custom instructions', () => {
 
 describe('DeepLClient style rule methods that validate their arguments', () => {
     const client = () => makeDeeplClient();
-    const ok = { label: 'L', prompt: 'P' };
 
     it.each([
         ['getStyleRule', () => client().getStyleRule('')],
@@ -257,22 +215,14 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
         ['updateStyleRuleConfiguredRules', () => client().updateStyleRuleConfiguredRules('', {})],
         [
             'createStyleRuleCustomInstruction without ID',
-            () => client().createStyleRuleCustomInstruction('', ok),
+            () => client().createStyleRuleCustomInstruction('', 'L', 'P'),
         ],
         [
             'createStyleRuleCustomInstruction without label',
-            () => client().createStyleRuleCustomInstruction('s', { ...ok, label: '' }),
-        ],
-        [
-            'createStyleRuleCustomInstruction without prompt',
-            () => client().createStyleRuleCustomInstruction('s', { ...ok, prompt: '' }),
-        ],
-        [
-            'createStyleRuleCustomInstruction without positional label',
             () => client().createStyleRuleCustomInstruction('s', '', 'P'),
         ],
         [
-            'createStyleRuleCustomInstruction without positional prompt',
+            'createStyleRuleCustomInstruction without prompt',
             () => client().createStyleRuleCustomInstruction('s', 'L', ''),
         ],
         [
@@ -285,26 +235,18 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
         ],
         [
             'updateStyleRuleCustomInstruction without ID',
-            () => client().updateStyleRuleCustomInstruction('', 'i', ok),
+            () => client().updateStyleRuleCustomInstruction('', 'i', 'L', 'P'),
         ],
         [
             'updateStyleRuleCustomInstruction without instruction ID',
-            () => client().updateStyleRuleCustomInstruction('s', '', ok),
+            () => client().updateStyleRuleCustomInstruction('s', '', 'L', 'P'),
         ],
         [
             'updateStyleRuleCustomInstruction without label',
-            () => client().updateStyleRuleCustomInstruction('s', 'i', { ...ok, label: '' }),
-        ],
-        [
-            'updateStyleRuleCustomInstruction without prompt',
-            () => client().updateStyleRuleCustomInstruction('s', 'i', { ...ok, prompt: '' }),
-        ],
-        [
-            'updateStyleRuleCustomInstruction without positional label',
             () => client().updateStyleRuleCustomInstruction('s', 'i', '', 'P'),
         ],
         [
-            'updateStyleRuleCustomInstruction without positional prompt',
+            'updateStyleRuleCustomInstruction without prompt',
             () => client().updateStyleRuleCustomInstruction('s', 'i', 'L', ''),
         ],
         [

@@ -23,30 +23,12 @@ describe('DeepLClient.rephraseText', () => {
         expect(result).toEqual({ text: 'out', detectedSourceLang: 'de', targetLang: 'en-US' });
     });
 
-    it('sends the target language, writing style and tone', async () => {
-        nock(serverUrl)
-            .post('/v2/write/rephrase', {
-                text: 'abc',
-                target_lang: 'en',
-                writing_style: 'business',
-                tone: 'confident',
-            })
-            .reply(200, rephrased);
-
-        await makeDeeplClient().rephraseText(
-            'abc',
-            'en',
-            WritingStyle.BUSINESS,
-            WritingTone.CONFIDENT,
-        );
-    });
-
-    it.each([[null], [undefined], ['']])(
+    it.each([[undefined], ['']])(
         'sends no writing style or tone when they are %p',
         async (empty) => {
             nock(serverUrl).post('/v2/write/rephrase', { text: 'abc' }).reply(200, rephrased);
 
-            await makeDeeplClient().rephraseText('abc', null, empty, empty);
+            await makeDeeplClient().rephraseText('abc', null, { writingStyle: empty, tone: empty });
         },
     );
 
@@ -64,16 +46,6 @@ describe('DeepLClient.rephraseText', () => {
         await makeDeeplClient().rephraseText('abc', 'en', {
             writingStyle: WritingStyle.BUSINESS,
             tone: WritingTone.CONFIDENT,
-            extraRequestParameters: { extra: 'x' },
-        });
-    });
-
-    it('sends the extraBodyParameters of an options object', async () => {
-        nock(serverUrl)
-            .post('/v2/write/rephrase', { text: 'abc', target_lang: 'en', extra: 'x' })
-            .reply(200, rephrased);
-
-        await makeDeeplClient().rephraseText('abc', 'en', {
             extraBodyParameters: { extra: 'x' },
         });
     });
@@ -84,17 +56,17 @@ describe('DeepLClient.rephraseText', () => {
             .reply(200, rephrased);
 
         await makeDeeplClient().rephraseText('abc', 'en', {
-            extraRequestParameters: { target_lang: 'fr' },
+            extraBodyParameters: { target_lang: 'fr' },
         });
     });
 
-    it('throws ArgumentError when an options object is combined with a tone argument', async () => {
+    it('throws ArgumentError when the writing style is passed instead of an options object', async () => {
         const client = makeDeeplClient();
-        // The overloads reject this at compile time; JavaScript callers can still pass it
+        // The signature rejects this at compile time; JavaScript callers can still pass it
         const rephraseText = client.rephraseText.bind(client) as (
             ...args: unknown[]
         ) => Promise<unknown>;
-        await expect(rephraseText('abc', 'en', {}, WritingTone.FRIENDLY)).rejects.toThrow(
+        await expect(rephraseText('abc', 'en', WritingStyle.BUSINESS)).rejects.toThrow(
             ArgumentError,
         );
     });

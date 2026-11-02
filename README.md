@@ -175,7 +175,6 @@ console.log(await deeplClient.translateText('How are you?', null, 'de', { formal
         applications where each input text contains only one sentence.
     -   `'nonewlines'`: input text will be split into sentences using punctuation
         but not newlines.
-    -   `'on'` and `'default'` are deprecated aliases of `'1'`.
 -   `preserveFormatting`: controls automatic-formatting-correction. Set to `true`
     to prevent automatic-correction of formatting, default: `false`.
 -   `formality`: controls whether translations should lean toward informal or
@@ -255,8 +254,7 @@ The following options are only used if `tagHandling` is `'xml'`:
     For example: `{'param': 'value', 'param2': 'value2'}`
     Note: Extra body parameters replace parameters of the same name set by the library
     (such as `target_lang`, `source_lang`, `split_sentences`, etc.). This is primarily useful for testing or
-    accessing beta features. `extraRequestParameters` is the deprecated old name
-    of this option; pass only one of the two.
+    accessing beta features.
 
 
 ### Translating documents
@@ -300,8 +298,7 @@ try {
 An existing file at the output path, or an output directory that is missing or
 not writable, rejects with the Node error (`EEXIST`, `ENOENT`, `EACCES`) before
 any request is sent. A missing input file rejects with a
-`DocumentTranslationError` before any request is sent. A failed document
-minification rejects with a `DocumentMinificationError`. Every other failure
+`DocumentTranslationError` before any request is sent. Every other failure
 rejects with a `DocumentTranslationError` whose `error` property holds the
 cause; its `httpStatusCode` and `shouldRetry` are copied from the cause when
 that is a `DeepLError`.
@@ -315,8 +312,7 @@ directly:
 -   `translateDocumentGetStatus()`, or `translateDocumentWaitUntilDone()` to poll
     the status every 5 seconds until the translation is done; it resolves with
     the final `DocumentStatus` and rejects with a `DeepLError` if the
-    translation fails (`isDocumentTranslationComplete()` is deprecated in favour
-    of it). Pass `{ timeoutMs }` as its second argument to reject with a
+    translation fails. Pass `{ timeoutMs }` as its second argument to reject with a
     `DeepLError` once that many milliseconds have passed. A status this library
     does not know keeps it polling; pass `timeoutMs` to bound the wait, and
 -   `translateDocumentDownload()`, which rejects with a `DocumentNotReadyError`
@@ -324,10 +320,6 @@ directly:
     file before sending the request, so an existing file rejects at once; if the
     connection fails mid-download it rejects with a `ConnectionError` and removes
     the partial file.
-
-`uploadDocument()`, `getDocumentStatus()` and `downloadDocument()` are
-deprecated aliases of these methods and will be removed in the next major
-version.
 
 A `DocumentStatus` has `documentId`, `status` (`'queued'`, `'translating'`,
 `'done'` or `'error'`), `secondsRemaining`, `billedCharacters` and
@@ -364,72 +356,6 @@ statuses this library does not know.
     `DocumentTranslationError`. By default it waits without limit. A status this
     library does not know keeps it polling; pass `timeoutMs` to bound the wait.
 -   `extraBodyParameters`: same as in [Text translation options](#text-translation-options).
--   `enableDocumentMinification`: **deprecated**, will be removed in the next
-    major version. A `bool` value. If set to `true`, the library will try to
-    minify a document before translating it through the API, sending a smaller
-    document if the file contains a lot of media. This is currently only
-    supported for `pptx` and `docx` files. See also
-    [Document minification](#document-minification).
-
-#### Document minification
-> **Deprecated:** document minification (the `enableDocumentMinification` option and the
-> `DocumentMinifier` class) is deprecated and will be removed in the next major version.
-> It still works until then. The DeepL API accepts larger documents; see the
-> [usage limits](https://developers.deepl.com/docs/resources/usage-limits).
-
-In some contexts, one can end up with large document files (e.g. PowerPoint presentations
-or Word files with many contributors, especially in a larger organization). The DeepL API
-limits the size of uploaded documents; see the
-[usage limits](https://developers.deepl.com/docs/resources/usage-limits) for the current values.
-In the case that most of this size comes from media included in the documents (e.g. images,
-videos, animations), document minification can help.
-In this case, the library will create a temporary directory to extract the document into,
-replace the large media with tiny placeholders, create a minified document, translate that
-via the API, and re-insert the original media into the original file. Please note that this
-requires a bit of additional (temporary) disk space, we recommend at least 2x the file size
-of the document to be translated.
-
-To use document minification, simply pass the option to the `translateDocument()` function:
-```typescript
-await deeplClient.translateDocument(
-    inFile, outFile, "en", "de", { enableDocumentMinification: true }
-);
-```
-In order to use document minification with the lower-level `translateDocumentUpload()`,
-`translateDocumentWaitUntilDone()` and `translateDocumentDownload()` methods as well as other details,
-see the `DocumentMinifier` class.
-
-
-Currently supported document types for minification:
-1. `pptx`
-2. `docx`
-
-Currently supported media types for minification:
-1. `png`
-2. `jpg`
-3. `jpeg`
-4. `emf`
-5. `bmp`
-6. `tiff`
-7. `wdp`
-8. `svg`
-9. `gif`
-10. `mp4`
-11. `asf`
-12. `avi`
-13. `m4v`
-14. `mpg`
-15. `mpeg`
-16. `wmv`
-17. `mov`
-18. `aiff`
-19. `au`
-20. `mid`
-21. `midi`
-22. `mp3`
-23. `m4a`
-24. `wav`
-25. `wma`
 
 
 ### Glossaries
@@ -473,8 +399,7 @@ control character such as a newline throws a `DeepLError`. The trimmed terms are
 sent.
 
 You can also upload a glossary downloaded from the DeepL website using
-`createMultilingualGlossaryFromCsv()` (`createMultilingualGlossaryWithCsv()` is
-deprecated and behaves the same). Instead of supplying the entries as a dictionary,
+`createMultilingualGlossaryFromCsv()`. Instead of supplying the entries as a dictionary,
 provide the CSV content as a string.
 
 ```javascript
@@ -597,8 +522,7 @@ Functions to edit stored glossaries are also provided:
 - `updateMultilingualGlossaryDictionaryFromCsv()` and
   `replaceMultilingualGlossaryDictionaryFromCsv()` take a glossary ID or
   `MultilingualGlossaryInfo` object, a source language, target language and the
-  entries as CSV content. The `*WithCsv()` methods of the same name are
-  deprecated and behave the same.
+  entries as CSV content.
 
 Every method that takes a glossary accepts its ID or a `MultilingualGlossaryInfo`
 object. The methods that send a request body (`createMultilingualGlossary()`,
@@ -701,10 +625,6 @@ const configured = await deeplClient.createStyleRule(
 );
 ```
 
-Passing a single `CreateStyleRuleRequestBody` object
-(`{ name, language, configured_rules, custom_instructions }`) is deprecated and
-will be removed in the next major version.
-
 Every method that takes a style rule accepts its ID or a `StyleRuleInfo`
 object, and every method that takes a custom instruction accepts its ID or a
 `CustomInstruction` object, for example `deleteStyleRule(rule)`.
@@ -778,8 +698,7 @@ Custom instructions allow you to add free-text prompts to a style rule. Use
 `createStyleRuleCustomInstruction()`, `getStyleRuleCustomInstruction()`,
 `updateStyleRuleCustomInstruction()`, and
 `deleteStyleRuleCustomInstruction()` to manage them. The create and update
-methods take the label, the prompt and an optional source language code;
-passing them as one object is deprecated.
+methods take the label, the prompt and an optional source language code.
 
 ```javascript
 // Create a custom instruction
@@ -983,7 +902,6 @@ job ID or a `TranslationMemoryJob`. `waitUntilTranslationMemoryJobDone()` takes
 resolves with the job once its status is `'completed'` (or the deprecated
 `'downloaded'`), and rejects with a
 `DeepLError` carrying the job's error message if it fails or expires.
-`isTranslationMemoryJobComplete()` is deprecated in its favour.
 
 A `TranslationMemoryJob` has `result` (the single entry of `results`), `status`
 (the status of `result`), `done()` (true once the status is `'completed'`, or
@@ -1365,9 +1283,7 @@ The second argument is the target language code. Language codes are **case-insen
 The third argument is optional and is a `RephraseTextOptions` object (it extends `BaseRequestOptions`) with the following properties:
 -   `writingStyle`: the writing style of the rephrased text. Possible values are defined in the `WritingStyle` enum.
 -   `tone`: the tone of the rephrased text. Possible values are defined in the `WritingTone` enum. The API accepts either `writingStyle` or `tone` in a request, not both.
--   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library. `extraRequestParameters` is the deprecated old name of this option.
-
-Passing the writing style and tone as the third and fourth arguments, for example `rephraseText(text, 'en', WritingStyle.ACADEMIC)`, is deprecated and will be removed in the next major version.
+-   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
 
 `rephraseText()` returns a Promise that fulfills with an `Improvement` object or an array of `Improvement` objects corresponding to your input text(s). The `Improvement` object has the following properties:
 - `text`: the rephrased text,
@@ -1398,7 +1314,7 @@ To correct grammar, spelling and punctuation, call `correctText()`. The first ar
 The second argument is optional and is the target language code, for example `'de'` or `'en-US'`. If it is omitted or `null`, the language of the input text is used.
 
 The third argument is optional and is a `CorrectTextOptions` object (it is `BaseRequestOptions`) with the following property:
--   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library. `extraRequestParameters` is the deprecated old name of this option.
+-   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
 
 `correctText()` returns a Promise that fulfills with a `WriteResult` object or an array of `WriteResult` objects corresponding to your input text(s). The `WriteResult` object has the following properties:
 - `text`: the corrected text,

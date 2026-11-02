@@ -21,10 +21,7 @@ describe('DeepLClient style profiles', () => {
         async () => {
             const client = makeDeeplClient();
             const name = getUniqueName('styleProfile');
-            const styleRule = await client.createStyleRule({
-                name: getUniqueName('styleProfileRule'),
-                language: 'de',
-            });
+            const styleRule = await client.createStyleRule(getUniqueName('styleProfileRule'), 'de');
             let styleProfileId: string | undefined;
             try {
                 const created = await client.createStyleProfile(name, {

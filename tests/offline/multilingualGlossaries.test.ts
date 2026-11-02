@@ -131,7 +131,7 @@ describe('DeepLClient.replaceMultilingualGlossaryDictionary', () => {
     });
 });
 
-describe('DeepLClient.createMultilingualGlossaryWithCsv', () => {
+describe('DeepLClient.createMultilingualGlossaryFromCsv', () => {
     it('sends the CSV content with entries_format csv', async () => {
         const csv = 'sourceEntry1,targetEntry1\n"source""Entry","target,Entry"';
         nock(serverUrl)
@@ -144,7 +144,7 @@ describe('DeepLClient.createMultilingualGlossaryWithCsv', () => {
             })
             .reply(201, { dictionaries: [] });
 
-        await makeDeeplClient().createMultilingualGlossaryWithCsv('my glossary', 'en', 'de', csv);
+        await makeDeeplClient().createMultilingualGlossaryFromCsv('my glossary', 'en', 'de', csv);
     });
 });
 
@@ -293,8 +293,8 @@ describe('DeepLClient glossary methods that validate their arguments', () => {
     it.each([
         ['createMultilingualGlossary', () => client().createMultilingualGlossary('', [dictionary])],
         [
-            'createMultilingualGlossaryWithCsv',
-            () => client().createMultilingualGlossaryWithCsv('n', 'en', 'de', ''),
+            'createMultilingualGlossaryFromCsv',
+            () => client().createMultilingualGlossaryFromCsv('n', 'en', 'de', ''),
         ],
         [
             'updateMultilingualGlossaryName',
@@ -305,16 +305,16 @@ describe('DeepLClient glossary methods that validate their arguments', () => {
             () => client().updateMultilingualGlossaryDictionary('', dictionary),
         ],
         [
-            'updateMultilingualGlossaryDictionaryWithCsv',
-            () => client().updateMultilingualGlossaryDictionaryWithCsv('g-1', 'en', '', 'a,b'),
+            'updateMultilingualGlossaryDictionaryFromCsv',
+            () => client().updateMultilingualGlossaryDictionaryFromCsv('g-1', 'en', '', 'a,b'),
         ],
         [
             'replaceMultilingualGlossaryDictionary',
             () => client().replaceMultilingualGlossaryDictionary('', dictionary),
         ],
         [
-            'replaceMultilingualGlossaryDictionaryWithCsv',
-            () => client().replaceMultilingualGlossaryDictionaryWithCsv('g-1', 'en', 'de', ''),
+            'replaceMultilingualGlossaryDictionaryFromCsv',
+            () => client().replaceMultilingualGlossaryDictionaryFromCsv('g-1', 'en', 'de', ''),
         ],
     ])('%s throws ArgumentError for an empty argument', async (_, call) => {
         await expect(call()).rejects.toThrow(deepl.ArgumentError);

@@ -26,29 +26,17 @@ import {
     SpokenTermsList,
     StyleProfile,
     MultilingualGlossaryDictionaryEntries,
-    MultilingualGlossaryDictionaryApiResponse,
-    MultilingualGlossaryDictionaryEntriesApiResponse,
-    ListMultilingualGlossaryApiResponse,
     StyleRuleInfo,
-    StyleRuleInfoApiResponse,
-    ListStyleRuleApiResponse,
     ConfiguredRules,
     CustomInstruction,
     TranslationMemoryInfo,
-    TranslationMemoryInfoApiResponse,
-    ListTranslationMemoryApiResponse,
     TranslationMemoryExport,
-    TranslationMemoryExportApiResponse,
     TranslationMemoryImport,
-    TranslationMemoryImportApiResponse,
     TranslationMemoryJob,
-    TranslationMemoryJobApiResponse,
     TranslationMemoryJobResult,
     TranslationMemoryJobStatus,
     TranslationMemorySegments,
-    TranslationMemorySegmentsApiResponse,
     LanguageResource,
-    LanguageResourceApiResponse,
     ResourceFeature,
     LanguageSupport,
     LanguageFeature,
@@ -61,6 +49,194 @@ import {
     KeyUsage,
 } from './types';
 import { isString, standardizeLanguageCode } from './utils';
+
+/**
+ * Type used during JSON parsing of API response for getting multilingual glossary dictionary entries.
+ * @private
+ */
+interface MultilingualGlossaryDictionaryEntriesApiResponse {
+    dictionaries: [
+        {
+            source_lang: string;
+            target_lang: string;
+            entries: string;
+        },
+    ];
+}
+
+/**
+ * Type used during JSON parsing of API response for multilingual glossary dictionaries.
+ * @private
+ */
+interface MultilingualGlossaryDictionaryApiResponse {
+    source_lang: string;
+    target_lang: string;
+    entry_count: number;
+}
+
+/**
+ * Type used during JSON parsing of API response for listing multilingual glossaries.
+ * @private
+ */
+interface ListMultilingualGlossaryApiResponse {
+    glossaries: [
+        {
+            glossary_id: string;
+            name: string;
+            dictionaries: MultilingualGlossaryDictionaryApiResponse[];
+            creation_time: string;
+        },
+    ];
+}
+
+/**
+ * Type used during JSON parsing of API response for style rule info.
+ * @private
+ */
+interface StyleRuleInfoApiResponse {
+    style_id: string;
+    name: string;
+    creation_time: string;
+    updated_time: string;
+    language: string;
+    version: number;
+    configured_rules?: {
+        dates_and_times?: Record<string, string>;
+        formatting?: Record<string, string>;
+        numbers?: Record<string, string>;
+        punctuation?: Record<string, string>;
+        spelling_and_grammar?: Record<string, string>;
+        style_and_tone?: Record<string, string>;
+        vocabulary?: Record<string, string>;
+    };
+    custom_instructions?: Array<{
+        id?: string;
+        label: string;
+        prompt: string;
+        source_language?: string;
+    }>;
+}
+
+/**
+ * Type used during JSON parsing of API response for listing style rules.
+ * @private
+ */
+interface ListStyleRuleApiResponse {
+    style_rules: StyleRuleInfoApiResponse[];
+}
+
+/**
+ * Type used during JSON parsing of API response for translation memory info.
+ * @private
+ */
+interface TranslationMemoryInfoApiResponse {
+    translation_memory_id: string;
+    name: string;
+    source_language: string;
+    target_languages: string[];
+    segment_count: number;
+    creation_time?: string;
+    updated_time?: string;
+}
+
+/**
+ * Type used during JSON parsing of API response for listing translation memories.
+ * @private
+ */
+interface ListTranslationMemoryApiResponse {
+    translation_memories: TranslationMemoryInfoApiResponse[];
+}
+
+/**
+ * Type used during JSON parsing of API response for translation memory segments.
+ * @private
+ */
+interface TranslationMemorySegmentsApiResponse {
+    segments?: {
+        source_segment_id: string;
+        source_text: string;
+        creation_time?: string;
+        updated_time?: string;
+        last_used_time?: string;
+        targets?: {
+            target_segment_id: string;
+            target_language: string;
+            target_text: string;
+            creation_time?: string;
+            updated_time?: string;
+            last_used_time?: string;
+        }[];
+    }[];
+    segment_count?: number;
+    next_page_cursor?: string;
+}
+
+/**
+ * Type used during JSON parsing of API response for creating a translation memory import.
+ * @private
+ */
+interface TranslationMemoryImportApiResponse {
+    job_id: string;
+    upload_url: string;
+    expires_at?: string;
+}
+
+/**
+ * Type used during JSON parsing of API response for creating a translation memory export.
+ * @private
+ */
+interface TranslationMemoryExportApiResponse {
+    job_id: string;
+    parameters?: {
+        translation_memory_id?: string;
+    };
+}
+
+/**
+ * Type used during JSON parsing of API response for a translation memory job.
+ * @private
+ */
+interface TranslationMemoryJobApiResponse {
+    job_id: string;
+    product?: string;
+    operation?: string;
+    creation_time?: string;
+    updated_time?: string;
+    source_file?: {
+        content_type?: string;
+        content_length?: number;
+    };
+    parameters?: {
+        translation_memory_id?: string;
+        display_name?: string;
+    };
+    results?: {
+        status?: string;
+        status_metadata?: {
+            required_action?: string;
+        };
+        download_url?: string;
+        expires_at?: string;
+        error?: {
+            message?: string;
+        };
+        translation_memory_id?: string;
+        skipped_segment_count?: number;
+    }[];
+}
+
+/**
+ * Type used during JSON parsing of API response for language resources.
+ * @private
+ */
+interface LanguageResourceApiResponse {
+    name: string;
+    features?: {
+        name: string;
+        needs_source_support?: boolean;
+        needs_target_support?: boolean;
+    }[];
+}
 
 /**
  * Type used during JSON parsing of API response for glossary info.

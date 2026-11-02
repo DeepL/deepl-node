@@ -47,7 +47,6 @@ import {
     GetLanguagesForResourceOptions,
     LanguageSupport,
     RephraseTextOptions,
-    RequestParameters,
 } from './types';
 import {
     parseMultilingualGlossaryDictionaryInfo,
@@ -88,7 +87,6 @@ import {
     streamToBuffer,
     streamToString,
     logInfo,
-    resolveExtraBodyParameters,
     buildQueryString,
     setExtraBodyParameters,
     timeout,
@@ -157,7 +155,7 @@ function addExtraBodyParametersToJson(
     options: BaseRequestOptions | undefined,
 ): Record<string, unknown> {
     // Added last, so they replace library-set fields with the same key
-    const extraBodyParameters = resolveExtraBodyParameters(options);
+    const extraBodyParameters = options?.extraBodyParameters;
     return extraBodyParameters === undefined ? body : { ...body, ...extraBodyParameters };
 }
 
@@ -192,11 +190,7 @@ export type CustomInstructionRequestBody = {
     source_language?: string;
 };
 
-/**
- * @deprecated Pass the name, language, configured rules and custom instructions as separate
- * arguments to `createStyleRule()`. This type will be removed in the next major version.
- */
-export type CreateStyleRuleRequestBody = {
+type CreateStyleRuleRequestBody = {
     name: string;
     language: string;
     configured_rules?: Record<string, Record<string, string>>;
@@ -265,63 +259,25 @@ export class DeepLClient extends Translator {
     }
 
     /**
-     * @deprecated Pass the writing style in a {@link RephraseTextOptions} object as the third
-     * argument instead. The positional parameters will be removed in the next major version.
-     */
-    async rephraseText<T extends string | string[]>(
-        texts: T,
-        targetLang: string | null | undefined,
-        writingStyle: string,
-        tone?: string | null,
-    ): Promise<T extends string ? WriteResult : WriteResult[]>;
-    /**
      * Rephrases the given text(s), optionally in a writing style or tone.
      * @param texts Text to rephrase, or an array of texts.
      * @param targetLang Target language code, or `null` to keep the language of the input text.
-     * @param options Rephrasing options, see {@link RephraseTextOptions}. Passing the writing
-     *     style as a string here is deprecated.
-     * @param tone Deprecated, use {@link RephraseTextOptions.tone}.
+     * @param options Rephrasing options, see {@link RephraseTextOptions}.
      * @return Promise of a {@link WriteResult}, or an array of them if `texts` is an array.
-     * @throws {ArgumentError} If an options object is combined with a `tone` argument.
+     * @throws {ArgumentError} If `options` is not an object.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async rephraseText<T extends string | string[]>(
         texts: T,
         targetLang?: string | null,
-        // string and the undefined tone keep subclass overrides with the old positional
-        // signature compiling; a null tone would make string styles skip the deprecated overload
-        options?: RephraseTextOptions | string | null,
-        tone?: undefined,
-    ): Promise<T extends string ? WriteResult : WriteResult[]>;
-    /**
-     * @deprecated Pass the writing style and tone in a {@link RephraseTextOptions} object as the
-     * third argument instead. The positional parameters will be removed in the next major version.
-     */
-    async rephraseText<T extends string | string[]>(
-        texts: T,
-        targetLang?: string | null,
-        writingStyle?: string | null,
-        tone?: string | null,
-    ): Promise<T extends string ? WriteResult : WriteResult[]>;
-    async rephraseText<T extends string | string[]>(
-        texts: T,
-        targetLang?: string | null,
-        writingStyleOrOptions?: string | RephraseTextOptions | null,
-        tone?: string | null,
+        options?: RephraseTextOptions,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
-        let writingStyle: string | null | undefined;
-        let extraBodyParameters: RequestParameters | undefined;
-        if (typeof writingStyleOrOptions === 'object' && writingStyleOrOptions !== null) {
-            if (tone !== undefined && tone !== null) {
-                throw new ArgumentError(
-                    'tone cannot be passed as a separate argument together with an options object',
-                );
-            }
-            ({ writingStyle, tone } = writingStyleOrOptions);
-            extraBodyParameters = resolveExtraBodyParameters(writingStyleOrOptions);
-        } else {
-            writingStyle = writingStyleOrOptions;
+        // JavaScript callers may still pass the writing style positionally
+        if (options !== undefined && options !== null && typeof options !== 'object') {
+            throw new ArgumentError('options must be a RephraseTextOptions object');
         }
+        const writingStyle = options?.writingStyle;
+        const tone = options?.tone;
 
         const data = new URLSearchParams();
         if (targetLang) {
@@ -337,7 +293,7 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
-        setExtraBodyParameters(data, extraBodyParameters);
+        setExtraBodyParameters(data, options?.extraBodyParameters);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/rephrase',
@@ -370,7 +326,7 @@ export class DeepLClient extends Translator {
         }
 
         const singular = appendTextsAndReturnIsSingular(data, texts);
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
+        setExtraBodyParameters(data, options?.extraBodyParameters);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/correct',
@@ -419,7 +375,7 @@ export class DeepLClient extends Translator {
         const data = new URLSearchParams();
         data.append('name', name);
         appendDictionaryEntries(data, glossaryDicts);
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
+        setExtraBodyParameters(data, options?.extraBodyParameters);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -474,7 +430,7 @@ export class DeepLClient extends Translator {
         const data = new URLSearchParams();
         data.append('name', name);
         appendCsvDictionaryEntries(data, sourceLanguageCode, targetLanguageCode, csvContent);
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
+        setExtraBodyParameters(data, options?.extraBodyParameters);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -484,24 +440,6 @@ export class DeepLClient extends Translator {
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
-    }
-
-    /**
-     * @deprecated Use {@link createMultilingualGlossaryFromCsv} instead. Will be removed in the
-     * next major version.
-     */
-    async createMultilingualGlossaryWithCsv(
-        name: string,
-        sourceLanguageCode: string,
-        targetLanguageCode: string,
-        csvContent: string,
-    ): Promise<MultilingualGlossaryInfo> {
-        return this.createMultilingualGlossaryFromCsv(
-            name,
-            sourceLanguageCode,
-            targetLanguageCode,
-            csvContent,
-        );
     }
 
     /**
@@ -736,24 +674,6 @@ export class DeepLClient extends Translator {
         );
     }
 
-    /**
-     * @deprecated Use {@link replaceMultilingualGlossaryDictionaryFromCsv} instead. Will be
-     * removed in the next major version.
-     */
-    async replaceMultilingualGlossaryDictionaryWithCsv(
-        glossary: GlossaryId | MultilingualGlossaryInfo,
-        sourceLanguageCode: string,
-        targetLanguageCode: string,
-        csvContent: string,
-    ): Promise<MultilingualGlossaryDictionaryInfo> {
-        return this.replaceMultilingualGlossaryDictionaryFromCsv(
-            glossary,
-            sourceLanguageCode,
-            targetLanguageCode,
-            csvContent,
-        );
-    }
-
     /** @private */
     private async putMultilingualGlossaryDictionary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
@@ -906,31 +826,13 @@ export class DeepLClient extends Translator {
         return this.patchMultilingualGlossaryForm(glossary, data, options);
     }
 
-    /**
-     * @deprecated Use {@link updateMultilingualGlossaryDictionaryFromCsv} instead. Will be
-     * removed in the next major version.
-     */
-    async updateMultilingualGlossaryDictionaryWithCsv(
-        glossary: GlossaryId | MultilingualGlossaryInfo,
-        sourceLanguageCode: string,
-        targetLanguageCode: string,
-        csvContent: string,
-    ): Promise<MultilingualGlossaryInfo> {
-        return this.updateMultilingualGlossaryDictionaryFromCsv(
-            glossary,
-            sourceLanguageCode,
-            targetLanguageCode,
-            csvContent,
-        );
-    }
-
     /** @private */
     private async patchMultilingualGlossaryForm(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         data: URLSearchParams,
         options: BaseRequestOptions | undefined,
     ): Promise<MultilingualGlossaryInfo> {
-        setExtraBodyParameters(data, resolveExtraBodyParameters(options));
+        setExtraBodyParameters(data, options?.extraBodyParameters);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
@@ -1520,19 +1422,6 @@ export class DeepLClient extends Translator {
     }
 
     /**
-     * Polls a translation memory job until it completes, and resolves with the completed job.
-     *
-     * @deprecated Use {@link waitUntilTranslationMemoryJobDone} instead. Will be removed in the
-     * next major version.
-     */
-    async isTranslationMemoryJobComplete(
-        job: string | TranslationMemoryJob,
-        timeoutMs?: number | WaitOptions,
-    ): Promise<TranslationMemoryJob> {
-        return this.waitUntilTranslationMemoryJobDone(job, timeoutMs);
-    }
-
-    /**
      * Downloads the TMX file of a completed export job to the given output file path or stream.
      *
      * @param job: Completed export job carrying the download URL.
@@ -1564,7 +1453,7 @@ export class DeepLClient extends Translator {
             fd = await util.promisify(fs.open)(outputFile, 'wx');
         }
         try {
-            // Streamed rather than buffered as text, mirroring downloadDocument(): a TMX export
+            // Streamed rather than buffered as text, mirroring translateDocumentDownload(): a TMX export
             // can be large, and decoding it to a string would both hold it all in memory and
             // risk corrupting bytes that are not valid UTF-8.
             const { statusCode, content } =
@@ -1647,7 +1536,6 @@ export class DeepLClient extends Translator {
             displayName: options?.displayName,
             contentType: options?.contentType,
             extraBodyParameters: options?.extraBodyParameters,
-            extraRequestParameters: options?.extraRequestParameters,
         });
         await this.uploadTranslationMemoryFile(
             created,
@@ -1719,33 +1607,16 @@ export class DeepLClient extends Translator {
         configuredRules?: Record<string, Record<string, string>>,
         customInstructions?: CustomInstructionRequestBody[],
         options?: CreateStyleRuleOptions,
-    ): Promise<StyleRuleInfo>;
-    /**
-     * @deprecated Pass the name, language, configured rules and custom instructions as separate
-     * arguments instead. The object form will be removed in the next major version.
-     */
-    async createStyleRule(styleRule: CreateStyleRuleRequestBody): Promise<StyleRuleInfo>;
-    async createStyleRule(
-        nameOrStyleRule: string | CreateStyleRuleRequestBody,
-        language?: string,
-        configuredRules?: Record<string, Record<string, string>>,
-        customInstructions?: CustomInstructionRequestBody[],
-        options?: CreateStyleRuleOptions,
     ): Promise<StyleRuleInfo> {
-        let body: CreateStyleRuleRequestBody;
-        if (typeof nameOrStyleRule === 'string') {
-            body = { name: nameOrStyleRule, language: language as string };
-            if (configuredRules !== undefined) body.configured_rules = configuredRules;
-            if (customInstructions !== undefined) body.custom_instructions = customInstructions;
-        } else {
-            body = nameOrStyleRule;
-        }
-        if (!body.name) {
+        if (!name) {
             throw new ArgumentError('Parameter "name" must not be empty');
         }
-        if (!body.language) {
+        if (!language) {
             throw new ArgumentError('Parameter "language" must not be empty');
         }
+        const body: CreateStyleRuleRequestBody = { name, language };
+        if (configuredRules !== undefined) body.configured_rules = configuredRules;
+        if (customInstructions !== undefined) body.custom_instructions = customInstructions;
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/style_rules',
@@ -1860,33 +1731,15 @@ export class DeepLClient extends Translator {
         prompt: string,
         sourceLanguage?: string,
         options?: CreateStyleRuleCustomInstructionOptions,
-    ): Promise<CustomInstruction>;
-    /**
-     * @deprecated Pass the label, prompt and source language as separate arguments instead. The
-     * object form will be removed in the next major version.
-     */
-    async createStyleRuleCustomInstruction(
-        styleRule: StyleId | StyleRuleInfo,
-        instruction: CustomInstructionRequestBody,
-    ): Promise<CustomInstruction>;
-    async createStyleRuleCustomInstruction(
-        styleRule: StyleId | StyleRuleInfo,
-        labelOrInstruction: string | CustomInstructionRequestBody,
-        prompt?: string,
-        sourceLanguage?: string,
-        options?: CreateStyleRuleCustomInstructionOptions,
     ): Promise<CustomInstruction> {
         const styleId = extractStyleRuleId(styleRule);
-        const instruction =
-            typeof labelOrInstruction === 'string'
-                ? customInstructionToWire(labelOrInstruction, prompt as string, sourceLanguage)
-                : labelOrInstruction;
-        if (!instruction.label) {
+        if (!label) {
             throw new ArgumentError('Parameter "label" must not be empty');
         }
-        if (!instruction.prompt) {
+        if (!prompt) {
             throw new ArgumentError('Parameter "prompt" must not be empty');
         }
+        const instruction = customInstructionToWire(label, prompt, sourceLanguage);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions`,
@@ -1939,36 +1792,16 @@ export class DeepLClient extends Translator {
         prompt: string,
         sourceLanguage?: string,
         options?: UpdateStyleRuleCustomInstructionOptions,
-    ): Promise<CustomInstruction>;
-    /**
-     * @deprecated Pass the label, prompt and source language as separate arguments instead. The
-     * object form will be removed in the next major version.
-     */
-    async updateStyleRuleCustomInstruction(
-        styleRule: StyleId | StyleRuleInfo,
-        instructionId: string | CustomInstruction,
-        instruction: CustomInstructionRequestBody,
-    ): Promise<CustomInstruction>;
-    async updateStyleRuleCustomInstruction(
-        styleRule: StyleId | StyleRuleInfo,
-        instructionId: string | CustomInstruction,
-        labelOrInstruction: string | CustomInstructionRequestBody,
-        prompt?: string,
-        sourceLanguage?: string,
-        options?: UpdateStyleRuleCustomInstructionOptions,
     ): Promise<CustomInstruction> {
         const styleId = extractStyleRuleId(styleRule);
         const id = extractCustomInstructionId(instructionId);
-        const instruction =
-            typeof labelOrInstruction === 'string'
-                ? customInstructionToWire(labelOrInstruction, prompt as string, sourceLanguage)
-                : labelOrInstruction;
-        if (!instruction.label) {
+        if (!label) {
             throw new ArgumentError('Parameter "label" must not be empty');
         }
-        if (!instruction.prompt) {
+        if (!prompt) {
             throw new ArgumentError('Parameter "prompt" must not be empty');
         }
+        const instruction = customInstructionToWire(label, prompt, sourceLanguage);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             customInstructionPath(styleId, id),

@@ -12,7 +12,6 @@ import {
     LanguageCode,
     LanguageCodeInput,
     NonRegionalLanguageCode,
-    BaseRequestOptions,
     RequestParameters,
     StyleId,
     TagList,
@@ -191,25 +190,6 @@ function joinTagList(tagList: TagList): string {
     } else {
         return tagList.join(',');
     }
-}
-
-/**
- * Returns the extra body parameters of the given options, accepting the deprecated
- * extraRequestParameters name. Throws if both names are set.
- * @private
- */
-export function resolveExtraBodyParameters(
-    options: BaseRequestOptions | undefined,
-): RequestParameters | undefined {
-    if (options?.extraBodyParameters !== undefined) {
-        if (options.extraRequestParameters !== undefined) {
-            throw new ArgumentError(
-                'pass only one of extraBodyParameters and extraRequestParameters',
-            );
-        }
-        return options.extraBodyParameters;
-    }
-    return options?.extraRequestParameters;
 }
 
 /**
@@ -409,9 +389,7 @@ export function validateAndAppendTextOptions(
     }
     if (options.splitSentences !== undefined) {
         const splitSentences = options.splitSentences.toLowerCase();
-        if (splitSentences === 'on' || splitSentences === 'default') {
-            data.append('split_sentences', '1');
-        } else if (splitSentences === 'off') {
+        if (splitSentences === 'off') {
             data.append('split_sentences', '0');
         } else {
             data.append('split_sentences', splitSentences);

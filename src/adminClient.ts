@@ -25,7 +25,7 @@ import {
     RenameDeveloperKeyOptions,
     SetDeveloperKeyUsageLimitsOptions,
 } from './types';
-import { isString, resolveExtraBodyParameters } from './utils';
+import { isString } from './utils';
 
 import { URLSearchParams } from 'url';
 
@@ -218,7 +218,7 @@ export class DeepLAdminClient {
         options: BaseRequestOptions | undefined,
     ): Record<string, unknown> {
         // Added last, so they replace library-set fields with the same key
-        const extraBodyParameters = resolveExtraBodyParameters(options);
+        const extraBodyParameters = options?.extraBodyParameters;
         return extraBodyParameters === undefined
             ? jsonBody
             : { ...jsonBody, ...extraBodyParameters };

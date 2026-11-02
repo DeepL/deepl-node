@@ -37,11 +37,11 @@ function expectUpload(): { body: () => string } {
     return { body: () => sent };
 }
 
-describe('Translator.uploadDocument', () => {
+describe('Translator.translateDocumentUpload', () => {
     it('sends the file and the language options as multipart parts and parses the handle', async () => {
         const upload = expectUpload();
 
-        const result = await makeTranslator().uploadDocument(
+        const result = await makeTranslator().translateDocumentUpload(
             Buffer.from('Example file contents'),
             'en',
             'de',
@@ -54,7 +54,7 @@ describe('Translator.uploadDocument', () => {
                 translationMemoryThreshold: 80,
                 outputFormat: 'docx',
                 enableWatermark: true,
-                extraRequestParameters: { 'my-extra-parameter': 'my-extra-value' },
+                extraBodyParameters: { 'my-extra-parameter': 'my-extra-value' },
             },
         );
 
@@ -84,7 +84,7 @@ describe('Translator.uploadDocument', () => {
     ])('throws DeepLError when %s is set without a source language', async (_, options) => {
         // No request is declared: nock rejects any request with a different error.
         await expect(
-            makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+            makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
                 filename: 'example.txt',
                 ...options,
             }),
@@ -94,7 +94,7 @@ describe('Translator.uploadDocument', () => {
     it('sends extraBodyParameters as multipart parts', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
             extraBodyParameters: { 'my-extra-parameter': 'my-extra-value' },
         });
@@ -105,7 +105,7 @@ describe('Translator.uploadDocument', () => {
     it('sends extraBodyParameters once, replacing parameters the SDK sets after the languages', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
             outputFormat: 'docx',
             extraBodyParameters: { output_format: 'pdf' },
@@ -123,7 +123,7 @@ describe('Translator.uploadDocument', () => {
         ]) {
             const upload = expectUpload();
 
-            await translator.uploadDocument(Buffer.from('x'), null, 'de', {
+            await translator.translateDocumentUpload(Buffer.from('x'), null, 'de', {
                 filename: 'example.txt',
                 styleProfile,
             });
@@ -137,7 +137,7 @@ describe('Translator.uploadDocument', () => {
     it('sends no style_profile_id part when styleProfile is unset', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().uploadDocument(Buffer.from('x'), null, 'de', {
+        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
         });
 
@@ -148,7 +148,7 @@ describe('Translator.uploadDocument', () => {
         const upload = expectUpload();
         const [exampleDocument] = createTextDocument();
 
-        await makeTranslator().uploadDocument(exampleDocument, null, 'de');
+        await makeTranslator().translateDocumentUpload(exampleDocument, null, 'de');
 
         expect(upload.body()).toContain('filename="example_document.txt"');
         expect(upload.body()).not.toContain('name="source_lang"');
@@ -159,7 +159,7 @@ describe('Translator.uploadDocument', () => {
     it('sends enable_watermark=false when enableWatermark is false', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().uploadDocument(Buffer.from('abc'), null, 'de', {
+        await makeTranslator().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
             filename: 'a.txt',
             enableWatermark: false,
         });
@@ -173,9 +173,9 @@ describe('Translator.uploadDocument', () => {
     ])(
         'throws DeepLError when the input is %s and options.filename is missing',
         async (_, input) => {
-            await expect(makeTranslator().uploadDocument(input(), null, 'de')).rejects.toThrow(
-                'options.filename',
-            );
+            await expect(
+                makeTranslator().translateDocumentUpload(input(), null, 'de'),
+            ).rejects.toThrow('options.filename');
         },
     );
 
@@ -183,13 +183,10 @@ describe('Translator.uploadDocument', () => {
         nock(serverUrl).post('/v2/document').reply(429);
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
 
-        await makeTranslator().uploadDocument(Buffer.from('abc'), null, 'de', {
+        await makeTranslator().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
             filename: 'a.txt',
         });
     });
-});
-
-describe('Translator.translateDocumentUpload', () => {
     it('sends the file and target language and parses the handle', async () => {
         const upload = expectUpload();
 
@@ -280,9 +277,7 @@ describe('Translator.translateDocumentGetStatus', () => {
         expect(error).toBeInstanceOf(deepl.DocumentNotReadyError);
         expect(error.httpStatusCode).toBe(503);
     });
-});
 
-describe('Translator.getDocumentStatus', () => {
     it('sends the document key and parses the status', async () => {
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
@@ -292,8 +287,8 @@ describe('Translator.getDocumentStatus', () => {
             .reply(200, { status: 'done', billed_characters: 11 });
         const translator = makeTranslator();
 
-        const translating = await translator.getDocumentStatus(handle);
-        const done = await translator.getDocumentStatus(handle);
+        const translating = await translator.translateDocumentGetStatus(handle);
+        const done = await translator.translateDocumentGetStatus(handle);
 
         expect([translating.ok(), translating.done(), translating.secondsRemaining]).toEqual([
             true,
@@ -308,7 +303,7 @@ describe('Translator.getDocumentStatus', () => {
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'error', error_message: 'bad file' });
 
-        const status = await makeTranslator().getDocumentStatus(handle);
+        const status = await makeTranslator().translateDocumentGetStatus(handle);
 
         expect([status.ok(), status.done(), status.errorMessage]).toEqual([
             false,
@@ -320,16 +315,8 @@ describe('Translator.getDocumentStatus', () => {
     it('throws DeepLError when the document is not found', async () => {
         nock(serverUrl).post('/v2/document/doc-id').reply(404, { message: 'nope' });
 
-        await expect(makeTranslator().getDocumentStatus(handle)).rejects.toThrow(
+        await expect(makeTranslator().translateDocumentGetStatus(handle)).rejects.toThrow(
             'Not found, message: nope',
-        );
-    });
-
-    it('throws DocumentNotReadyError when the server answers 503', async () => {
-        nock(serverUrl).post('/v2/document/doc-id').reply(503);
-
-        await expect(makeTranslator({ maxRetries: 0 }).getDocumentStatus(handle)).rejects.toThrow(
-            deepl.DocumentNotReadyError,
         );
     });
 });
@@ -383,50 +370,6 @@ describe('Translator.translateDocumentWaitUntilDone (polling)', () => {
     });
 });
 
-describe('Translator.isDocumentTranslationComplete', () => {
-    it('polls until the document is done', async () => {
-        nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'queued' });
-        nock(serverUrl)
-            .post('/v2/document/doc-id', keyBody)
-            .reply(200, { status: 'done', billed_characters: 11 });
-
-        const { status } = await makeTranslator().isDocumentTranslationComplete(handle);
-
-        expect(status.done()).toBe(true);
-    }, 15000);
-
-    it('throws DeepLError with the error message when the translation fails', async () => {
-        nock(serverUrl)
-            .post('/v2/document/doc-id', keyBody)
-            .reply(200, { status: 'error', error_message: 'bad file' });
-
-        await expect(makeTranslator().isDocumentTranslationComplete(handle)).rejects.toThrow(
-            'bad file',
-        );
-    });
-});
-
-describe('Translator.downloadDocument', () => {
-    it('sends the document key and streams the result to a file', async () => {
-        nock(serverUrl).post('/v2/document/doc-id/result', keyBody).reply(200, 'result');
-        const [, outputPath] = createTextDocument();
-
-        await makeTranslator().downloadDocument(handle, outputPath);
-
-        expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
-    });
-
-    it('throws DocumentNotReadyError when the server answers 503', async () => {
-        nock(serverUrl).post('/v2/document/doc-id/result').reply(503);
-        const [, outputPath] = createTextDocument();
-
-        await expect(
-            makeTranslator({ maxRetries: 0 }).downloadDocument(handle, outputPath),
-        ).rejects.toThrow(deepl.DocumentNotReadyError);
-        expect(fs.existsSync(outputPath)).toBe(false);
-    });
-});
-
 describe('Translator.translateDocumentDownload', () => {
     it('rejects before any request when the output file already exists', async () => {
         // No request is declared: nock rejects any request with a different error.
@@ -463,6 +406,16 @@ describe('Translator.translateDocumentDownload', () => {
         );
 
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
+    });
+
+    it('throws DocumentNotReadyError when the server answers 503', async () => {
+        nock(serverUrl).post('/v2/document/doc-id/result').reply(503);
+        const [, outputPath] = createTextDocument();
+
+        await expect(
+            makeTranslator({ maxRetries: 0 }).translateDocumentDownload(handle, outputPath),
+        ).rejects.toThrow(deepl.DocumentNotReadyError);
+        expect(fs.existsSync(outputPath)).toBe(false);
     });
 });
 
