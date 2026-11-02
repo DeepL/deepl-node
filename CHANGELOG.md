@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type: rename it to `extraBodyParameters`, which behaves the same.
 - `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
   which takes the same arguments.
+- The package no longer depends on `adm-zip`.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.
