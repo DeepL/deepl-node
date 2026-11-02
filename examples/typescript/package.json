@@ -10,6 +10,7 @@
         "build": "tsc -p tsconfig.json"
     },
     "devDependencies": {
+        "@types/node": "^18",
         "typescript": ">=3.0 && <5.1"
     }
 }

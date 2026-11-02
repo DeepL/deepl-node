@@ -29,9 +29,11 @@ you can translate up to 500,000 characters/month for free.
 
 ### Requirements
 
-The package officially supports Node.js version 12, 14, 16, 17, 18, 20, 22 and 24.
+The package supports Node.js 18 and later.
 
-We strongly recommend upgrading to a supported Node.js version as we will be dropping support for end-of-life versions in 2025. You can find the Node versions and support timelines [here][node-version-list].
+TypeScript projects need `@types/node` in their own `devDependencies`.
+
+We strongly recommend using a Node.js version that is still maintained. You can find the Node versions and support timelines [here][node-version-list].
 
 ## Usage
 

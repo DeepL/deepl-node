@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LanguageResourceApiResponse` are no longer exported. Use the parsed types
   the methods return (`MultilingualGlossaryInfo`, `StyleRuleInfo`,
   `TranslationMemoryInfo`, `TranslationMemoryJob`, `LanguageResource`, ...).
+- Node.js 18 or later is required (`engines.node` is `>=18`, was `>=14.17`),
+  and the package is compiled to ES2022. Upgrade Node.js to 18 or later before
+  upgrading the package.
+- `@types/node` is no longer a runtime dependency, so installing the package
+  no longer adds it to your project. TypeScript projects that relied on it
+  being installed transitively add `@types/node` to their own
+  `devDependencies`.
 
 ### Removed
 - `createMultilingualGlossaryWithCsv()`,
@@ -55,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
   which takes the same arguments.
 - The package no longer depends on `adm-zip`.
+- The package no longer depends on `form-data`: document uploads use the
+  `FormData` and `Blob` globals of Node.js 18 and send the same multipart
+  fields, filename and content type. No code change is needed.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.

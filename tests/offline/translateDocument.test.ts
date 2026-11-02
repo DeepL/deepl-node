@@ -213,6 +213,23 @@ describe('Translator.translateDocumentUpload', () => {
         expect(upload.body()).toContain('name="file"; filename="report.docx"');
         expect(upload.body()).not.toContain('example_document.txt');
     });
+
+    it.each([
+        ['report.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        ['notes.TXT', 'text/plain'],
+        ['data.unknown', 'application/octet-stream'],
+    ])('sends the file part of %s with content type %s', async (filename, contentType) => {
+        const upload = expectUpload();
+
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
+            filename,
+        });
+
+        expect(upload.body()).toContain(
+            `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+                `Content-Type: ${contentType}\r\n\r\nabc\r\n`,
+        );
+    });
 });
 
 describe('Translator.translateDocumentGetStatus', () => {

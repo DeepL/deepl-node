@@ -7,13 +7,39 @@ import { logDebug, logInfo, timeout } from './utils';
 
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { URLSearchParams } from 'url';
-import FormData from 'form-data';
 import { IncomingMessage } from 'http';
 import { AppInfo, HttpClientOptions, ProxyConfig } from './types';
 import * as https from 'https';
 import * as http from 'http';
 import * as net from 'net';
 import * as os from 'os';
+import * as path from 'path';
+
+// Global since Node.js 18; the pinned @types/node does not declare it yet.
+declare const FormData: new () => {
+    append(name: string, value: string | Blob, filename?: string): void;
+};
+
+/**
+ * Content types of the file part by extension, as the form-data package derived them from the
+ * filename. Other extensions are sent as application/octet-stream.
+ */
+const DOCUMENT_CONTENT_TYPES: Record<string, string> = {
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    htm: 'text/html',
+    html: 'text/html',
+    jpeg: 'image/jpeg',
+    jpg: 'image/jpeg',
+    md: 'text/markdown',
+    pdf: 'application/pdf',
+    png: 'image/png',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    srt: 'application/x-subrip',
+    txt: 'text/plain',
+    xlf: 'application/xliff+xml',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
 
 type HttpMethod = 'GET' | 'DELETE' | 'POST' | 'PUT' | 'PATCH';
 
@@ -219,18 +245,18 @@ export class HttpClient {
         if (options.rawBody) {
             axiosRequestConfig.data = options.rawBody;
         } else if (options.fileBuffer) {
+            const filename = path.basename(options.filename ?? '');
+            const extension = path.extname(filename).slice(1).toLowerCase();
+            const type = DOCUMENT_CONTENT_TYPES[extension] ?? 'application/octet-stream';
             const form = new FormData();
-            form.append('file', options.fileBuffer, { filename: options.filename });
+            form.append('file', new Blob([options.fileBuffer], { type }), filename);
             if (options.data) {
                 for (const [key, value] of options.data.entries()) {
                     form.append(key, value);
                 }
             }
+            // axios serializes the form and sets the multipart Content-Type with its boundary.
             axiosRequestConfig.data = form;
-            if (axiosRequestConfig.headers === undefined) {
-                axiosRequestConfig.headers = {};
-            }
-            Object.assign(axiosRequestConfig.headers, form.getHeaders());
         } else if (options.jsonBody) {
             axiosRequestConfig.data = options.jsonBody;
             if (axiosRequestConfig.headers === undefined) {
