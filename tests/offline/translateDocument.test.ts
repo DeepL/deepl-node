@@ -214,8 +214,44 @@ describe('Translator.translateDocumentUpload', () => {
         expect(upload.body()).not.toContain('example_document.txt');
     });
 
+    // Every file type the API accepts, with the content type the form-data package sent for it.
     it.each([
-        ['report.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        [
+            'document.docx',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+        [
+            'document.pptx',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ],
+        ['document.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        ['document.xlsm', 'application/vnd.ms-excel.sheet.macroenabled.12'],
+        ['document.pdf', 'application/pdf'],
+        ['document.htm', 'text/html'],
+        ['document.html', 'text/html'],
+        ['document.txt', 'text/plain'],
+        ['document.xlf', 'application/xliff+xml'],
+        ['document.xliff', 'application/octet-stream'],
+        ['document.srt', 'application/x-subrip'],
+        ['document.vtt', 'text/vtt'],
+        ['document.idml', 'application/octet-stream'],
+        ['document.xml', 'application/xml'],
+        ['document.json', 'application/json'],
+        ['document.yaml', 'text/yaml'],
+        ['document.yml', 'text/yaml'],
+        ['document.properties', 'application/octet-stream'],
+        ['document.strings', 'application/octet-stream'],
+        ['document.md', 'text/markdown'],
+        ['document.markdown', 'text/markdown'],
+        ['document.dita', 'application/octet-stream'],
+        ['document.mif', 'application/vnd.mif'],
+        ['document.zip', 'application/zip'],
+        ['document.odt', 'application/vnd.oasis.opendocument.text'],
+        ['document.rtf', 'application/rtf'],
+        ['document.resx', 'application/octet-stream'],
+        ['document.jpeg', 'image/jpeg'],
+        ['document.jpg', 'image/jpeg'],
+        ['document.png', 'image/png'],
         ['notes.TXT', 'text/plain'],
         ['data.unknown', 'application/octet-stream'],
     ])('sends the file part of %s with content type %s', async (filename, contentType) => {
