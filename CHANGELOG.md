@@ -141,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `DeepLError` if the translation fails. Its optional second argument
   (`WaitOptions`) takes `timeoutMs`, after which it rejects with a `DeepLError`.
 - Added the `RephraseTextOptions` type with `writingStyle` and `tone`. It
-  extends `BaseRequestOptions`, so it also accepts `extraRequestParameters`,
+  extends `BaseRequestOptions`, so it also accepts `extraBodyParameters`,
   which are added to the request body and override parameters of the same
   name. `rephraseText()` accepts it as its third argument.
 - `createStyleRule()` accepts the name, language, configured rules and custom
