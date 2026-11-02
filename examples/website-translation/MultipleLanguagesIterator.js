@@ -9,13 +9,13 @@ if (authKey === undefined) {
     );
     process.exit(1);
 }
-const translator = new deepl.Translator(authKey);
+const deeplClient = new deepl.DeepLClient(authKey);
 // Enter some language codes.
 var languageCodes = ['bg', 'de', 'it', 'es'];
 
-// Applying the translator to each language code. Using Promises to iterate through languages in parallel. Await waits for a response before conducting further logic on output.
+// Applying the deeplClient to each language code. Using Promises to iterate through languages in parallel. Await waits for a response before conducting further logic on output.
 let translatePromises = languageCodes.map((code) =>
-    translator
+    deeplClient
         .translateDocument('index.html', 'index_' + code + '.html', 'en', code)
         .catch((error) => {
             if (error.documentHandle) {

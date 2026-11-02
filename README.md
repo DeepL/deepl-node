@@ -71,10 +71,10 @@ const deeplClient = new deepl.DeepLClient(authKey);
 `DeepLClient` accepts options as the second argument, see
 [Configuration](#configuration) for more information.
 
-The `Translator` class of earlier versions is deprecated and will be removed in
-the next major version; `DeepLClient` extends it, so replacing
-`new deepl.Translator(...)` with `new deepl.DeepLClient(...)` keeps your code
-working.
+The `Translator` class of earlier versions has been removed. `DeepLClient` has
+all of its methods with the same signatures, so replace
+`new deepl.Translator(...)` with `new deepl.DeepLClient(...)` and
+`TranslatorOptions` with `DeepLClientOptions`.
 
 All `DeepLClient` functions return promises, and for brevity the examples in this
 file use `await` and `try`/`catch` blocks, however Promise-chaining is also
@@ -373,7 +373,7 @@ editing functionality plus support for multilingual glossaries. New methods and
 objects have been created to support interacting with these new glossaries. 
 Due to this  new functionality, users are recommended to utilize these 
 multilingual glossary methods. However, to continue using the `v2` glossary API 
-endpoints, please continue to use the existing endpoints in the `translator.ts` 
+endpoints, please continue to use the existing `DeepLClient` methods for them
 (e.g. `createGlossary()`, `getGlossary()`, etc).
 
 To migrate to use the new multilingual glossary methods from the current 

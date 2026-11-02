@@ -8,7 +8,7 @@ import log from 'loglevel';
 import nock from 'nock';
 
 import { HttpClient, RETRYABLE_AXIOS_ERROR_CODES } from '../../src/client';
-import { makeDeeplClient, makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 import { inputText } from '../fixtures';
 
 jest.mock('loglevel', () => ({
@@ -27,14 +27,14 @@ describe('HttpClient retries', () => {
         nock(serverUrl).get('/v2/usage').reply(status);
         nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        await makeTranslator().getUsage();
+        await makeDeeplClient().getUsage();
     });
 
     it('retries when the connection is reset', async () => {
         nock(serverUrl).get('/v2/usage').replyWithError({ code: 'ECONNRESET' });
         nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        await makeTranslator().getUsage();
+        await makeDeeplClient().getUsage();
     });
 
     it.each([['ECONNREFUSED'], ['ENOTFOUND'], ['EHOSTUNREACH'], ['ENETUNREACH'], ['ENETDOWN']])(
@@ -43,14 +43,14 @@ describe('HttpClient retries', () => {
             nock(serverUrl).get('/v2/usage').replyWithError({ code });
             nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-            await makeTranslator().getUsage();
+            await makeDeeplClient().getUsage();
         },
     );
 
     it('does not retry a non-transient network error', async () => {
         nock(serverUrl).get('/v2/usage').replyWithError({ code: 'CERT_HAS_EXPIRED' });
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .getUsage()
             .catch((e) => e);
 
@@ -62,7 +62,7 @@ describe('HttpClient retries', () => {
         const scope = nock(serverUrl).get('/v2/usage').times(2).reply(500);
         nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        await makeTranslator({ maxRetries: 2 }).getUsage();
+        await makeDeeplClient({ maxRetries: 2 }).getUsage();
         expect(scope.isDone()).toBe(true);
     });
 
@@ -70,7 +70,7 @@ describe('HttpClient retries', () => {
         const prepareRequest = jest.spyOn(HttpClient.prototype, 'prepareRequest');
         nock(serverUrl).get('/v2/usage').reply(200, usage);
 
-        await makeTranslator().getUsage();
+        await makeDeeplClient().getUsage();
 
         expect(prepareRequest.mock.calls[0][2]).toBe(10000);
         prepareRequest.mockRestore();
@@ -79,7 +79,7 @@ describe('HttpClient retries', () => {
     it('does not retry when maxRetries is 0', async () => {
         nock(serverUrl).get('/v2/usage').reply(500);
 
-        await expect(makeTranslator({ maxRetries: 0 }).getUsage()).rejects.toThrow(
+        await expect(makeDeeplClient({ maxRetries: 0 }).getUsage()).rejects.toThrow(
             /Unexpected status code: 500/,
         );
     });
@@ -90,9 +90,9 @@ describe('HttpClient retries', () => {
             .get('/v2/usage')
             .reply(() => new Promise(() => undefined));
 
-        await expect(makeTranslator({ maxRetries: 0, minTimeout: 200 }).getUsage()).rejects.toThrow(
-            deepl.ConnectionError,
-        );
+        await expect(
+            makeDeeplClient({ maxRetries: 0, minTimeout: 200 }).getUsage(),
+        ).rejects.toThrow(deepl.ConnectionError);
     });
 
     it.each([
@@ -149,7 +149,7 @@ describe('HttpClient debug logging', () => {
                 { 'x-trace-id': 'trace-1' },
             );
 
-        await makeTranslator().translateText(inputText.en, null, 'de');
+        await makeDeeplClient().translateText(inputText.en, null, 'de');
 
         expectRequestTraceAndResponseLogged();
     });

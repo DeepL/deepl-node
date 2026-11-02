@@ -2,12 +2,12 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 import { inputText } from '../fixtures';
 
-describe('Translator.translateText', () => {
+describe('DeepLClient.translateText', () => {
     it('sends POST /v2/translate and parses the result', async () => {
-        const result = await makeTranslator().translateText(inputText.en, null, 'de');
+        const result = await makeDeeplClient().translateText(inputText.en, null, 'de');
 
         expect(result.text).toEqual(expect.any(String));
         expect(result.detectedSourceLang).toBe('en');

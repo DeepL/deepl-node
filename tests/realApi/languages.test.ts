@@ -2,11 +2,11 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeDeeplClient, makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 
-describe('Translator.getSourceLanguages', () => {
+describe('DeepLClient.getSourceLanguages', () => {
     it('sends GET /v3/languages and parses the source languages', async () => {
-        const languages = await makeTranslator().getSourceLanguages();
+        const languages = await makeDeeplClient().getSourceLanguages();
 
         expect(languages.filter((language) => language.code === 'en')).toHaveLength(1);
         for (const language of languages) {

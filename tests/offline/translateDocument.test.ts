@@ -8,7 +8,7 @@ import fs from 'fs';
 import nock from 'nock';
 import { Readable } from 'stream';
 
-import { makeDeeplClient, makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 import { createTextDocument } from '../fixtures';
 
 const handle = { documentId: 'doc-id', documentKey: 'doc-key' };
@@ -37,11 +37,11 @@ function expectUpload(): { body: () => string } {
     return { body: () => sent };
 }
 
-describe('Translator.translateDocumentUpload', () => {
+describe('DeepLClient.translateDocumentUpload', () => {
     it('sends the file and the language options as multipart parts and parses the handle', async () => {
         const upload = expectUpload();
 
-        const result = await makeTranslator().translateDocumentUpload(
+        const result = await makeDeeplClient().translateDocumentUpload(
             Buffer.from('Example file contents'),
             'en',
             'de',
@@ -84,7 +84,7 @@ describe('Translator.translateDocumentUpload', () => {
     ])('throws DeepLError when %s is set without a source language', async (_, options) => {
         // No request is declared: nock rejects any request with a different error.
         await expect(
-            makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+            makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
                 filename: 'example.txt',
                 ...options,
             }),
@@ -94,7 +94,7 @@ describe('Translator.translateDocumentUpload', () => {
     it('sends extraBodyParameters as multipart parts', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
             extraBodyParameters: { 'my-extra-parameter': 'my-extra-value' },
         });
@@ -105,7 +105,7 @@ describe('Translator.translateDocumentUpload', () => {
     it('sends extraBodyParameters once, replacing parameters the SDK sets after the languages', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
             outputFormat: 'docx',
             extraBodyParameters: { output_format: 'pdf' },
@@ -116,14 +116,14 @@ describe('Translator.translateDocumentUpload', () => {
     });
 
     it('sends the style profile ID of a string and of a StyleProfile as one part', async () => {
-        const translator = makeTranslator();
+        const client = makeDeeplClient();
         for (const [styleProfile, id] of <Array<[string | deepl.StyleProfile, string]>>[
             ['sp-1', 'sp-1'],
             [<deepl.StyleProfile>{ styleProfileId: 'sp-2' }, 'sp-2'],
         ]) {
             const upload = expectUpload();
 
-            await translator.translateDocumentUpload(Buffer.from('x'), null, 'de', {
+            await client.translateDocumentUpload(Buffer.from('x'), null, 'de', {
                 filename: 'example.txt',
                 styleProfile,
             });
@@ -137,7 +137,7 @@ describe('Translator.translateDocumentUpload', () => {
     it('sends no style_profile_id part when styleProfile is unset', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
             filename: 'example.txt',
         });
 
@@ -148,7 +148,7 @@ describe('Translator.translateDocumentUpload', () => {
         const upload = expectUpload();
         const [exampleDocument] = createTextDocument();
 
-        await makeTranslator().translateDocumentUpload(exampleDocument, null, 'de');
+        await makeDeeplClient().translateDocumentUpload(exampleDocument, null, 'de');
 
         expect(upload.body()).toContain('filename="example_document.txt"');
         expect(upload.body()).not.toContain('name="source_lang"');
@@ -159,7 +159,7 @@ describe('Translator.translateDocumentUpload', () => {
     it('sends enable_watermark=false when enableWatermark is false', async () => {
         const upload = expectUpload();
 
-        await makeTranslator().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
             filename: 'a.txt',
             enableWatermark: false,
         });
@@ -174,7 +174,7 @@ describe('Translator.translateDocumentUpload', () => {
         'throws DeepLError when the input is %s and options.filename is missing',
         async (_, input) => {
             await expect(
-                makeTranslator().translateDocumentUpload(input(), null, 'de'),
+                makeDeeplClient().translateDocumentUpload(input(), null, 'de'),
             ).rejects.toThrow('options.filename');
         },
     );
@@ -183,7 +183,7 @@ describe('Translator.translateDocumentUpload', () => {
         nock(serverUrl).post('/v2/document').reply(429);
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
 
-        await makeTranslator().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('abc'), null, 'de', {
             filename: 'a.txt',
         });
     });
@@ -268,7 +268,7 @@ describe('Translator.translateDocumentUpload', () => {
     });
 });
 
-describe('Translator.translateDocumentGetStatus', () => {
+describe('DeepLClient.translateDocumentGetStatus', () => {
     it('sends the document key and parses the status and document ID', async () => {
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
@@ -338,10 +338,10 @@ describe('Translator.translateDocumentGetStatus', () => {
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'done', billed_characters: 11 });
-        const translator = makeTranslator();
+        const client = makeDeeplClient();
 
-        const translating = await translator.translateDocumentGetStatus(handle);
-        const done = await translator.translateDocumentGetStatus(handle);
+        const translating = await client.translateDocumentGetStatus(handle);
+        const done = await client.translateDocumentGetStatus(handle);
 
         expect([translating.ok(), translating.done(), translating.secondsRemaining]).toEqual([
             true,
@@ -356,7 +356,7 @@ describe('Translator.translateDocumentGetStatus', () => {
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'error', error_message: 'bad file' });
 
-        const status = await makeTranslator().translateDocumentGetStatus(handle);
+        const status = await makeDeeplClient().translateDocumentGetStatus(handle);
 
         expect([status.ok(), status.done(), status.errorMessage]).toEqual([
             false,
@@ -368,20 +368,20 @@ describe('Translator.translateDocumentGetStatus', () => {
     it('throws DeepLError when the document is not found', async () => {
         nock(serverUrl).post('/v2/document/doc-id').reply(404, { message: 'nope' });
 
-        await expect(makeTranslator().translateDocumentGetStatus(handle)).rejects.toThrow(
+        await expect(makeDeeplClient().translateDocumentGetStatus(handle)).rejects.toThrow(
             'Not found, message: nope',
         );
     });
 });
 
-describe('Translator.translateDocumentWaitUntilDone', () => {
+describe('DeepLClient.translateDocumentWaitUntilDone', () => {
     it('polls until the document is done and resolves with the final status', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'queued' });
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'done', billed_characters: 11 });
 
-        const status = await makeTranslator().translateDocumentWaitUntilDone(handle);
+        const status = await makeDeeplClient().translateDocumentWaitUntilDone(handle);
 
         expect([status.ok(), status.done(), status.billedCharacters]).toEqual([true, true, 11]);
     }, 15000);
@@ -391,14 +391,14 @@ describe('Translator.translateDocumentWaitUntilDone', () => {
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'error', error_message: 'bad file' });
 
-        const result = makeTranslator().translateDocumentWaitUntilDone(handle);
+        const result = makeDeeplClient().translateDocumentWaitUntilDone(handle);
 
         await expect(result).rejects.toThrow(deepl.DeepLError);
         await expect(result).rejects.toThrow('bad file');
     });
 });
 
-describe('Translator.translateDocumentWaitUntilDone (polling)', () => {
+describe('DeepLClient.translateDocumentWaitUntilDone (polling)', () => {
     it('keeps polling through an unknown status', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });
@@ -423,7 +423,7 @@ describe('Translator.translateDocumentWaitUntilDone (polling)', () => {
     });
 });
 
-describe('Translator.translateDocumentDownload', () => {
+describe('DeepLClient.translateDocumentDownload', () => {
     it('rejects before any request when the output file already exists', async () => {
         // No request is declared: nock rejects any request with a different error.
         const [, outputPath] = createTextDocument();
@@ -466,20 +466,20 @@ describe('Translator.translateDocumentDownload', () => {
         const [, outputPath] = createTextDocument();
 
         await expect(
-            makeTranslator({ maxRetries: 0 }).translateDocumentDownload(handle, outputPath),
+            makeDeeplClient({ maxRetries: 0 }).translateDocumentDownload(handle, outputPath),
         ).rejects.toThrow(deepl.DocumentNotReadyError);
         expect(fs.existsSync(outputPath)).toBe(false);
     });
 });
 
-describe('Translator.translateDocument', () => {
+describe('DeepLClient.translateDocument', () => {
     it('uploads, polls and downloads the document', async () => {
         nock(serverUrl).post('/v2/document').reply(200, handleReply);
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'done' });
         nock(serverUrl).post('/v2/document/doc-id/result', keyBody).reply(200, 'result');
         const [exampleDocument, outputPath] = createTextDocument();
 
-        await makeTranslator().translateDocument(exampleDocument, outputPath, null, 'de');
+        await makeDeeplClient().translateDocument(exampleDocument, outputPath, null, 'de');
 
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('result');
     });
@@ -491,7 +491,7 @@ describe('Translator.translateDocument', () => {
             .reply(200, { status: 'error', error_message: 'Source and target language match' });
         const [exampleDocument, outputPath] = createTextDocument();
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 
@@ -524,7 +524,7 @@ describe('Translator.translateDocument', () => {
         const [exampleDocument, outputPath] = createTextDocument();
         fs.writeFileSync(outputPath, 'existing');
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 
@@ -536,7 +536,7 @@ describe('Translator.translateDocument', () => {
     it('rejects with DocumentTranslationError before any request when the input file does not exist', async () => {
         const [, outputPath] = createTextDocument();
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .translateDocument('nonExistentFile.txt', outputPath, null, 'de')
             .catch((e) => e);
 
@@ -550,7 +550,7 @@ describe('Translator.translateDocument', () => {
         nock(serverUrl).post('/v2/document').reply(503);
         const [exampleDocument, outputPath] = createTextDocument();
 
-        const error = await makeTranslator({ maxRetries: 0 })
+        const error = await makeDeeplClient({ maxRetries: 0 })
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 
@@ -564,7 +564,7 @@ describe('Translator.translateDocument', () => {
         nock(serverUrl).post('/v2/document/doc-id/result').reply(200, failingBody);
         const [exampleDocument, outputPath] = createTextDocument();
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 

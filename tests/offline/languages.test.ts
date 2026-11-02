@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeDeeplClient, makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
 const languages = [
     {
@@ -34,14 +34,14 @@ const languages = [
     },
 ];
 
-describe('Translator.getSourceLanguages', () => {
+describe('DeepLClient.getSourceLanguages', () => {
     it('sends resource=translate_text and parses the source languages', async () => {
         nock(serverUrl)
             .get('/v3/languages')
             .query({ resource: 'translate_text' })
             .reply(200, languages);
 
-        const result = await makeTranslator().getSourceLanguages();
+        const result = await makeDeeplClient().getSourceLanguages();
 
         expect(result).toEqual([
             { code: 'en', name: 'English' },
@@ -50,14 +50,14 @@ describe('Translator.getSourceLanguages', () => {
     });
 });
 
-describe('Translator.getTargetLanguages', () => {
+describe('DeepLClient.getTargetLanguages', () => {
     it('sends resource=translate_text and parses the target languages and formality support', async () => {
         nock(serverUrl)
             .get('/v3/languages')
             .query({ resource: 'translate_text' })
             .reply(200, languages);
 
-        const result = await makeTranslator().getTargetLanguages();
+        const result = await makeDeeplClient().getTargetLanguages();
 
         expect(result).toEqual([
             { code: 'de', name: 'German', supportsFormality: true },
@@ -66,11 +66,11 @@ describe('Translator.getTargetLanguages', () => {
     });
 });
 
-describe('Translator.getGlossaryLanguagePairs', () => {
+describe('DeepLClient.getGlossaryLanguagePairs', () => {
     it('sends resource=glossary and parses the pairs of different languages', async () => {
         nock(serverUrl).get('/v3/languages').query({ resource: 'glossary' }).reply(200, languages);
 
-        const result = await makeTranslator().getGlossaryLanguagePairs();
+        const result = await makeDeeplClient().getGlossaryLanguagePairs();
 
         expect(result).toEqual([
             { sourceLang: 'en', targetLang: 'de' },

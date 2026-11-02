@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeDeeplClient, makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
 describe('error mapping', () => {
     it.each([
@@ -22,7 +22,7 @@ describe('error mapping', () => {
     ])('throws for status %i', async (status, errorClass, message, shouldRetry) => {
         nock(serverUrl).get('/v2/usage').reply(status, { message: 'm', detail: 'd' });
 
-        const error = await makeTranslator({ maxRetries: 0 })
+        const error = await makeDeeplClient({ maxRetries: 0 })
             .getUsage()
             .catch((e) => e);
 
@@ -37,7 +37,7 @@ describe('error mapping', () => {
         async (status) => {
             nock(serverUrl).get('/v2/usage').reply(status);
 
-            const error = await makeTranslator()
+            const error = await makeDeeplClient()
                 .getUsage()
                 .catch((e) => e);
 
@@ -62,13 +62,13 @@ describe('error mapping', () => {
     it('throws DeepLError with the raw body when the error body is not JSON', async () => {
         nock(serverUrl).get('/v2/usage').reply(400, 'plain text');
 
-        await expect(makeTranslator().getUsage()).rejects.toThrow('Bad request, plain text');
+        await expect(makeDeeplClient().getUsage()).rejects.toThrow('Bad request, plain text');
     });
 
     it('throws GlossaryNotFoundError when a glossary request answers 404', async () => {
         nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'm' });
 
-        const error = await makeTranslator()
+        const error = await makeDeeplClient()
             .getGlossary('g-1')
             .catch((e) => e);
 
@@ -79,7 +79,7 @@ describe('error mapping', () => {
     it('throws DeepLError when the usage response is not valid JSON', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, 'not json');
 
-        await expect(makeTranslator().getUsage()).rejects.toThrow(/Error parsing response JSON/);
+        await expect(makeDeeplClient().getUsage()).rejects.toThrow(/Error parsing response JSON/);
     });
 
     it.each<[string, string, string, (client: deepl.DeepLClient) => Promise<unknown>]>([

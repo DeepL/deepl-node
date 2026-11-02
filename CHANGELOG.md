@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `devDependencies`.
 
 ### Removed
+- The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no
+  longer extends `Translator` and now holds all of its methods with the same
+  signatures and behaviour. Replace `new deepl.Translator(authKey, options)`
+  with `new deepl.DeepLClient(authKey, options)`, `TranslatorOptions` with
+  `DeepLClientOptions`, and `instanceof Translator` checks or `Translator`
+  type annotations with `DeepLClient`.
 - `createMultilingualGlossaryWithCsv()`,
   `replaceMultilingualGlossaryDictionaryWithCsv()` and
   `updateMultilingualGlossaryDictionaryWithCsv()`: use

@@ -2,11 +2,11 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 
-describe('Translator.getUsage', () => {
+describe('DeepLClient.getUsage', () => {
     it('sends GET /v2/usage and parses the usage', async () => {
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect(usage.toString()).toContain('Usage this billing period');
         expect(typeof usage.anyLimitReached()).toBe('boolean');

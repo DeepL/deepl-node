@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
 const glossaryReply = {
     glossary_id: 'g-1',
@@ -18,7 +18,7 @@ const glossaryReply = {
     entry_count: 2,
 };
 
-describe('Translator.createGlossary', () => {
+describe('DeepLClient.createGlossary', () => {
     it('sends the name, base languages and TSV entries and parses the glossary', async () => {
         nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .post('/v2/glossaries', {
@@ -30,7 +30,7 @@ describe('Translator.createGlossary', () => {
             })
             .reply(201, glossaryReply);
 
-        const glossary = await makeTranslator().createGlossary(
+        const glossary = await makeDeeplClient().createGlossary(
             'my glossary',
             <deepl.LanguageCode>'EN-US',
             <deepl.LanguageCode>'de-DE',
@@ -50,7 +50,7 @@ describe('Translator.createGlossary', () => {
 
     it('throws DeepLError when the name is empty', async () => {
         await expect(
-            makeTranslator().createGlossary(
+            makeDeeplClient().createGlossary(
                 '',
                 'en',
                 'de',
@@ -61,12 +61,12 @@ describe('Translator.createGlossary', () => {
 
     it('throws DeepLError when there are no entries', async () => {
         await expect(
-            makeTranslator().createGlossary('n', 'en', 'de', new deepl.GlossaryEntries()),
+            makeDeeplClient().createGlossary('n', 'en', 'de', new deepl.GlossaryEntries()),
         ).rejects.toThrow(/must not be empty/);
     });
 });
 
-describe('Translator.createGlossaryWithCsv', () => {
+describe('DeepLClient.createGlossaryWithCsv', () => {
     it('sends the CSV content with entries_format csv', async () => {
         const csv = 'sourceEntry1,targetEntry1,en,de\n"source""Entry","target,Entry",en,de';
         nock(serverUrl)
@@ -79,39 +79,39 @@ describe('Translator.createGlossaryWithCsv', () => {
             })
             .reply(201, {});
 
-        await makeTranslator().createGlossaryWithCsv('my glossary', 'en', 'de', Buffer.from(csv));
+        await makeDeeplClient().createGlossaryWithCsv('my glossary', 'en', 'de', Buffer.from(csv));
     });
 });
 
-describe('Translator.getGlossary', () => {
+describe('DeepLClient.getGlossary', () => {
     it('sends GET for the glossary ID', async () => {
         nock(serverUrl).get('/v2/glossaries/g-1').reply(200, {});
 
-        await makeTranslator().getGlossary('g-1');
+        await makeDeeplClient().getGlossary('g-1');
     });
 
     it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
         nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'not found' });
 
-        await expect(makeTranslator().getGlossary('g-1')).rejects.toThrow(
+        await expect(makeDeeplClient().getGlossary('g-1')).rejects.toThrow(
             deepl.GlossaryNotFoundError,
         );
     });
 });
 
-describe('Translator.listGlossaries', () => {
+describe('DeepLClient.listGlossaries', () => {
     it('parses the glossaries of the response', async () => {
         nock(serverUrl)
             .get('/v2/glossaries')
             .reply(200, { glossaries: [glossaryReply, { ...glossaryReply, glossary_id: 'g-2' }] });
 
-        const glossaries = await makeTranslator().listGlossaries();
+        const glossaries = await makeDeeplClient().listGlossaries();
 
         expect(glossaries).toHaveLength(2);
     });
 });
 
-describe('Translator.getGlossaryEntries', () => {
+describe('DeepLClient.getGlossaryEntries', () => {
     it.each([
         ['a glossary ID', 'g-1'],
         ['a GlossaryInfo', <deepl.GlossaryInfo>{ glossaryId: 'g-1' }],
@@ -120,19 +120,19 @@ describe('Translator.getGlossaryEntries', () => {
             .get('/v2/glossaries/g-1/entries')
             .reply(200, 'Apple\tApfel\nBanana\tBanane\n');
 
-        const entries = await makeTranslator().getGlossaryEntries(glossary);
+        const entries = await makeDeeplClient().getGlossaryEntries(glossary);
 
         expect(entries.entries()).toEqual({ Apple: 'Apfel', Banana: 'Banane' });
     });
 });
 
-describe('Translator.deleteGlossary', () => {
+describe('DeepLClient.deleteGlossary', () => {
     it.each([
         ['a glossary ID', 'g-1'],
         ['a GlossaryInfo', <deepl.GlossaryInfo>{ glossaryId: 'g-1' }],
     ])('sends DELETE for %s', async (_, glossary) => {
         nock(serverUrl).delete('/v2/glossaries/g-1').reply(204);
 
-        await makeTranslator().deleteGlossary(glossary);
+        await makeDeeplClient().deleteGlossary(glossary);
     });
 });

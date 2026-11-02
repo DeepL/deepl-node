@@ -5,20 +5,20 @@
 import * as deepl from 'deepl-node';
 
 import { timeout } from '../../src/utils';
-import { makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 import { getUniqueName, testTimeout } from './helpers';
 
-describe('Translator glossaries', () => {
+describe('DeepLClient glossaries', () => {
     it(
         'sends the v2 glossary requests: create, get, list, entries and delete',
         async () => {
-            const translator = makeTranslator();
+            const client = makeDeeplClient();
             const name = getUniqueName('glossary');
             const entries = new deepl.GlossaryEntries({
                 entries: { Apple: 'Apfel', Banana: 'Banane' },
             });
 
-            const glossary = await translator.createGlossary(name, 'en', 'de', entries);
+            const glossary = await client.createGlossary(name, 'en', 'de', entries);
             try {
                 expect(glossary.name).toBe(name);
                 expect(glossary.sourceLang).toBe('en');
@@ -29,7 +29,7 @@ describe('Translator glossaries', () => {
                 let fetched: deepl.GlossaryInfo | undefined;
                 for (let attempt = 0; fetched === undefined; attempt++) {
                     try {
-                        fetched = await translator.getGlossary(glossary.glossaryId);
+                        fetched = await client.getGlossary(glossary.glossaryId);
                     } catch (e) {
                         if (!(e instanceof deepl.GlossaryNotFoundError) || attempt >= 9) throw e;
                         await timeout(1000);
@@ -39,15 +39,15 @@ describe('Translator glossaries', () => {
                 expect(fetched.name).toBe(name);
                 expect(fetched.creationTime.getTime()).toBe(glossary.creationTime.getTime());
 
-                const listed = await translator.listGlossaries();
+                const listed = await client.listGlossaries();
                 expect(listed.map((info) => info.glossaryId)).toContain(glossary.glossaryId);
 
-                const fetchedEntries = await translator.getGlossaryEntries(glossary.glossaryId);
+                const fetchedEntries = await client.getGlossaryEntries(glossary.glossaryId);
                 expect(fetchedEntries.entries()).toEqual(entries.entries());
             } finally {
-                await translator.deleteGlossary(glossary).catch(() => undefined);
+                await client.deleteGlossary(glossary).catch(() => undefined);
             }
-            await expect(translator.getGlossary(glossary.glossaryId)).rejects.toThrow(
+            await expect(client.getGlossary(glossary.glossaryId)).rejects.toThrow(
                 deepl.GlossaryNotFoundError,
             );
         },

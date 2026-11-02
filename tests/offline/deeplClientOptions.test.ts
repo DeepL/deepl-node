@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
 const usage = { character_count: 1, character_limit: 2 };
 
@@ -17,9 +17,9 @@ function expectUserAgent(matches: (userAgent: string) => boolean, host = serverU
         .reply(200, usage);
 }
 
-describe('Translator constructor', () => {
+describe('DeepLClient constructor', () => {
     it('throws DeepLError when the auth key is empty', () => {
-        expect(() => new deepl.Translator('')).toThrow(/authKey.*empty/);
+        expect(() => new deepl.DeepLClient('')).toThrow(/authKey.*empty/);
     });
 
     it('sends the auth key in the Authorization header', async () => {
@@ -27,11 +27,11 @@ describe('Translator constructor', () => {
             .get('/v2/usage')
             .reply(200, usage);
 
-        await makeTranslator({ authKey: 'my-key' }).getUsage();
+        await makeDeeplClient({ authKey: 'my-key' }).getUsage();
     });
 
     it('throws DeepLError when the auth key is only whitespace', () => {
-        expect(() => new deepl.Translator(' \t\n')).toThrow(/authKey.*empty/);
+        expect(() => new deepl.DeepLClient(' \t\n')).toThrow(/authKey.*empty/);
     });
 
     it('trims the auth key', async () => {
@@ -52,19 +52,19 @@ describe('Translator constructor', () => {
     it('sends requests to the API for free accounts when the auth key ends in :fx', async () => {
         nock('https://api-free.deepl.com').get('/v2/usage').reply(200, usage);
 
-        await new deepl.Translator('my-key:fx').getUsage();
+        await new deepl.DeepLClient('my-key:fx').getUsage();
     });
 
     it('sends requests to the API for paid accounts when the auth key does not end in :fx', async () => {
         nock('https://api.deepl.com').get('/v2/usage').reply(200, usage);
 
-        await new deepl.Translator('my-key').getUsage();
+        await new deepl.DeepLClient('my-key').getUsage();
     });
 
     it('sends requests to serverUrl when it is set', async () => {
         nock('https://example.test').get('/v2/usage').reply(200, usage);
 
-        await makeTranslator({ serverUrl: 'https://example.test' }).getUsage();
+        await makeDeeplClient({ serverUrl: 'https://example.test' }).getUsage();
     });
 
     it('sends the configured headers with every request', async () => {
@@ -72,7 +72,7 @@ describe('Translator constructor', () => {
             .get('/v2/usage')
             .reply(200, usage);
 
-        await makeTranslator({ headers: { 'X-Test': 'v' } }).getUsage();
+        await makeDeeplClient({ headers: { 'X-Test': 'v' } }).getUsage();
     });
 
     it.each([['Authorization'], ['authorization'], ['AUTHORIZATION']])(
@@ -82,7 +82,7 @@ describe('Translator constructor', () => {
                 .get('/v2/usage')
                 .reply(200, usage);
 
-            await makeTranslator({ headers: { [name]: 'Bearer other' } }).getUsage();
+            await makeDeeplClient({ headers: { [name]: 'Bearer other' } }).getUsage();
         },
     );
 
@@ -93,7 +93,7 @@ describe('Translator constructor', () => {
             .post('/v2/translate')
             .reply(200, { translations: [{ detected_source_language: 'EN', text: 'a' }] });
 
-        await makeTranslator({ headers: { 'content-type': 'text/plain' } }).translateText(
+        await makeDeeplClient({ headers: { 'content-type': 'text/plain' } }).translateText(
             'a',
             null,
             'de',
@@ -101,11 +101,11 @@ describe('Translator constructor', () => {
     });
 
     it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
-        expect(() => makeTranslator({ maxRetries })).toThrow(deepl.ArgumentError);
+        expect(() => makeDeeplClient({ maxRetries })).toThrow(deepl.ArgumentError);
     });
 });
 
-describe('Translator User-Agent', () => {
+describe('DeepLClient User-Agent', () => {
     const platformInfo = (userAgent: string) =>
         userAgent.startsWith('deepl-node/') &&
         userAgent.includes('(') &&
@@ -116,19 +116,19 @@ describe('Translator User-Agent', () => {
     it('sends the library version and platform info by default', async () => {
         expectUserAgent(platformInfo);
 
-        await makeTranslator().getUsage();
+        await makeDeeplClient().getUsage();
     });
 
     it('sends the platform info when sendPlatformInfo is true', async () => {
         expectUserAgent(platformInfo);
 
-        await makeTranslator({ sendPlatformInfo: true }).getUsage();
+        await makeDeeplClient({ sendPlatformInfo: true }).getUsage();
     });
 
     it('sends no platform info when sendPlatformInfo is false', async () => {
         expectUserAgent(noPlatformInfo);
 
-        await makeTranslator({ sendPlatformInfo: false }).getUsage();
+        await makeDeeplClient({ sendPlatformInfo: false }).getUsage();
     });
 
     it.each([[undefined], [true], [false]])(
@@ -136,7 +136,7 @@ describe('Translator User-Agent', () => {
         async (sendPlatformInfo) => {
             expectUserAgent((userAgent) => userAgent.endsWith(' sampleCSApp/1.2.3'));
 
-            await makeTranslator({
+            await makeDeeplClient({
                 sendPlatformInfo,
                 appInfo: { appName: 'sampleCSApp', appVersion: '1.2.3' },
             }).getUsage();

@@ -7,12 +7,6 @@ import * as deepl from 'deepl-node';
 /** Server URL that the offline tests intercept with nock; no request ever leaves the process. */
 export const serverUrl = 'https://api.deepl.com';
 
-export function makeTranslator(
-    options?: deepl.TranslatorOptions & { authKey?: string },
-): deepl.Translator {
-    return new deepl.Translator(options?.authKey ?? 'k', { serverUrl, ...options });
-}
-
 export function makeDeeplClient(
     options?: deepl.DeepLClientOptions & { authKey?: string },
 ): deepl.DeepLClient {

@@ -3,8 +3,18 @@
 // license that can be found in the LICENSE file.
 
 import loglevel from 'loglevel';
-import { IncomingMessage } from 'http';
-import { ArgumentError, ConnectionError, DeepLError } from './errors';
+import { IncomingMessage, STATUS_CODES } from 'http';
+import {
+    ArgumentError,
+    AuthorizationError,
+    ConnectionError,
+    DeepLError,
+    DocumentNotReadyError,
+    GlossaryNotFoundError,
+    NotFoundError,
+    QuotaExceededError,
+    TooManyRequestsError,
+} from './errors';
 import {
     Formality,
     GlossaryInfo,
@@ -519,4 +529,89 @@ export function extractTranslationMemoryId(
         );
     }
     return translationMemoryId;
+}
+
+function createStatusCodeError(
+    statusCode: number,
+    message: string,
+    content: string,
+    usingGlossary: boolean,
+    inDocumentDownload: boolean,
+): DeepLError {
+    switch (statusCode) {
+        case 401:
+        case 403:
+            return new AuthorizationError(`Authorization failure, check auth_key${message}`);
+        case 456:
+            return new QuotaExceededError(
+                `Quota for this billing period has been exceeded${message}`,
+            );
+        case 404:
+            if (usingGlossary) return new GlossaryNotFoundError(`Glossary not found${message}`);
+            return new NotFoundError(`Not found${message}`);
+        case 400:
+            return new DeepLError(`Bad request${message}`);
+        case 429:
+            return new TooManyRequestsError(
+                `Too many requests, DeepL servers are currently experiencing high load${message}`,
+            );
+        case 503:
+            if (inDocumentDownload) {
+                return new DocumentNotReadyError(`Document not ready${message}`);
+            } else {
+                return new DeepLError(`Service unavailable${message}`);
+            }
+        default: {
+            const statusName = STATUS_CODES[statusCode] || 'Unknown';
+            return new DeepLError(
+                `Unexpected status code: ${statusCode} ${statusName}${message}, content: ${content}`,
+            );
+        }
+    }
+}
+
+/**
+ * Checks the HTTP status code, and in case of failure, throws an exception with diagnostic information.
+ * @private
+ */
+export async function checkStatusCode(
+    statusCode: number,
+    content: string | IncomingMessage,
+    usingGlossary = false,
+    inDocumentDownload = false,
+): Promise<void> {
+    if (200 <= statusCode && statusCode < 300) return;
+
+    if (content instanceof IncomingMessage) {
+        try {
+            content = await streamToString(content);
+        } catch (e) {
+            content = `Error occurred while reading response: ${e}`;
+        }
+    }
+
+    let message = '';
+    try {
+        const jsonObj = JSON.parse(content);
+        if (jsonObj.message !== undefined) {
+            message += `, message: ${jsonObj.message}`;
+        }
+        if (jsonObj.detail !== undefined) {
+            message += `, detail: ${jsonObj.detail}`;
+        }
+    } catch (error) {
+        // JSON parsing errors are ignored, and we fall back to the raw content
+        message = ', ' + content;
+    }
+
+    const error = createStatusCodeError(
+        statusCode,
+        message,
+        content,
+        usingGlossary,
+        inDocumentDownload,
+    );
+    error.httpStatusCode = statusCode;
+    error.shouldRetry = statusCode === 429 || statusCode >= 500;
+    throw error;
 }

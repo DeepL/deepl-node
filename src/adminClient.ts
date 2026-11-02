@@ -10,7 +10,6 @@ import {
     parseDeveloperKey,
     parseDeveloperKeyList,
 } from './parsing';
-import { checkStatusCode } from './translator';
 import {
     AdminUsageGroupBy,
     AdminUsageReport,
@@ -25,7 +24,7 @@ import {
     RenameDeveloperKeyOptions,
     SetDeveloperKeyUsageLimitsOptions,
 } from './types';
-import { isString } from './utils';
+import { checkStatusCode, isString } from './utils';
 
 import { URLSearchParams } from 'url';
 

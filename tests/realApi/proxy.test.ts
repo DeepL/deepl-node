@@ -8,9 +8,9 @@ import http from 'http';
 import { AddressInfo } from 'net';
 import { createProxy } from 'proxy';
 
-import { makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 
-describe('Translator proxy option', () => {
+describe('DeepLClient proxy option', () => {
     it.each<[string, (port: number) => deepl.ProxyConfig | string]>([
         ['a ProxyConfig', (port) => ({ host: '127.0.0.1', port })],
         ['a proxy URL', (port) => `http://127.0.0.1:${port}`],
@@ -22,7 +22,7 @@ describe('Translator proxy option', () => {
         try {
             const port = (server.address() as AddressInfo).port;
 
-            const usage = await makeTranslator({ proxy: proxy(port) }).getUsage();
+            const usage = await makeDeeplClient({ proxy: proxy(port) }).getUsage();
 
             expect(usage.toString()).toContain('Usage this billing period');
             const authKey = process.env.DEEPL_AUTH_KEY as string;

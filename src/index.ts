@@ -21,7 +21,6 @@ import {
     parseTextResultArray,
     parseUsage,
 } from './parsing';
-import { Translator } from './translator';
 import {
     AppInfo,
     DocumentTranslateOptions,
@@ -38,7 +37,6 @@ import {
     TargetGlossaryLanguageCode,
     TargetLanguageCode,
     TranslateTextOptions,
-    TranslatorOptions,
 } from './types';
 import { isString, logInfo, streamToBuffer, streamToString, timeout, toBoolString } from './utils';
 
@@ -54,5 +52,4 @@ export * from './glossaryEntries';
 export * from './types';
 export * from './adminClient';
 export * from './deeplClient';
-export { Translator } from './translator';
 export { isFreeAccountAuthKey } from './utils';

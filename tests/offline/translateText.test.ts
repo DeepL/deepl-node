@@ -6,7 +6,7 @@ import * as deepl from 'deepl-node';
 
 import nock from 'nock';
 
-import { makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
 const translation = {
     translations: [{ detected_source_language: 'EN', text: 'out', billed_characters: 3 }],
@@ -18,20 +18,20 @@ function expectTranslateBody(body: nock.DataMatcherMap, reply: object = translat
     return nock(serverUrl).post('/v2/translate', body).reply(200, reply);
 }
 
-describe('Translator.translateText', () => {
+describe('DeepLClient.translateText', () => {
     it('sends the text, the target language and the billed characters flag', async () => {
         nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
             .post('/v2/translate', baseBody)
             .reply(200, translation);
 
-        await makeTranslator().translateText('abc', null, 'de');
+        await makeDeeplClient().translateText('abc', null, 'de');
     });
 
     it('accepts a target language held in a string variable', async () => {
         expectTranslateBody({ ...baseBody, target_lang: 'de-AT' });
         const targets: string[] = ['de-AT'];
 
-        await makeTranslator().translateText('abc', null, targets[0]);
+        await makeDeeplClient().translateText('abc', null, targets[0]);
     });
 
     it('parses the detected language, billed characters and model type', async () => {
@@ -46,7 +46,7 @@ describe('Translator.translateText', () => {
             ],
         });
 
-        const result = await makeTranslator().translateText('abc', null, 'de');
+        const result = await makeDeeplClient().translateText('abc', null, 'de');
 
         expect(result).toEqual({
             text: 'out',
@@ -69,12 +69,10 @@ describe('Translator.translateText', () => {
         });
         expectTranslateBody(baseBody, reply('v2'));
         expectTranslateBody(baseBody, reply(2));
-        const translator = makeTranslator();
+        const client = makeDeeplClient();
 
-        expect((await translator.translateText('abc', null, 'de')).tagHandlingVersion).toBe('v2');
-        expect(
-            (await translator.translateText('abc', null, 'de')).tagHandlingVersion,
-        ).toBeUndefined();
+        expect((await client.translateText('abc', null, 'de')).tagHandlingVersion).toBe('v2');
+        expect((await client.translateText('abc', null, 'de')).tagHandlingVersion).toBeUndefined();
     });
 
     it('sends every text of an array and parses one result per text', async () => {
@@ -88,7 +86,7 @@ describe('Translator.translateText', () => {
             },
         );
 
-        const results = await makeTranslator().translateText(['a', 'b'], null, 'de');
+        const results = await makeDeeplClient().translateText(['a', 'b'], null, 'de');
 
         expect(results.map((result) => result.detectedSourceLang)).toEqual(['en', 'fr']);
     });
@@ -96,7 +94,7 @@ describe('Translator.translateText', () => {
     it('sends language codes in standard case', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', target_lang: 'en-US' });
 
-        await makeTranslator().translateText(
+        await makeDeeplClient().translateText(
             'abc',
             <deepl.SourceLanguageCode>'eN',
             <deepl.TargetLanguageCode>'EN-us',
@@ -113,7 +111,7 @@ describe('Translator.translateText', () => {
     ])('sends formality %s as %s', async (formality, sent) => {
         expectTranslateBody({ ...baseBody, formality: sent });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             formality: <deepl.Formality>formality,
         });
     });
@@ -127,7 +125,7 @@ describe('Translator.translateText', () => {
     ])('sends splitSentences %s as %s', async (splitSentences, sent) => {
         expectTranslateBody({ ...baseBody, split_sentences: sent });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             splitSentences: <deepl.SentenceSplittingMode>splitSentences,
         });
     });
@@ -136,7 +134,7 @@ describe('Translator.translateText', () => {
         expectTranslateBody({ ...baseBody, split_sentences: '0' });
         const options: deepl.TranslateTextOptions = { splitSentences: 'OFF' };
 
-        await makeTranslator().translateText('abc', null, 'de', options);
+        await makeDeeplClient().translateText('abc', null, 'de', options);
 
         expect(options.splitSentences).toBe('OFF');
     });
@@ -151,7 +149,7 @@ describe('Translator.translateText', () => {
             model_type: 'future_model',
         });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             formality: 'future_formality',
             splitSentences: 'future_mode',
             tagHandling: 'future_markup',
@@ -166,7 +164,7 @@ describe('Translator.translateText', () => {
     ])('sends preserveFormatting %s as %s', async (preserveFormatting, sent) => {
         expectTranslateBody({ ...baseBody, preserve_formatting: sent });
 
-        await makeTranslator().translateText('abc', null, 'de', { preserveFormatting });
+        await makeDeeplClient().translateText('abc', null, 'de', { preserveFormatting });
     });
 
     it('sends the tag handling options', async () => {
@@ -180,7 +178,7 @@ describe('Translator.translateText', () => {
             ignore_tags: 'raw,code',
         });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             tagHandling: 'xml',
             tagHandlingVersion: 'v2',
             outlineDetection: false,
@@ -197,7 +195,7 @@ describe('Translator.translateText', () => {
             model_type: 'latency_optimized',
         });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             context: 'a knife',
             modelType: 'latency_optimized',
         });
@@ -206,7 +204,7 @@ describe('Translator.translateText', () => {
     it('sends one custom_instructions parameter per instruction', async () => {
         expectTranslateBody({ ...baseBody, custom_instructions: ['Be brief', 'Use "Sie"'] });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             customInstructions: ['Be brief', 'Use "Sie"'],
         });
     });
@@ -214,13 +212,13 @@ describe('Translator.translateText', () => {
     it('sends no custom_instructions parameter for an empty array', async () => {
         expectTranslateBody(baseBody);
 
-        await makeTranslator().translateText('abc', null, 'de', { customInstructions: [] });
+        await makeDeeplClient().translateText('abc', null, 'de', { customInstructions: [] });
     });
 
     it('sends the style rule ID of a StyleRuleInfo', async () => {
         expectTranslateBody({ ...baseBody, style_id: 'style-1' });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             styleRule: <deepl.StyleRuleInfo>{ styleId: 'style-1' },
         });
     });
@@ -228,10 +226,10 @@ describe('Translator.translateText', () => {
     it('sends the style profile ID of a string and of a StyleProfile', async () => {
         expectTranslateBody({ ...baseBody, style_profile_id: 'sp-1' });
         expectTranslateBody({ ...baseBody, style_profile_id: 'sp-2' });
-        const translator = makeTranslator();
+        const client = makeDeeplClient();
 
-        await translator.translateText('abc', null, 'de', { styleProfile: 'sp-1' });
-        await translator.translateText('abc', null, 'de', {
+        await client.translateText('abc', null, 'de', { styleProfile: 'sp-1' });
+        await client.translateText('abc', null, 'de', {
             styleProfile: <deepl.StyleProfile>{ styleProfileId: 'sp-2' },
         });
     });
@@ -245,14 +243,14 @@ describe('Translator.translateText', () => {
             })
             .reply(200, translation);
 
-        await makeTranslator().translateText('abc', null, 'de', { styleRule: 'style-1' });
+        await makeDeeplClient().translateText('abc', null, 'de', { styleRule: 'style-1' });
 
         expect(sent).toEqual({ ...baseBody, style_id: 'style-1' });
     });
 
     it('throws for a styleProfile object without an ID', async () => {
         await expect(
-            makeTranslator().translateText('abc', null, 'de', {
+            makeDeeplClient().translateText('abc', null, 'de', {
                 styleProfile: <deepl.StyleProfile>{},
             }),
         ).rejects.toThrow(deepl.DeepLError);
@@ -265,7 +263,7 @@ describe('Translator.translateText', () => {
             translation_memory_threshold: '80',
         });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             translationMemory: <deepl.TranslationMemoryInfo>{ translationMemoryId: 'tm-1' },
             translationMemoryThreshold: 80,
         });
@@ -274,18 +272,18 @@ describe('Translator.translateText', () => {
     it('sends the glossary ID of a glossary and of a glossary ID string', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_id: 'g-1' });
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_id: 'g-2' });
-        const translator = makeTranslator();
+        const client = makeDeeplClient();
 
-        await translator.translateText('abc', 'en', 'de', {
+        await client.translateText('abc', 'en', 'de', {
             glossary: <deepl.GlossaryInfo>{ glossaryId: 'g-1' },
         });
-        await translator.translateText('abc', 'en', 'de', { glossary: 'g-2' });
+        await client.translateText('abc', 'en', 'de', { glossary: 'g-2' });
     });
 
     it('sends glossaryIds as one comma-separated parameter', async () => {
         expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_ids: 'g-1,g-2' });
 
-        await makeTranslator().translateText('abc', 'en', 'de', {
+        await makeDeeplClient().translateText('abc', 'en', 'de', {
             glossaryIds: ['g-1', <deepl.GlossaryInfo>{ glossaryId: 'g-2' }],
         });
     });
@@ -293,7 +291,7 @@ describe('Translator.translateText', () => {
     it('sends extraBodyParameters, which override standard parameters', async () => {
         expectTranslateBody({ ...baseBody, target_lang: 'fr', 'my-extra-parameter': 'v' });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             extraBodyParameters: { target_lang: 'fr', 'my-extra-parameter': 'v' },
         });
     });
@@ -307,7 +305,7 @@ describe('Translator.translateText', () => {
             style_id: 'style-2',
         });
 
-        await makeTranslator().translateText('abc', null, 'de', {
+        await makeDeeplClient().translateText('abc', null, 'de', {
             splitSentences: 'off',
             styleRule: 'style-1',
             extraBodyParameters: {
@@ -322,7 +320,7 @@ describe('Translator.translateText', () => {
     it.each([[''], [[''] as unknown as string], [['ok', ''] as unknown as string]])(
         'throws DeepLError when a text is empty: %p',
         async (texts) => {
-            await expect(makeTranslator().translateText(texts, null, 'de')).rejects.toThrow(
+            await expect(makeDeeplClient().translateText(texts, null, 'de')).rejects.toThrow(
                 /texts parameter/,
             );
         },
@@ -330,13 +328,13 @@ describe('Translator.translateText', () => {
 
     it('throws DeepLError when the target language is empty', async () => {
         await expect(
-            makeTranslator().translateText('abc', null, <deepl.TargetLanguageCode>''),
+            makeDeeplClient().translateText('abc', null, <deepl.TargetLanguageCode>''),
         ).rejects.toThrow(deepl.DeepLError);
     });
 
     it('throws DeepLError when glossary and glossaryIds are both set', async () => {
         await expect(
-            makeTranslator().translateText('abc', 'en', 'de', {
+            makeDeeplClient().translateText('abc', 'en', 'de', {
                 glossary: 'g-1',
                 glossaryIds: ['g-2'],
             }),
@@ -345,7 +343,7 @@ describe('Translator.translateText', () => {
 
     it('throws DeepLError when more than 5 glossaryIds are set', async () => {
         await expect(
-            makeTranslator().translateText('abc', 'en', 'de', {
+            makeDeeplClient().translateText('abc', 'en', 'de', {
                 glossaryIds: ['1', '2', '3', '4', '5', '6'],
             }),
         ).rejects.toThrow(/at most 5/);
@@ -358,12 +356,12 @@ describe('Translator.translateText', () => {
         // nock matches the exact body, so a source_lang field would fail the match.
         expectTranslateBody({ ...baseBody, ...glossaryParam });
 
-        await makeTranslator().translateText('abc', null, 'de', options);
+        await makeDeeplClient().translateText('abc', null, 'de', options);
     });
 
     it('throws DeepLError when translationMemoryThreshold is set without a translation memory', async () => {
         await expect(
-            makeTranslator().translateText('abc', null, 'de', {
+            makeDeeplClient().translateText('abc', null, 'de', {
                 translationMemoryThreshold: 80,
             }),
         ).rejects.toThrow(/requires translationMemory/);
@@ -373,7 +371,7 @@ describe('Translator.translateText', () => {
         'throws DeepLError when translationMemoryThreshold is %i',
         async (translationMemoryThreshold) => {
             await expect(
-                makeTranslator().translateText('abc', null, 'de', {
+                makeDeeplClient().translateText('abc', null, 'de', {
                     translationMemory: 'tm-1',
                     translationMemoryThreshold,
                 }),
@@ -384,7 +382,7 @@ describe('Translator.translateText', () => {
     it('throws DeepLError when the response is not valid JSON', async () => {
         nock(serverUrl).post('/v2/translate').reply(200, 'not json');
 
-        await expect(makeTranslator().translateText('abc', null, 'de')).rejects.toThrow(
+        await expect(makeDeeplClient().translateText('abc', null, 'de')).rejects.toThrow(
             /Error parsing response JSON/,
         );
     });

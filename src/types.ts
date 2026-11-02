@@ -84,13 +84,6 @@ export interface DeepLClientOptions extends HttpClientOptions {
     serverUrl?: string;
 }
 
-/**
- * Options that can be specified when constructing a Translator.
- * @deprecated Use DeepLClientOptions instead. Will be removed in the next major version.
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface TranslatorOptions extends DeepLClientOptions {}
-
 // `string & Record<never, never>` accepts any string, e.g. values the API adds later, while
 // keeping editor completion for the listed members.
 export type Formality =

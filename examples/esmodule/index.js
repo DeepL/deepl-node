@@ -6,13 +6,13 @@ import * as deepl from 'deepl-node';
 
 const authKey = process.env['DEEPL_AUTH_KEY'];
 const serverUrl = process.env['DEEPL_SERVER_URL'];
-const translator = new deepl.Translator(authKey, { serverUrl: serverUrl });
+const deeplClient = new deepl.DeepLClient(authKey, { serverUrl: serverUrl });
 
 (async () => {
     try {
-        console.log(await translator.getUsage());
+        console.log(await deeplClient.getUsage());
 
-        const result = await translator.translateText('Hello, world!', null, 'fr');
+        const result = await deeplClient.translateText('Hello, world!', null, 'fr');
 
         console.log(result.text); // Bonjour, le monde !
     } catch (error) {

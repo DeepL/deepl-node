@@ -4,17 +4,17 @@
 
 import fs from 'fs';
 
-import { makeTranslator } from './client';
+import { makeDeeplClient } from './client';
 import { testTimeout } from './helpers';
 import { inputText, createTextDocument } from '../fixtures';
 
-describe('Translator.translateDocument', () => {
+describe('DeepLClient.translateDocument', () => {
     it(
         'uploads, polls and downloads a .txt document',
         async () => {
             const [exampleDocument, outputPath] = createTextDocument();
 
-            const status = await makeTranslator().translateDocument(
+            const status = await makeDeeplClient().translateDocument(
                 exampleDocument,
                 outputPath,
                 null,

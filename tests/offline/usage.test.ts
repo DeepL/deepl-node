@@ -4,9 +4,9 @@
 
 import nock from 'nock';
 
-import { makeTranslator, serverUrl } from './client';
+import { makeDeeplClient, serverUrl } from './client';
 
-describe('Translator.getUsage', () => {
+describe('DeepLClient.getUsage', () => {
     it('parses character, document and team document usage', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, {
             character_count: 10,
@@ -17,7 +17,7 @@ describe('Translator.getUsage', () => {
             team_document_limit: 50,
         });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
         expect(usage.document).toMatchObject({ count: 1, limit: 5 });
@@ -33,7 +33,7 @@ describe('Translator.getUsage', () => {
             .get('/v2/usage')
             .reply(200, { team_document_count: 1, team_document_limit: 1 });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect([usage.character, usage.document]).toEqual([undefined, undefined]);
         expect(usage.teamDocument?.limitReached()).toBe(true);
@@ -50,7 +50,7 @@ describe('Translator.getUsage', () => {
             team_document_limit: 50,
         });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect([usage.character, usage.document]).toEqual([undefined, undefined]);
         expect(usage.teamDocument).toMatchObject({ count: 2, limit: 50 });
@@ -92,7 +92,7 @@ describe('Translator.getUsage', () => {
                 end_time: '2025-06-13T09:18:42Z',
             });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character).toMatchObject({ count: 180118, limit: 1250000 });
         expect(usage.apiKeyCharacter).toMatchObject({ count: 636, limit: 1000000000000 });
@@ -121,7 +121,7 @@ describe('Translator.getUsage', () => {
     it('leaves the API Pro fields undefined for a Free response', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, { character_count: 10, character_limit: 100 });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
         expect([
@@ -146,7 +146,7 @@ describe('Translator.getUsage', () => {
                 products: [{ product_type: 'translate', api_key_unit_count: '5' }, {}],
             });
 
-        const usage = await makeTranslator().getUsage();
+        const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
         expect([usage.startTime, usage.endTime]).toEqual([undefined, undefined]);
