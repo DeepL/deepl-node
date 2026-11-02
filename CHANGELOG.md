@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.
 Translation memories, style rules and multilingual glossaries gained many options and fixes.
 Read Changed and Deprecated before upgrading; no public API is removed in this release.
@@ -786,7 +788,8 @@ official DeepL Node.js client library took over this package name. Thanks to
 [Tristan De Oliveira](https://github.com/icrotz) for transferring the package
 ownership.
 
-[Unreleased]: https://github.com/DeepL/deepl-node/compare/v1.28.1...HEAD
+[Unreleased]: https://github.com/DeepL/deepl-node/compare/v1.29.0...HEAD
+[1.29.0]: https://github.com/DeepL/deepl-node/compare/v1.28.1...v1.29.0
 [1.28.1]: https://github.com/DeepL/deepl-node/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/DeepL/deepl-node/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/DeepL/deepl-node/compare/v1.26.0...v1.27.0
