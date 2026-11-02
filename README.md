@@ -502,7 +502,7 @@ const glossaries = await deeplClient.listMultilingualGlossaries();
 const glossary = glossaries.find((glossary) => glossary.name == 'My glossary');
 console.log(`Glossary ID: ${glossary.glossaryId}`);
 for (const glossaryDict of glossary.dictionaries) {
-    console.log(`Contains dictionary, source: ${glossaryDict.sourceLang}, target: ${glossaryDict.targetLang}, with ${glossaryDict.entryCount} entries.`;)
+    console.log(`Contains dictionary, source: ${glossaryDict.sourceLangCode}, target: ${glossaryDict.targetLangCode}, with ${glossaryDict.entryCount} entries.`);
 }
 ```
 
@@ -768,7 +768,7 @@ const updated = await deeplClient.updateStyleRuleName('YOUR_STYLE_ID', 'New Name
 // Update configured rules
 const updatedRules = await deeplClient.updateStyleRuleConfiguredRules(
     'YOUR_STYLE_ID',
-    { style_and_tone: { formality: 'formal' } },
+    { dates_and_times: { calendar_era: 'use_bc_and_ad' } },
 );
 ```
 
