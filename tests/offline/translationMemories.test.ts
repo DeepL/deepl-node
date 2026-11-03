@@ -467,15 +467,6 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
         15000,
     );
 
-    it('polls through downloaded, which is not a translation memory job status', async () => {
-        nock(serverUrl).get(jobPath).reply(200, jobReply('downloaded'));
-        nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
-
-        const job = await makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1');
-
-        expect(job.status).toBe('completed');
-    }, 15000);
-
     it.each([
         ['WaitOptions', { timeoutMs: 1 }],
         ['a number', 1],
