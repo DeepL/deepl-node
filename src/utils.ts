@@ -191,35 +191,33 @@ export function nonRegionalLanguageCode(langCode: string): NonRegionalLanguageCo
 }
 
 /**
- * Joins given TagList with commas to form a single comma-delimited string.
+ * Converts the given TagList to an array of tags; a string may hold several comma-separated tags.
  * @private
  */
-function joinTagList(tagList: TagList): string {
-    if (isString(tagList)) {
-        return tagList;
-    } else {
-        return tagList.join(',');
-    }
+function toTagArray(tagList: TagList): string[] {
+    const tags = isString(tagList) ? [tagList] : tagList;
+    return tags.flatMap((tag) => tag.split(',')).map((tag) => tag.trim());
 }
 
 /**
- * Validates and prepares URLSearchParams for arguments common to text and document translation.
+ * Validates and prepares the body fields common to text and document translation.
+ * `glossary_ids` is an array; the multipart document request joins it with commas.
  * @private
  */
-export function buildURLSearchParams(
+export function buildTranslationBody(
     sourceLang: LanguageCodeInput | null,
     targetLang: LanguageCodeInput,
     formality: Formality | undefined,
     glossary: GlossaryId | GlossaryInfo | MultilingualGlossaryInfo | undefined,
     glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>,
-): URLSearchParams {
+): Record<string, unknown> {
     targetLang = standardizeLanguageCode(targetLang);
     if (sourceLang !== null) {
         sourceLang = standardizeLanguageCode(sourceLang);
     }
 
-    // Treat an empty glossaryIds array as "no glossaries" so it doesn't append an
-    // empty glossary_ids parameter.
+    // Treat an empty glossaryIds array as "no glossaries" so it doesn't send an
+    // empty glossary_ids field.
     const hasGlossaryIds = glossaryIds !== undefined && glossaryIds.length > 0;
 
     if (glossary !== undefined && hasGlossaryIds) {
@@ -232,15 +230,12 @@ export function buildURLSearchParams(
         throw new DeepLError('glossaryIds option supports at most 5 glossaries.');
     }
 
-    const searchParams = new URLSearchParams({
-        target_lang: targetLang,
-    });
+    const body: Record<string, unknown> = { target_lang: targetLang };
     if (sourceLang !== null) {
-        searchParams.append('source_lang', sourceLang);
+        body.source_lang = sourceLang;
     }
     if (formality !== undefined) {
-        const formalityStr = String(formality).toLowerCase();
-        searchParams.append('formality', formalityStr);
+        body.formality = String(formality).toLowerCase();
     }
     if (glossary !== undefined) {
         if (!isString(glossary)) {
@@ -251,10 +246,10 @@ export function buildURLSearchParams(
             }
             glossary = glossary.glossaryId;
         }
-        searchParams.append('glossary_id', glossary);
+        body.glossary_id = glossary;
     }
     if (glossaryIds !== undefined && glossaryIds.length > 0) {
-        const ids = glossaryIds.map((glossaryId) => {
+        body.glossary_ids = glossaryIds.map((glossaryId) => {
             if (!isString(glossaryId)) {
                 if (glossaryId.glossaryId === undefined) {
                     throw new DeepLError(
@@ -265,9 +260,21 @@ export function buildURLSearchParams(
             }
             return glossaryId;
         });
-        searchParams.append('glossary_ids', ids.join(','));
     }
-    return searchParams;
+    return body;
+}
+
+/**
+ * Converts body fields to form parameters for the multipart document request: arrays are
+ * joined with commas, other values converted to strings.
+ * @private
+ */
+export function toFormParameters(body: Record<string, unknown>): URLSearchParams {
+    const data = new URLSearchParams();
+    for (const [name, value] of Object.entries(body)) {
+        data.append(name, Array.isArray(value) ? value.join(',') : String(value));
+    }
+    return data;
 }
 
 /**
@@ -287,47 +294,39 @@ export function setExtraBodyParameters(
 }
 
 /**
- * Validates and appends texts to HTTP request parameters, and returns whether a single text
- * argument was provided.
- * @param data Parameters for HTTP request.
+ * Validates texts and sets them as the `text` array of the request body, and returns whether a
+ * single text argument was provided.
+ * @param body JSON request body.
  * @param texts User-supplied texts to be checked.
  * @return True if only a single text was provided.
  * @private
  */
-export function appendTextsAndReturnIsSingular(
-    data: URLSearchParams,
+export function setTextsAndReturnIsSingular(
+    body: Record<string, unknown>,
     texts: string | string[],
 ): boolean {
     const singular = !Array.isArray(texts);
-    if (singular) {
-        if (!isString(texts) || texts.length === 0) {
+    const textArray: unknown[] = singular ? [texts] : texts;
+    for (const text of textArray) {
+        if (!isString(text) || text.length === 0) {
             throw new DeepLError(
                 'texts parameter must be a non-empty string or array of non-empty strings',
             );
         }
-        data.append('text', texts);
-    } else {
-        for (const text of texts) {
-            if (!isString(text) || text.length === 0) {
-                throw new DeepLError(
-                    'texts parameter must be a non-empty string or array of non-empty strings',
-                );
-            }
-            data.append('text', text);
-        }
     }
+    body.text = textArray;
     return singular;
 }
 
 /**
- * Validates and appends style-rule, style-profile and translation-memory options to HTTP request parameters.
+ * Validates and sets style-rule, style-profile and translation-memory options in a request body.
  * These options are shared between text and document translation requests.
- * @param data Parameters for HTTP request.
+ * @param body Request body fields.
  * @param options Options containing style-rule and translation-memory fields.
  * @private
  */
-export function appendStyleAndTranslationMemoryOptions(
-    data: URLSearchParams,
+export function setStyleAndTranslationMemoryOptions(
+    body: Record<string, unknown>,
     options: {
         styleRule?: StyleId | StyleRuleInfo;
         styleProfile?: string | StyleProfile;
@@ -342,9 +341,9 @@ export function appendStyleAndTranslationMemoryOptions(
                     'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
                 );
             }
-            data.append('style_id', options.styleRule.styleId);
+            body.style_id = options.styleRule.styleId;
         } else {
-            data.append('style_id', options.styleRule);
+            body.style_id = options.styleRule;
         }
     }
     if (options.styleProfile !== undefined) {
@@ -354,9 +353,9 @@ export function appendStyleAndTranslationMemoryOptions(
                     'styleProfile option should be a string containing the style profile ID or a StyleProfile object.',
                 );
             }
-            data.append('style_profile_id', options.styleProfile.styleProfileId);
+            body.style_profile_id = options.styleProfile.styleProfileId;
         } else {
-            data.append('style_profile_id', options.styleProfile);
+            body.style_profile_id = options.styleProfile;
         }
     }
     if (options.translationMemory !== undefined) {
@@ -366,9 +365,9 @@ export function appendStyleAndTranslationMemoryOptions(
                     'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
                 );
             }
-            data.append('translation_memory_id', options.translationMemory.translationMemoryId);
+            body.translation_memory_id = options.translationMemory.translationMemoryId;
         } else {
-            data.append('translation_memory_id', options.translationMemory);
+            body.translation_memory_id = options.translationMemory;
         }
     }
     if (options.translationMemoryThreshold !== undefined) {
@@ -378,20 +377,20 @@ export function appendStyleAndTranslationMemoryOptions(
         if (options.translationMemoryThreshold < 0 || options.translationMemoryThreshold > 100) {
             throw new DeepLError('translationMemoryThreshold must be a number between 0 and 100.');
         }
-        data.append('translation_memory_threshold', options.translationMemoryThreshold.toString());
+        body.translation_memory_threshold = options.translationMemoryThreshold;
     }
 }
 
 /**
- * Validates and appends text options to HTTP request parameters.
- * @param data Parameters for HTTP request.
+ * Validates and sets text options in the JSON request body.
+ * @param body JSON request body.
  * @param options Options for translate text request.
  * Note the formality and glossaryId options are handled separately, because these options
  * overlap with the translateDocument function.
  * @private
  */
-export function validateAndAppendTextOptions(
-    data: URLSearchParams,
+export function validateAndSetTextOptions(
+    body: Record<string, unknown>,
     options?: TranslateTextOptions,
 ) {
     if (!options) {
@@ -399,82 +398,76 @@ export function validateAndAppendTextOptions(
     }
     if (options.splitSentences !== undefined) {
         const splitSentences = options.splitSentences.toLowerCase();
-        if (splitSentences === 'off') {
-            data.append('split_sentences', '0');
-        } else {
-            data.append('split_sentences', splitSentences);
-        }
+        body.split_sentences = splitSentences === 'off' ? '0' : splitSentences;
     }
     if (options.preserveFormatting !== undefined) {
-        data.append('preserve_formatting', toBoolString(options.preserveFormatting));
+        body.preserve_formatting = Boolean(options.preserveFormatting);
     }
     if (options.tagHandling !== undefined) {
-        data.append('tag_handling', options.tagHandling);
+        body.tag_handling = options.tagHandling;
     }
     if (options.tagHandlingVersion !== undefined) {
-        data.append('tag_handling_version', options.tagHandlingVersion);
+        body.tag_handling_version = options.tagHandlingVersion;
     }
     if (options.outlineDetection !== undefined) {
-        data.append('outline_detection', toBoolString(options.outlineDetection));
+        body.outline_detection = Boolean(options.outlineDetection);
     }
     if (options.context !== undefined) {
-        data.append('context', options.context);
+        body.context = options.context;
     }
     if (options.modelType !== undefined) {
-        data.append('model_type', options.modelType);
+        body.model_type = options.modelType;
     }
     if (options.nonSplittingTags !== undefined) {
-        data.append('non_splitting_tags', joinTagList(options.nonSplittingTags));
+        body.non_splitting_tags = toTagArray(options.nonSplittingTags);
     }
     if (options.splittingTags !== undefined) {
-        data.append('splitting_tags', joinTagList(options.splittingTags));
+        body.splitting_tags = toTagArray(options.splittingTags);
     }
     if (options.ignoreTags !== undefined) {
-        data.append('ignore_tags', joinTagList(options.ignoreTags));
+        body.ignore_tags = toTagArray(options.ignoreTags);
     }
-    appendStyleAndTranslationMemoryOptions(data, options);
-    if (options.customInstructions !== undefined) {
-        for (const instruction of options.customInstructions) {
-            data.append('custom_instructions', instruction);
-        }
+    setStyleAndTranslationMemoryOptions(body, options);
+    if (options.customInstructions !== undefined && options.customInstructions.length > 0) {
+        body.custom_instructions = [...options.customInstructions];
     }
 }
 
 /**
- * Appends glossary dictionaries to HTTP request parameters.
- * @param data URL-encoded parameters for a HTTP request.
- * @param dictionaries Glossary dictionaries to append.
+ * Converts glossary dictionaries to the `dictionaries` array of a v3 glossary request body.
+ * @param dictionaries Glossary dictionaries to convert.
  * @private
  */
-export function appendDictionaryEntries(
-    data: URLSearchParams,
+export function dictionaryEntriesToJson(
     dictionaries: MultilingualGlossaryDictionaryEntries[],
-): void {
-    dictionaries.forEach((dict, index) => {
-        data.append(`dictionaries[${index}].source_lang`, dict.sourceLangCode);
-        data.append(`dictionaries[${index}].target_lang`, dict.targetLangCode);
-        data.append(`dictionaries[${index}].entries`, dict.entries.toTsv());
-        data.append(`dictionaries[${index}].entries_format`, 'tsv');
-    });
+): Record<string, string>[] {
+    return dictionaries.map((dict) => ({
+        source_lang: dict.sourceLangCode,
+        target_lang: dict.targetLangCode,
+        entries: dict.entries.toTsv(),
+        entries_format: 'tsv',
+    }));
 }
+
 /**
- * Appends a glossary dictionary with CSV entries to HTTP request parameters.
- * @param data URL-encoded parameters for a HTTP request.
+ * Converts a glossary dictionary with CSV entries to an entry of the `dictionaries` array of a
+ * v3 glossary request body.
  * @param sourceLanguageCode Source language code of the dictionary.
  * @param targetLanguageCode Target language code of the dictionary.
  * @param csvContent CSV-formatted string containing the dictionary entries.
  * @private
  */
-export function appendCsvDictionaryEntries(
-    data: URLSearchParams,
+export function csvDictionaryToJson(
     sourceLanguageCode: string,
     targetLanguageCode: string,
     csvContent: string,
-): void {
-    data.append('dictionaries[0].source_lang', sourceLanguageCode);
-    data.append('dictionaries[0].target_lang', targetLanguageCode);
-    data.append('dictionaries[0].entries', csvContent);
-    data.append('dictionaries[0].entries_format', 'csv');
+): Record<string, string> {
+    return {
+        source_lang: sourceLanguageCode,
+        target_lang: targetLanguageCode,
+        entries: csvContent,
+        entries_format: 'csv',
+    };
 }
 
 /**

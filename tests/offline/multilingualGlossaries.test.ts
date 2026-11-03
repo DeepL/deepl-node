@@ -26,18 +26,24 @@ const parsedDictionaries = [
 const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
 
 describe('DeepLClient.createMultilingualGlossary', () => {
-    it('sends the name and every dictionary with TSV entries', async () => {
-        nock(serverUrl)
+    it('sends the name and every dictionary with TSV entries as JSON', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .post('/v3/glossaries', {
                 name: 'my glossary',
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': 'Apple\tApfel\nBanana\tBanane',
-                'dictionaries[0].entries_format': 'tsv',
-                'dictionaries[1].source_lang': 'en',
-                'dictionaries[1].target_lang': 'fr',
-                'dictionaries[1].entries': 'Apple\tPomme',
-                'dictionaries[1].entries_format': 'tsv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'Apple\tApfel\nBanana\tBanane',
+                        entries_format: 'tsv',
+                    },
+                    {
+                        source_lang: 'en',
+                        target_lang: 'fr',
+                        entries: 'Apple\tPomme',
+                        entries_format: 'tsv',
+                    },
+                ],
             })
             .reply(201, { dictionaries: [] });
 
@@ -63,10 +69,14 @@ describe('GlossaryEntries terms in multilingual glossary requests', () => {
         nock(serverUrl)
             .post('/v3/glossaries', {
                 name: 'n',
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': 'Apple\tApfel',
-                'dictionaries[0].entries_format': 'tsv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'Apple\tApfel',
+                        entries_format: 'tsv',
+                    },
+                ],
             })
             .reply(201, { dictionaries: [] });
 
@@ -92,13 +102,17 @@ describe('GlossaryEntries terms in multilingual glossary requests', () => {
 });
 
 describe('DeepLClient.updateMultilingualGlossaryDictionary', () => {
-    it('sends the dictionary with PATCH', async () => {
-        nock(serverUrl)
+    it('sends the dictionary as JSON with PATCH', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .patch('/v3/glossaries/g-1', {
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': 'Apple\tApfel',
-                'dictionaries[0].entries_format': 'tsv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'Apple\tApfel',
+                        entries_format: 'tsv',
+                    },
+                ],
             })
             .reply(200, { dictionaries: [] });
 
@@ -132,15 +146,19 @@ describe('DeepLClient.replaceMultilingualGlossaryDictionary', () => {
 });
 
 describe('DeepLClient.createMultilingualGlossaryFromCsv', () => {
-    it('sends the CSV content with entries_format csv', async () => {
+    it('sends the CSV content with entries_format csv as JSON', async () => {
         const csv = 'sourceEntry1,targetEntry1\n"source""Entry","target,Entry"';
-        nock(serverUrl)
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .post('/v3/glossaries', {
                 name: 'my glossary',
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': csv,
-                'dictionaries[0].entries_format': 'csv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: csv,
+                        entries_format: 'csv',
+                    },
+                ],
             })
             .reply(201, { dictionaries: [] });
 
@@ -324,14 +342,18 @@ describe('DeepLClient glossary methods that validate their arguments', () => {
 describe('DeepLClient multilingual glossary FromCsv methods', () => {
     const csv = 'a,b';
     const csvDictionary = {
-        'dictionaries[0].source_lang': 'en',
-        'dictionaries[0].target_lang': 'de',
-        'dictionaries[0].entries': csv,
-        'dictionaries[0].entries_format': 'csv',
+        dictionaries: [
+            {
+                source_lang: 'en',
+                target_lang: 'de',
+                entries: csv,
+                entries_format: 'csv',
+            },
+        ],
     };
 
     it('createMultilingualGlossaryFromCsv sends the CSV dictionary and extra parameters', async () => {
-        nock(serverUrl)
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .post('/v3/glossaries', { name: 'n', ...csvDictionary, name_extra: 'x' })
             .reply(201, glossaryReply);
 
@@ -347,7 +369,7 @@ describe('DeepLClient multilingual glossary FromCsv methods', () => {
     });
 
     it('updateMultilingualGlossaryDictionaryFromCsv sends the CSV dictionary with PATCH', async () => {
-        nock(serverUrl)
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .patch('/v3/glossaries/g-1', { ...csvDictionary, extra: 'x' })
             .reply(200, glossaryReply);
 
@@ -413,10 +435,14 @@ describe('DeepLClient.createMultilingualGlossary extra parameters', () => {
         nock(serverUrl)
             .post('/v3/glossaries', {
                 name: 'replaced',
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': 'a\tb',
-                'dictionaries[0].entries_format': 'tsv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'a\tb',
+                        entries_format: 'tsv',
+                    },
+                ],
             })
             .reply(201, glossaryReply);
 
@@ -471,8 +497,8 @@ describe('DeepLClient.updateMultilingualGlossary', () => {
 });
 
 describe('DeepLClient multilingual glossary convenience updates', () => {
-    it('updateMultilingualGlossaryName adds extra parameters', async () => {
-        nock(serverUrl)
+    it('updateMultilingualGlossaryName sends JSON with extra parameters', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .patch('/v3/glossaries/g-1', { name: 'n', extra: 'x' })
             .reply(200, glossaryReply);
 
@@ -481,13 +507,17 @@ describe('DeepLClient multilingual glossary convenience updates', () => {
         });
     });
 
-    it('updateMultilingualGlossaryDictionary adds extra parameters', async () => {
-        nock(serverUrl)
+    it('updateMultilingualGlossaryDictionary sends JSON with extra parameters', async () => {
+        nock(serverUrl, { reqheaders: { 'content-type': /application\/json/ } })
             .patch('/v3/glossaries/g-1', {
-                'dictionaries[0].source_lang': 'en',
-                'dictionaries[0].target_lang': 'de',
-                'dictionaries[0].entries': 'a\tb',
-                'dictionaries[0].entries_format': 'tsv',
+                dictionaries: [
+                    {
+                        source_lang: 'en',
+                        target_lang: 'de',
+                        entries: 'a\tb',
+                        entries_format: 'tsv',
+                    },
+                ],
                 extra: 'x',
             })
             .reply(200, glossaryReply);

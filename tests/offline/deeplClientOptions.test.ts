@@ -88,7 +88,7 @@ describe('DeepLClient constructor', () => {
 
     it("keeps the library's Content-Type when the headers option sets one", async () => {
         nock(serverUrl, {
-            reqheaders: { 'content-type': /^application\/x-www-form-urlencoded/ },
+            reqheaders: { 'content-type': 'application/json' },
         })
             .post('/v2/translate')
             .reply(200, { translations: [{ detected_source_language: 'EN', text: 'a' }] });

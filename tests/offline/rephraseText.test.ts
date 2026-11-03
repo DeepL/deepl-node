@@ -15,7 +15,7 @@ const rephrased = {
 describe('DeepLClient.rephraseText', () => {
     it('sends the text and parses the result', async () => {
         nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
-            .post('/v2/write/rephrase', { text: 'abc' })
+            .post('/v2/write/rephrase', { text: ['abc'] })
             .reply(200, rephrased);
 
         const result = await makeDeeplClient().rephraseText('abc');
@@ -26,7 +26,9 @@ describe('DeepLClient.rephraseText', () => {
     it.each([[undefined], ['']])(
         'sends no writing style or tone when they are %p',
         async (empty) => {
-            nock(serverUrl).post('/v2/write/rephrase', { text: 'abc' }).reply(200, rephrased);
+            nock(serverUrl)
+                .post('/v2/write/rephrase', { text: ['abc'] })
+                .reply(200, rephrased);
 
             await makeDeeplClient().rephraseText('abc', null, { writingStyle: empty, tone: empty });
         },
@@ -35,7 +37,7 @@ describe('DeepLClient.rephraseText', () => {
     it('sends the writing style, tone and extra body parameters of an options object', async () => {
         nock(serverUrl)
             .post('/v2/write/rephrase', {
-                text: 'abc',
+                text: ['abc'],
                 target_lang: 'en',
                 writing_style: 'business',
                 tone: 'confident',
@@ -52,7 +54,7 @@ describe('DeepLClient.rephraseText', () => {
 
     it('lets extra body parameters override built-in parameters', async () => {
         nock(serverUrl)
-            .post('/v2/write/rephrase', { text: 'abc', target_lang: 'fr' })
+            .post('/v2/write/rephrase', { text: ['abc'], target_lang: 'fr' })
             .reply(200, rephrased);
 
         await makeDeeplClient().rephraseText('abc', 'en', {

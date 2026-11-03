@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
+  `createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossaryName()`,
+  `updateMultilingualGlossaryDictionary()`,
+  `updateMultilingualGlossaryDictionaryFromCsv()`, `rephraseText()` and
+  `correctText()` send a JSON request body instead of a form-encoded one, as the
+  other glossary, style rule and translation memory methods already do. `text`,
+  `glossary_ids`, `custom_instructions` and the tag lists are sent as JSON
+  arrays, booleans and numbers keep their JSON types, and the v3 glossary
+  `dictionaries` are a JSON array of objects. Document upload stays multipart.
+  `extraBodyParameters` of these methods are sent as JSON strings, and the API
+  does not convert them: a string for a field it types as a boolean, number or
+  array is rejected, e.g. `{ outline_detection: '0' }`. Pass such fields through
+  the matching option instead (`outlineDetection: false`). Proxies and test
+  doubles that read these request bodies must parse JSON.
 - `StyleRuleInfo.configuredRules` is the `configured_rules` map as the API
   returns it (`Record<string, Record<string, string>>`, snake_case category
   and rule names), the same shape `createStyleRule()` and

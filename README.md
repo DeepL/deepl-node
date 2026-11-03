@@ -254,6 +254,9 @@ The following options are only used if `tagHandling` is `'xml'`:
 -   `extraBodyParameters`: Extra body parameters to be passed along with the
     HTTP request. Only string values are permitted.
     For example: `{'param': 'value', 'param2': 'value2'}`
+    Text translation sends a JSON body, so the values are sent as JSON strings; the API
+    rejects a string for a field it types as a boolean, number or array (for example,
+    `outline_detection: '0'`).
     Note: Extra body parameters replace parameters of the same name set by the library
     (such as `target_lang`, `source_lang`, `split_sentences`, etc.). This is primarily useful for testing or
     accessing beta features.

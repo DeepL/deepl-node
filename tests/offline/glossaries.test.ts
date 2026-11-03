@@ -19,8 +19,10 @@ const glossaryReply = {
 };
 
 describe('DeepLClient.createGlossary', () => {
-    it('sends the name, base languages and TSV entries and parses the glossary', async () => {
-        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+    it('sends the name, base languages and TSV entries as JSON and parses the glossary', async () => {
+        nock(serverUrl, {
+            reqheaders: { authorization: 'DeepL-Auth-Key k', 'content-type': /application\/json/ },
+        })
             .post('/v2/glossaries', {
                 name: 'my glossary',
                 source_lang: 'en',

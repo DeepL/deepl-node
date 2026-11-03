@@ -97,15 +97,16 @@ import {
     isTranslationMemoryJobStatusOk,
 } from './parsing';
 import {
-    appendCsvDictionaryEntries,
-    appendStyleAndTranslationMemoryOptions,
-    buildURLSearchParams,
+    buildTranslationBody,
     checkStatusCode,
+    csvDictionaryToJson,
+    dictionaryEntriesToJson,
     isFreeAccountAuthKey,
     nonRegionalLanguageCode,
-    validateAndAppendTextOptions,
-    appendDictionaryEntries,
-    appendTextsAndReturnIsSingular,
+    setStyleAndTranslationMemoryOptions,
+    setTextsAndReturnIsSingular,
+    toFormParameters,
+    validateAndSetTextOptions,
     extractGlossaryId,
     extractSpokenTermsId,
     extractStyleProfileId,
@@ -402,23 +403,22 @@ export class DeepLClient {
         targetLang: TargetLanguageCodeInput,
         options?: TranslateTextOptions,
     ): Promise<T extends string ? TextResult : TextResult[]> {
-        const data = buildURLSearchParams(
+        const body = buildTranslationBody(
             sourceLang,
             targetLang,
             options?.formality,
             options?.glossary,
             options?.glossaryIds,
         );
-        // Always send show_billed_characters=1, remove when the API default is changed to true
-        data.append('show_billed_characters', '1');
-        const singular = appendTextsAndReturnIsSingular(data, texts);
-        validateAndAppendTextOptions(data, options);
-        setExtraBodyParameters(data, options?.extraBodyParameters);
+        // Always send show_billed_characters, remove when the API default is changed to true
+        body.show_billed_characters = true;
+        const singular = setTextsAndReturnIsSingular(body, texts);
+        validateAndSetTextOptions(body, options);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/translate',
-            { data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
         await checkStatusCode(statusCode, content);
         const textResults = parseTextResultArray(content);
@@ -790,7 +790,7 @@ export class DeepLClient {
         filename: string,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentHandle> {
-        const data = buildURLSearchParams(
+        const body = buildTranslationBody(
             sourceLang,
             targetLang,
             options?.formality,
@@ -805,7 +805,8 @@ export class DeepLClient {
         if (hasGlossary && sourceLang === null) {
             throw new DeepLError('sourceLang is required if using a glossary');
         }
-        appendStyleAndTranslationMemoryOptions(data, options ?? {});
+        setStyleAndTranslationMemoryOptions(body, options ?? {});
+        const data = toFormParameters(body);
         if (options?.outputFormat !== undefined) {
             data.append('output_format', options.outputFormat);
         }
@@ -867,18 +868,18 @@ export class DeepLClient {
             throw new DeepLError('glossary name must be a non-empty string');
         }
 
-        const data = new URLSearchParams({
+        const body = {
             name: name,
             source_lang: sourceLang,
             target_lang: targetLang,
             entries_format: entriesFormat,
             entries: entries,
-        });
+        };
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/glossaries',
-            { data },
+            { jsonBody: body },
         );
         await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfo(content);
@@ -905,25 +906,24 @@ export class DeepLClient {
         const writingStyle = options?.writingStyle;
         const tone = options?.tone;
 
-        const data = new URLSearchParams();
+        const body: Record<string, unknown> = {};
         if (targetLang) {
-            data.append('target_lang', targetLang);
+            body.target_lang = targetLang;
         }
 
         if (writingStyle) {
-            data.append('writing_style', writingStyle);
+            body.writing_style = writingStyle;
         }
 
         if (tone) {
-            data.append('tone', tone);
+            body.tone = tone;
         }
 
-        const singular = appendTextsAndReturnIsSingular(data, texts);
-        setExtraBodyParameters(data, options?.extraBodyParameters);
+        const singular = setTextsAndReturnIsSingular(body, texts);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/rephrase',
-            { data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content);
@@ -946,17 +946,16 @@ export class DeepLClient {
         targetLang?: string | null,
         options?: CorrectTextOptions,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
-        const data = new URLSearchParams();
+        const body: Record<string, unknown> = {};
         if (targetLang) {
-            data.append('target_lang', targetLang);
+            body.target_lang = targetLang;
         }
 
-        const singular = appendTextsAndReturnIsSingular(data, texts);
-        setExtraBodyParameters(data, options?.extraBodyParameters);
+        const singular = setTextsAndReturnIsSingular(body, texts);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/correct',
-            { data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content);
@@ -998,15 +997,12 @@ export class DeepLClient {
             throw new ArgumentError('glossary name must not be empty');
         }
 
-        const data = new URLSearchParams();
-        data.append('name', name);
-        appendDictionaryEntries(data, glossaryDicts);
-        setExtraBodyParameters(data, options?.extraBodyParameters);
+        const body = { name, dictionaries: dictionaryEntriesToJson(glossaryDicts) };
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/glossaries',
-            { data: data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1053,15 +1049,15 @@ export class DeepLClient {
             throw new ArgumentError('Parameter "csvContent" must not be empty');
         }
 
-        const data = new URLSearchParams();
-        data.append('name', name);
-        appendCsvDictionaryEntries(data, sourceLanguageCode, targetLanguageCode, csvContent);
-        setExtraBodyParameters(data, options?.extraBodyParameters);
+        const body = {
+            name,
+            dictionaries: [csvDictionaryToJson(sourceLanguageCode, targetLanguageCode, csvContent)],
+        };
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/glossaries',
-            { data: data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1290,12 +1286,7 @@ export class DeepLClient {
 
         return this.putMultilingualGlossaryDictionary(
             glossary,
-            {
-                source_lang: sourceLanguageCode,
-                target_lang: targetLanguageCode,
-                entries: csvContent,
-                entries_format: 'csv',
-            },
+            csvDictionaryToJson(sourceLanguageCode, targetLanguageCode, csvContent),
             options,
         );
     }
@@ -1342,12 +1333,7 @@ export class DeepLClient {
             body.name = options.name;
         }
         if (options?.dictionaries !== undefined) {
-            body.dictionaries = options.dictionaries.map((dict) => ({
-                source_lang: dict.sourceLangCode,
-                target_lang: dict.targetLangCode,
-                entries: dict.entries.toTsv(),
-                entries_format: 'tsv',
-            }));
+            body.dictionaries = dictionaryEntriesToJson(options.dictionaries);
         }
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
@@ -1380,9 +1366,7 @@ export class DeepLClient {
             throw new ArgumentError('Parameter "name" must not be empty');
         }
 
-        const data = new URLSearchParams();
-        data.append('name', name);
-        return this.patchMultilingualGlossaryForm(glossary, data, options);
+        return this.patchMultilingualGlossary(glossary, { name }, options);
     }
 
     /**
@@ -1408,9 +1392,11 @@ export class DeepLClient {
             throw new ArgumentError('Parameter "glossaryDict" must not be null');
         }
 
-        const data = new URLSearchParams();
-        appendDictionaryEntries(data, [glossaryDict]);
-        return this.patchMultilingualGlossaryForm(glossary, data, options);
+        return this.patchMultilingualGlossary(
+            glossary,
+            { dictionaries: dictionaryEntriesToJson([glossaryDict]) },
+            options,
+        );
     }
 
     /**
@@ -1447,23 +1433,27 @@ export class DeepLClient {
             throw new ArgumentError('Parameter "csvContent" must not be empty');
         }
 
-        const data = new URLSearchParams();
-        appendCsvDictionaryEntries(data, sourceLanguageCode, targetLanguageCode, csvContent);
-        return this.patchMultilingualGlossaryForm(glossary, data, options);
+        return this.patchMultilingualGlossary(
+            glossary,
+            {
+                dictionaries: [
+                    csvDictionaryToJson(sourceLanguageCode, targetLanguageCode, csvContent),
+                ],
+            },
+            options,
+        );
     }
 
     /** @private */
-    private async patchMultilingualGlossaryForm(
+    private async patchMultilingualGlossary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
-        data: URLSearchParams,
+        body: Record<string, unknown>,
         options: BaseRequestOptions | undefined,
     ): Promise<MultilingualGlossaryInfo> {
-        setExtraBodyParameters(data, options?.extraBodyParameters);
-
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             multilingualGlossaryPath(glossary),
-            { data: data },
+            { jsonBody: addExtraBodyParametersToJson(body, options) },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);

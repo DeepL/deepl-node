@@ -14,7 +14,7 @@ const corrected = {
 describe('DeepLClient.correctText', () => {
     it('sends the text and parses the result', async () => {
         nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
-            .post('/v2/write/correct', { text: 'abc' })
+            .post('/v2/write/correct', { text: ['abc'] })
             .reply(200, corrected);
 
         const result = await makeDeeplClient().correctText('abc');
@@ -24,7 +24,7 @@ describe('DeepLClient.correctText', () => {
 
     it('sends the target language', async () => {
         nock(serverUrl)
-            .post('/v2/write/correct', { text: 'abc', target_lang: 'de' })
+            .post('/v2/write/correct', { text: ['abc'], target_lang: 'de' })
             .reply(200, corrected);
 
         await makeDeeplClient().correctText('abc', 'de');
@@ -51,7 +51,7 @@ describe('DeepLClient.correctText', () => {
 
     it('sends the extraBodyParameters of the options last, overriding built-in parameters', async () => {
         nock(serverUrl)
-            .post('/v2/write/correct', { text: 'abc', target_lang: 'fr', extra: 'x' })
+            .post('/v2/write/correct', { text: ['abc'], target_lang: 'fr', extra: 'x' })
             .reply(200, corrected);
 
         await makeDeeplClient().correctText('abc', 'de', {

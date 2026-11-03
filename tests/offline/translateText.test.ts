@@ -11,7 +11,7 @@ import { makeDeeplClient, serverUrl } from './client';
 const translation = {
     translations: [{ detected_source_language: 'EN', text: 'out', billed_characters: 3 }],
 };
-const baseBody = { text: 'abc', target_lang: 'de', show_billed_characters: '1' };
+const baseBody = { text: ['abc'], target_lang: 'de', show_billed_characters: true };
 
 /** Declares a POST /v2/translate that expects exactly this body. */
 function expectTranslateBody(body: nock.DataMatcherMap, reply: object = translation) {
@@ -19,8 +19,10 @@ function expectTranslateBody(body: nock.DataMatcherMap, reply: object = translat
 }
 
 describe('DeepLClient.translateText', () => {
-    it('sends the text, the target language and the billed characters flag', async () => {
-        nock(serverUrl, { reqheaders: { authorization: 'DeepL-Auth-Key k' } })
+    it('sends the text, the target language and the billed characters flag as JSON', async () => {
+        nock(serverUrl, {
+            reqheaders: { authorization: 'DeepL-Auth-Key k', 'content-type': 'application/json' },
+        })
             .post('/v2/translate', baseBody)
             .reply(200, translation);
 
@@ -159,8 +161,8 @@ describe('DeepLClient.translateText', () => {
     });
 
     it.each([
-        [true, '1'],
-        [false, '0'],
+        [true, true],
+        [false, false],
     ])('sends preserveFormatting %s as %s', async (preserveFormatting, sent) => {
         expectTranslateBody({ ...baseBody, preserve_formatting: sent });
 
@@ -172,17 +174,17 @@ describe('DeepLClient.translateText', () => {
             ...baseBody,
             tag_handling: 'xml',
             tag_handling_version: 'v2',
-            outline_detection: '0',
-            non_splitting_tags: 'span',
-            splitting_tags: 'title,par',
-            ignore_tags: 'raw,code',
+            outline_detection: false,
+            non_splitting_tags: ['span', 'em'],
+            splitting_tags: ['title', 'par'],
+            ignore_tags: ['raw', 'code'],
         });
 
         await makeDeeplClient().translateText('abc', null, 'de', {
             tagHandling: 'xml',
             tagHandlingVersion: 'v2',
             outlineDetection: false,
-            nonSplittingTags: 'span',
+            nonSplittingTags: 'span, em',
             splittingTags: ['title', 'par'],
             ignoreTags: ['raw', 'code'],
         });
@@ -201,7 +203,7 @@ describe('DeepLClient.translateText', () => {
         });
     });
 
-    it('sends one custom_instructions parameter per instruction', async () => {
+    it('sends custom_instructions as an array', async () => {
         expectTranslateBody({ ...baseBody, custom_instructions: ['Be brief', 'Use "Sie"'] });
 
         await makeDeeplClient().translateText('abc', null, 'de', {
@@ -260,7 +262,7 @@ describe('DeepLClient.translateText', () => {
         expectTranslateBody({
             ...baseBody,
             translation_memory_id: 'tm-1',
-            translation_memory_threshold: '80',
+            translation_memory_threshold: 80,
         });
 
         await makeDeeplClient().translateText('abc', null, 'de', {
@@ -280,8 +282,8 @@ describe('DeepLClient.translateText', () => {
         await client.translateText('abc', 'en', 'de', { glossary: 'g-2' });
     });
 
-    it('sends glossaryIds as one comma-separated parameter', async () => {
-        expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_ids: 'g-1,g-2' });
+    it('sends glossaryIds as an array', async () => {
+        expectTranslateBody({ ...baseBody, source_lang: 'en', glossary_ids: ['g-1', 'g-2'] });
 
         await makeDeeplClient().translateText('abc', 'en', 'de', {
             glossaryIds: ['g-1', <deepl.GlossaryInfo>{ glossaryId: 'g-2' }],
@@ -351,7 +353,7 @@ describe('DeepLClient.translateText', () => {
 
     it.each([
         ['glossary', { glossary: 'g-1' }, { glossary_id: 'g-1' }],
-        ['glossaryIds', { glossaryIds: ['g-1'] }, { glossary_ids: 'g-1' }],
+        ['glossaryIds', { glossaryIds: ['g-1'] }, { glossary_ids: ['g-1'] }],
     ])('sends %s without a source language', async (_, options, glossaryParam) => {
         // nock matches the exact body, so a source_lang field would fail the match.
         expectTranslateBody({ ...baseBody, ...glossaryParam });
