@@ -38,8 +38,8 @@ export class ConnectionError extends DeepLError {
 }
 
 /**
- * Thrown by translateDocument() for any failure, including a missing input file, except an
- * existing or unwritable output path (the Node error). The cause is in `error`;
+ * Thrown by translateDocument() for any failure, including an existing or unwritable output path,
+ * except a missing or unreadable input file path (ArgumentError). The cause is in `error`;
  * `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
  */
 export class DocumentTranslationError extends DeepLError {

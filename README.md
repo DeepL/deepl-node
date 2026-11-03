@@ -302,12 +302,12 @@ try {
 }
 ```
 
+An input file path that is missing or cannot be read rejects with an
+`ArgumentError` before any request is sent; so does `translateDocumentUpload()`.
 An existing file at the output path, or an output directory that is missing or
-not writable, rejects with the Node error (`EEXIST`, `ENOENT`, `EACCES`) before
-any request is sent. A missing input file rejects with a
-`DocumentTranslationError` before any request is sent. Every other failure
-rejects with a `DocumentTranslationError` whose `error` property holds the
-cause; its `httpStatusCode` and `shouldRetry` are copied from the cause when
+not writable, rejects with a `DocumentTranslationError` (the Node error in
+`error`) before any request is sent. Every other failure also rejects with a
+`DocumentTranslationError` whose `error` property holds the cause; its `httpStatusCode` and `shouldRetry` are copied from the cause when
 that is a `DeepLError`.
 
 `translateDocument()` wraps multiple API calls: uploading, polling status until
@@ -883,8 +883,9 @@ option (otherwise `displayName` is used as the file name). The options
 -   `timeoutMs`: maximum time to wait for the import, in milliseconds.
 -   `extraBodyParameters`: extra fields added last to the JSON request body.
 
-A file path is read before any request is sent; a missing file or a directory
-rejects with the Node error (`ENOENT`, `EISDIR`).
+A file path is read before any request is sent; a missing file rejects with an
+`ArgumentError`, and any other read failure (e.g. a directory) with a
+`DeepLError` whose `error` property holds the Node error.
 
 The three steps are also available separately, for example to upload the file
 yourself or to poll for progress. `createTranslationMemoryImport()` returns an
@@ -909,13 +910,11 @@ const job = await deeplClient.waitUntilTranslationMemoryJobDone(created.jobId, {
 `getTranslationMemoryJob()` and `waitUntilTranslationMemoryJobDone()` accept the
 job ID or a `TranslationMemoryJob`. `waitUntilTranslationMemoryJobDone()` takes
 `WaitOptions` (`{ timeoutMs }`) or the timeout in milliseconds as a number,
-resolves with the job once its status is `'completed'` (or the deprecated
-`'downloaded'`), and rejects with a
+resolves with the job once its status is `'completed'`, and rejects with a
 `DeepLError` carrying the job's error message if it fails or expires.
 
 A `TranslationMemoryJob` has `result` (the single entry of `results`), `status`
-(the status of `result`), `done()` (true once the status is `'completed'`, or
-the deprecated `'downloaded'`) and
+(the status of `result`), `done()` (true once the status is `'completed'`) and
 `ok()` (false once the status is `'failed'` or `'expired'`, true while the job
 is in progress). `status` may also be a status this library does not know.
 
@@ -939,8 +938,9 @@ const job = await deeplClient.exportTranslationMemoryToFilepath(
 ```
 
 The output file must not exist yet and its directory must be writable; both are
-checked before the export job is created. A failure rejects with the Node error
-(`EEXIST`, `ENOENT`, `EACCES`), as do local write failures.
+checked before the export job is created. A failure, like a local write failure
+during the download, rejects with a `DeepLError`; for a Node error it is in the
+`error` property.
 
 Errors from the pre-signed upload and download URLs, which are not part of the
 DeepL API, are thrown as a plain `DeepLError` carrying `httpStatusCode`, with

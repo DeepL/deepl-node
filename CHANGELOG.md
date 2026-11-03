@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- `DocumentStatus.status` is typed `DocumentStatusCode | (string & {})` and
+  `TranslationMemoryJobResult.status` `TranslationMemoryJobStatus | (string & {})`,
+  so a status the library does not know yet is visible in the type. Exhaustive
+  `switch` statements over these fields need a `default` branch.
+- `DocumentStatus.documentId` is a required `string`. When the status response
+  has no document ID, it is the ID of the handle passed to
+  `translateDocumentGetStatus()`. Remove `undefined` checks.
+- `TranslationMemoryJob.creationTime`, `updatedTime`, `done()` and `ok()` are
+  required. The library always set them; a missing timestamp is an invalid
+  `Date`. Code that builds `TranslationMemoryJob` objects itself must set them,
+  and `job.done?.()` can become `job.done()`.
+- `translateDocument()` and `translateDocumentUpload()` reject with an
+  `ArgumentError` before any request when the input file path is missing or
+  cannot be read (was a `DocumentTranslationError`, or the Node error for
+  `translateDocumentUpload()`). `translateDocument()` rejects with a
+  `DocumentTranslationError` for an existing output file or a missing or
+  unwritable output directory (was the Node error); the Node error is in
+  `error`. Catch `ArgumentError` and `DocumentTranslationError` instead of
+  checking `error.code`.
+- `importTranslationMemoryFromFilepath()` rejects with an `ArgumentError` for a
+  missing input file and with a `DeepLError` for other read failures (was the
+  Node error, e.g. `ENOENT` or `EISDIR`). `exportTranslationMemoryToFilepath()`
+  and `downloadTranslationMemoryExport()` reject with a `DeepLError` for an
+  existing output file, a missing or unwritable output directory and local
+  write failures (was the Node error). The Node error, where there is one, is
+  in `error`.
 - `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
   `createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossaryName()`,
   `updateMultilingualGlossaryDictionary()`,
@@ -60,6 +86,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `devDependencies`.
 
 ### Removed
+- The `'downloaded'` member of `TranslationMemoryJobStatus`. The API does not
+  report it for translation memory jobs; only `'completed'` counts as done in
+  `done()` and `waitUntilTranslationMemoryJobDone()`. Compare with
+  `'completed'` instead.
 - The `ConfiguredRules` type. Use `Record<string, Record<string, string>>`
   (or `StyleRuleInfo['configuredRules']`) instead.
 - The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no

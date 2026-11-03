@@ -93,8 +93,6 @@ import {
     parseLanguageResourceList,
     parseLanguageSupportList,
     parseResponse,
-    isTranslationMemoryJobStatusDone,
-    isTranslationMemoryJobStatusOk,
 } from './parsing';
 import {
     buildTranslationBody,
@@ -134,22 +132,29 @@ import * as path from 'path';
 import * as util from 'util';
 
 /**
- * Returns the libuv errno that Node's fs errors carry for the given error name (e.g. -4075 for
- * EEXIST on Windows, -17 on Linux), or undefined if it cannot be determined.
+ * Rejects with an ArgumentError, before any request, if the input file path cannot be read.
  */
-function uvErrno(name: string): number | undefined {
-    const getSystemErrorMap = (
-        util as unknown as { getSystemErrorMap?: () => Map<number, [string, string]> }
-    ).getSystemErrorMap;
-    if (!getSystemErrorMap) {
-        return undefined;
+async function checkInputFileReadable(inputFile: string): Promise<void> {
+    try {
+        await fs.promises.access(inputFile, fs.constants.R_OK);
+    } catch (error) {
+        throw new ArgumentError(
+            `cannot read input file '${inputFile}': ${(error as Error).message}`,
+            error as Error,
+        );
     }
-    for (const [errno, [errName]] of getSystemErrorMap()) {
-        if (errName === name) {
-            return errno;
-        }
+}
+
+/**
+ * Wraps a local I/O failure in a DeepLError; DeepLErrors (e.g. from the download) pass unchanged.
+ */
+function wrapLocalFileError(context: string, error: unknown): DeepLError {
+    if (error instanceof DeepLError) {
+        return error;
     }
-    return undefined;
+    const cause =
+        error instanceof Error || util.types.isNativeError(error) ? (error as Error) : undefined;
+    return new DeepLError(`${context}: ${cause?.message ?? String(error)}`, cause);
 }
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
@@ -440,13 +445,13 @@ export class DeepLClient {
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with a DocumentStatus object for the completed translation. You can use the
      *     billedCharacters property to check how many characters were billed for the document.
-     * @throws {Error} The Node error (`EEXIST`, `ENOENT`, `EACCES`) if a file already exists at
-     *     the output file path or the output directory is missing or not writable; no request is
+     * @throws {ArgumentError} If the input file path is missing or cannot be read; no request is
      *     sent.
-     * @throws {DocumentTranslationError} If any other error occurs, including an input file path
-     *     that cannot be read (checked before any request), upload, translation or download. The
-     *     `documentHandle` property of the error may be used to recover the document, and
-     *     `httpStatusCode` and `shouldRetry` are copied from a DeepLError cause.
+     * @throws {DocumentTranslationError} If any other error occurs, including an existing output
+     *     file or a missing or unwritable output directory (checked before any request), upload,
+     *     translation or download. The `documentHandle` property of the error may be used to
+     *     recover the document, and `httpStatusCode` and `shouldRetry` are copied from a
+     *     DeepLError cause.
      */
     async translateDocument(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
@@ -455,29 +460,28 @@ export class DeepLClient {
         targetLang: TargetLanguageCodeInput,
         options?: DocumentTranslateOptions,
     ): Promise<DocumentStatus> {
-        // Opened before the try: an existing output file, or a missing or unwritable output
-        // directory, rejects with the Node error. Only a file created here is removed on error.
-        let onError: (() => Promise<void>) | undefined;
-        let outputHandle: fs.WriteStream | fs.promises.FileHandle;
-        if (isString(outputFile)) {
-            const createdHandle = await fs.promises.open(outputFile, 'wx');
-            outputHandle = createdHandle;
-            onError = async () => {
-                try {
-                    await createdHandle.close();
-                    await util.promisify(fs.unlink)(outputFile);
-                } catch {
-                    // Ignore errors
-                }
-            };
-        } else {
-            outputHandle = outputFile;
+        if (isString(inputFile)) {
+            await checkInputFileReadable(inputFile);
         }
 
+        // Only a file created here is removed on error.
+        let onError: (() => Promise<void>) | undefined;
         let documentHandle = undefined;
         try {
-            if (isString(inputFile)) {
-                await fs.promises.access(inputFile, fs.constants.R_OK);
+            let outputHandle: fs.WriteStream | fs.promises.FileHandle;
+            if (isString(outputFile)) {
+                const createdHandle = await fs.promises.open(outputFile, 'wx');
+                outputHandle = createdHandle;
+                onError = async () => {
+                    try {
+                        await createdHandle.close();
+                        await util.promisify(fs.unlink)(outputFile);
+                    } catch {
+                        // Ignore errors
+                    }
+                };
+            } else {
+                outputHandle = outputFile;
             }
 
             documentHandle = await this.translateDocumentUpload(
@@ -513,6 +517,8 @@ export class DeepLClient {
      * @param targetLang Language code of language to translate into.
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with DocumentHandle associated with the in-progress translation.
+     * @throws {ArgumentError} If the input file path is missing or cannot be read; no request is
+     *     sent.
      */
     async translateDocumentUpload(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
@@ -521,7 +527,15 @@ export class DeepLClient {
         options?: DocumentTranslateOptions,
     ): Promise<DocumentHandle> {
         if (isString(inputFile)) {
-            const buffer = await fs.promises.readFile(inputFile);
+            let buffer: Buffer;
+            try {
+                buffer = await fs.promises.readFile(inputFile);
+            } catch (error) {
+                throw new ArgumentError(
+                    `cannot read input file '${inputFile}': ${(error as Error).message}`,
+                    error as Error,
+                );
+            }
             return this.internalUploadDocument(
                 buffer,
                 sourceLang,
@@ -582,7 +596,7 @@ export class DeepLClient {
             { data },
         );
         await checkStatusCode(statusCode, content, false, true);
-        return parseDocumentStatus(content);
+        return parseDocumentStatus(content, handle.documentId);
     }
 
     /**
@@ -1987,8 +2001,8 @@ export class DeepLClient {
     }
 
     /**
-     * Polls a translation memory job every 5 seconds until it completes (status 'completed', or the
-     * deprecated 'downloaded'), and resolves with the completed job.
+     * Polls a translation memory job every 5 seconds until it completes (status 'completed'), and
+     * resolves with the completed job.
      *
      * Note that an import job keeps reporting 'awaiting_input' for a while after its file has been
      * uploaded, because the API detects the upload asynchronously. That status, and statuses this
@@ -2011,11 +2025,7 @@ export class DeepLClient {
         const timeoutMs = typeof options === 'number' ? options : options?.timeoutMs;
         const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
         let current = await this.getTranslationMemoryJob(job);
-        // Tested on the status: done() and ok() are optional members of the interface.
-        while (
-            !isTranslationMemoryJobStatusDone(current.status) &&
-            isTranslationMemoryJobStatusOk(current.status)
-        ) {
+        while (!current.done() && current.ok()) {
             let sleepMs = 5000;
             if (deadline !== undefined) {
                 const remainingMs = deadline - Date.now();
@@ -2030,7 +2040,7 @@ export class DeepLClient {
             logInfo(`Rechecking translation memory job status after sleeping for ${sleepMs} ms.`);
             current = await this.getTranslationMemoryJob(current.jobId);
         }
-        if (!isTranslationMemoryJobStatusOk(current.status)) {
+        if (!current.ok()) {
             throw new DeepLError(current.result?.errorMessage || `Job ${current.status}`);
         }
         return current;
@@ -2042,7 +2052,8 @@ export class DeepLClient {
      * @param job: Completed export job carrying the download URL.
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      *
-     * @throws {DeepLError} If the job has no download URL, or any error occurs while downloading.
+     * @throws {DeepLError} If the job has no download URL, the output file already exists or cannot
+     * be created or written (the Node error in `error`), or any error occurs while downloading.
      * An error response from the download URL is mapped like a document download response
      * (e.g. 403 to AuthorizationError, 503 to DocumentNotReadyError), with httpStatusCode set.
      */
@@ -2065,7 +2076,11 @@ export class DeepLClient {
         let fileStream: fs.WriteStream | undefined;
         let streamClosed: Promise<void> | undefined;
         if (typeof outputFile === 'string') {
-            fd = await util.promisify(fs.open)(outputFile, 'wx');
+            try {
+                fd = await util.promisify(fs.open)(outputFile, 'wx');
+            } catch (error) {
+                throw wrapLocalFileError('cannot create output file', error);
+            }
         }
         try {
             // Streamed rather than buffered as text, mirroring translateDocumentDownload(): a TMX export
@@ -2104,7 +2119,7 @@ export class DeepLClient {
                 // otherwise see a file that looks like a successful export.
                 await fs.promises.unlink(outputFile as string).catch(() => undefined);
             }
-            throw e;
+            throw wrapLocalFileError('cannot write output file', e);
         }
     }
 
@@ -2123,10 +2138,10 @@ export class DeepLClient {
      * @returns {Promise<TranslationMemoryJob>} The completed import job; its result carries the
      * new translation memory ID.
      *
-     * @throws {Error} The Node error (e.g. `ENOENT`, `EISDIR`) if reading the input fails; for a
-     * file path, no request is sent.
-     * @throws {ArgumentError} If a Buffer or stream is given without fileName or displayName.
-     * @throws {DeepLError} If the import fails, the timeout is exceeded, or any error occurs while
+     * @throws {ArgumentError} If the input file path does not exist, or a Buffer or stream is given
+     * without fileName or displayName; no request is sent.
+     * @throws {DeepLError} If reading the input fails for another reason (the Node error in
+     * `error`; for a file path, no request is sent), the import fails, the timeout is exceeded, or any error occurs while
      * communicating with the DeepL API.
      */
     async importTranslationMemoryFromFilepath(
@@ -2137,7 +2152,14 @@ export class DeepLClient {
         let fileName: string | undefined;
         if (isString(input)) {
             fileName = options?.fileName ?? path.basename(input);
-            fileBuffer = await fs.promises.readFile(input);
+            try {
+                fileBuffer = await fs.promises.readFile(input);
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+                    throw new ArgumentError(`input file '${input}' does not exist`, error as Error);
+                }
+                throw wrapLocalFileError('cannot read input file', error);
+            }
         } else {
             fileName = options?.fileName ?? options?.displayName;
             if (!fileName) {
@@ -2145,7 +2167,11 @@ export class DeepLClient {
                     'options.fileName or options.displayName must be specified unless using an input file path',
                 );
             }
-            fileBuffer = input instanceof fs.ReadStream ? await streamToBuffer(input) : input;
+            try {
+                fileBuffer = input instanceof fs.ReadStream ? await streamToBuffer(input) : input;
+            } catch (error) {
+                throw wrapLocalFileError('cannot read input stream', error);
+            }
         }
         const created = await this.createTranslationMemoryImport(fileName, fileBuffer.length, {
             displayName: options?.displayName,
@@ -2170,10 +2196,9 @@ export class DeepLClient {
      * to finish.
      * @returns {Promise<TranslationMemoryJob>} The completed export job.
      *
-     * @throws {Error} The Node error (`EEXIST`, `ENOENT`, `EACCES`) if a file already exists at
-     * the output path or the output directory is missing or not writable. These are checked before
-     * the export job is created. Errors writing the output are also passed through unchanged.
-     * @throws {DeepLError} If the export fails, the timeout is exceeded, or any error occurs while
+     * @throws {DeepLError} If a file already exists at the output path or the output directory is
+     * missing or not writable (checked before the export job is created), writing the output fails
+     * (the Node error in `error`), the export fails, the timeout is exceeded, or any error occurs while
      * communicating with the DeepL API.
      */
     async exportTranslationMemoryToFilepath(
@@ -2182,19 +2207,14 @@ export class DeepLClient {
         options?: WaitOptions,
     ): Promise<TranslationMemoryJob> {
         if (isString(outputFile)) {
-            // Shaped like the error of open(outputFile, 'wx'), which is what this check replaces.
             if (fs.existsSync(outputFile)) {
-                throw Object.assign(
-                    new Error(`EEXIST: file already exists, open '${outputFile}'`),
-                    {
-                        errno: uvErrno('EEXIST'),
-                        code: 'EEXIST',
-                        syscall: 'open',
-                        path: outputFile,
-                    },
-                );
+                throw new DeepLError(`output file '${outputFile}' already exists`);
             }
-            await fs.promises.access(path.dirname(outputFile), fs.constants.W_OK);
+            try {
+                await fs.promises.access(path.dirname(outputFile), fs.constants.W_OK);
+            } catch (error) {
+                throw wrapLocalFileError('cannot write output directory', error);
+            }
         }
         const created = await this.createTranslationMemoryExport(translationMemory);
         const job = await this.waitUntilTranslationMemoryJobDone(created.jobId, options);

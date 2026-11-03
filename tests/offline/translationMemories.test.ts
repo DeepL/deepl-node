@@ -347,7 +347,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
     it.each([
         ['completed', true, true],
-        ['downloaded', true, true],
+        ['downloaded', false, true],
         ['processing', false, true],
         ['failed', false, false],
         ['expired', false, false],
@@ -358,8 +358,8 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         expect(job.status).toBe(status);
         expect(job.result).toBe(job.results[0]);
-        expect(job.done?.()).toBe(done);
-        expect(job.ok?.()).toBe(ok);
+        expect(job.done()).toBe(done);
+        expect(job.ok()).toBe(ok);
     });
 
     it('keeps an unknown status as sent', async () => {
@@ -369,7 +369,10 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect([job.status, job.done?.(), job.ok?.()]).toEqual(['something_new', false, true]);
+        // Compiles only while result.status admits strings outside TranslationMemoryJobStatus.
+        const expected: deepl.TranslationMemoryJobResult['status'] = 'something_new';
+        expect(job.result?.status).toBe(expected);
+        expect([job.status, job.done(), job.ok()]).toEqual(['something_new', false, true]);
     });
 
     it('parses a job without results as not done and ok', async () => {
@@ -379,7 +382,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect([job.result, job.status, job.done?.(), job.ok?.()]).toEqual([
+        expect([job.result, job.status, job.done(), job.ok()]).toEqual([
             undefined,
             undefined,
             false,
@@ -387,7 +390,7 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
         ]);
     });
 
-    it('leaves creationTime and updatedTime undefined when missing or malformed', async () => {
+    it('reads creationTime and updatedTime as invalid Dates when missing or malformed', async () => {
         const { updated_time: updatedTime, ...withoutUpdatedTime } = jobReply('processing');
         void updatedTime;
         nock(serverUrl)
@@ -396,8 +399,9 @@ describe('DeepLClient.getTranslationMemoryJob', () => {
 
         const job = await makeDeeplClient().getTranslationMemoryJob('job-1');
 
-        expect(job.creationTime).toBeUndefined();
-        expect(job.updatedTime).toBeUndefined();
+        // Typed as required: getTime() compiles without a check for undefined.
+        expect(job.creationTime.getTime()).toBeNaN();
+        expect(job.updatedTime.getTime()).toBeNaN();
     });
 
     it('throws ArgumentError when the job ID is empty', async () => {
@@ -427,6 +431,10 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
             operation: 'import',
             product: 'translation_memory',
             results: [],
+            creationTime: new Date(),
+            updatedTime: new Date(),
+            done: () => false,
+            ok: () => true,
         };
 
         await makeDeeplClient().waitUntilTranslationMemoryJobDone(job);
@@ -459,13 +467,14 @@ describe('DeepLClient.waitUntilTranslationMemoryJobDone', () => {
         15000,
     );
 
-    it('resolves on the deprecated downloaded status', async () => {
+    it('polls through downloaded, which is not a translation memory job status', async () => {
         nock(serverUrl).get(jobPath).reply(200, jobReply('downloaded'));
+        nock(serverUrl).get(jobPath).reply(200, jobReply('completed'));
 
         const job = await makeDeeplClient().waitUntilTranslationMemoryJobDone('job-1');
 
-        expect(job.status).toBe('downloaded');
-    });
+        expect(job.status).toBe('completed');
+    }, 15000);
 
     it.each([
         ['WaitOptions', { timeoutMs: 1 }],
@@ -538,7 +547,7 @@ describe('DeepLClient.downloadTranslationMemoryExport', () => {
                 job(`${storageUrl}/download`),
                 outputPath,
             ),
-        ).rejects.toMatchObject({ code: 'EEXIST' });
+        ).rejects.toMatchObject({ constructor: deepl.DeepLError, error: { code: 'EEXIST' } });
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
@@ -642,24 +651,25 @@ describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
         });
     });
 
-    it('rejects with the native ENOENT error for a missing input file before any request', async () => {
+    it('rejects with ArgumentError for a missing input file before any request', async () => {
         const inputPath = path.join(tempDir(), 'missing.tmx');
 
         const error = await makeDeeplClient()
             .importTranslationMemoryFromFilepath(inputPath)
             .catch((e) => e);
 
-        expect(error).toMatchObject({ code: 'ENOENT', path: inputPath });
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect(error.error).toMatchObject({ code: 'ENOENT', path: inputPath });
     });
 
-    it('rejects with the native EISDIR error when the input path is a directory', async () => {
+    it('rejects with DeepLError wrapping EISDIR before any request when the input path is a directory', async () => {
         const error = await makeDeeplClient()
             .importTranslationMemoryFromFilepath(tempDir())
             .catch((e) => e);
 
-        expect(error).toMatchObject({ code: 'EISDIR' });
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error).not.toBeInstanceOf(deepl.ArgumentError);
+        expect(error.error).toMatchObject({ code: 'EISDIR' });
     });
 
     it('throws ArgumentError for a Buffer without fileName or displayName', async () => {
@@ -685,7 +695,7 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
     });
 
-    it('rejects an existing output file with the native EEXIST error before creating the export job', async () => {
+    it('rejects an existing output file with DeepLError before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         fs.writeFileSync(outputPath, 'existing');
 
@@ -693,28 +703,23 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toMatchObject({
-            code: 'EEXIST',
-            syscall: 'open',
-            path: outputPath,
-            message: `EEXIST: file already exists, open '${outputPath}'`,
-        });
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.message).toBe(`output file '${outputPath}' already exists`);
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('rejects a missing output directory with the native ENOENT error before creating the export job', async () => {
+    it('rejects a missing output directory with DeepLError wrapping ENOENT before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'missing-dir', 'out.tmx');
 
         const error = await makeDeeplClient()
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toMatchObject({ code: 'ENOENT' });
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.error).toMatchObject({ code: 'ENOENT' });
     });
 
-    it('rejects with the native EEXIST error when the output file appears during the export', async () => {
+    it('rejects with DeepLError wrapping EEXIST when the output file appears during the export', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         nock(serverUrl)
             .post('/v3/translation_memories/tm-1/export')
@@ -734,7 +739,7 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toMatchObject({ code: 'EEXIST' });
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.error).toMatchObject({ code: 'EEXIST' });
     });
 });

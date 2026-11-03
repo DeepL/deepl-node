@@ -216,6 +216,16 @@ describe('DeepLClient.translateDocumentUpload', () => {
         expect(upload.body()).toContain('filename="a.txt"');
     });
 
+    it('rejects with ArgumentError before any request when the input file does not exist', async () => {
+        // No request is declared: nock rejects any request with a different error.
+        const error = await makeDeeplClient()
+            .translateDocumentUpload('nonExistentFile.txt', null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect(error.error.code).toBe('ENOENT');
+    });
+
     it('sends options.filename instead of the base name of a file path', async () => {
         const upload = expectUpload();
         const [exampleDocument] = createTextDocument();
@@ -298,29 +308,26 @@ describe('DeepLClient.translateDocumentGetStatus', () => {
         ]);
     });
 
-    it('leaves documentId undefined when document_id is missing', async () => {
+    it("uses the handle's document ID when document_id is missing", async () => {
         nock(serverUrl)
             .post('/v2/document/doc-id', keyBody)
             .reply(200, { status: 'done', billed_characters: 11 });
 
         const status = await makeDeeplClient().translateDocumentGetStatus(handle);
 
-        expect(status.documentId).toBeUndefined();
+        const documentId: string = status.documentId;
+        expect(documentId).toBe('doc-id');
         expect([status.done(), status.billedCharacters]).toEqual([true, 11]);
     });
 
-    it('accepts a user-built DocumentStatus without documentId', () => {
-        const s: deepl.DocumentStatus = { status: 'done', ok: () => true, done: () => true };
-
-        expect(s.documentId).toBeUndefined();
-    });
-
-    it('keeps an unknown status as a string and treats it as ok', async () => {
+    it('keeps an unknown status as a string, typed as such, and treats it as ok', async () => {
         nock(serverUrl).post('/v2/document/doc-id', keyBody).reply(200, { status: 'resyncing' });
 
         const status = await makeDeeplClient().translateDocumentGetStatus(handle);
 
-        expect([status.status, status.ok(), status.done()]).toEqual(['resyncing', true, false]);
+        // Compiles only while status admits strings outside DocumentStatusCode.
+        const expected: deepl.DocumentStatus['status'] = 'resyncing';
+        expect([status.status, status.ok(), status.done()]).toEqual([expected, true, false]);
     });
 
     it('URL-encodes the document ID in the path', async () => {
@@ -534,7 +541,7 @@ describe('DeepLClient.translateDocument', () => {
         expect(error.documentHandle).toEqual(handle);
     });
 
-    it('rejects with the native EEXIST error for an existing output file and keeps the file', async () => {
+    it('rejects with DocumentTranslationError before any request for an existing output file and keeps the file', async () => {
         const [exampleDocument, outputPath] = createTextDocument();
         fs.writeFileSync(outputPath, 'existing');
 
@@ -542,20 +549,21 @@ describe('DeepLClient.translateDocument', () => {
             .translateDocument(exampleDocument, outputPath, null, 'de')
             .catch((e) => e);
 
-        expect(error.code).toBe('EEXIST');
-        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.documentHandle).toBeUndefined();
+        expect(error.error.code).toBe('EEXIST');
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('rejects with DocumentTranslationError before any request when the input file does not exist', async () => {
+    it('rejects with ArgumentError before any request when the input file does not exist', async () => {
         const [, outputPath] = createTextDocument();
 
         const error = await makeDeeplClient()
             .translateDocument('nonExistentFile.txt', outputPath, null, 'de')
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
-        expect(error.documentHandle).toBeUndefined();
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect(error).not.toBeInstanceOf(deepl.DocumentTranslationError);
         expect(error.error.code).toBe('ENOENT');
         expect(fs.existsSync(outputPath)).toBe(false);
     });

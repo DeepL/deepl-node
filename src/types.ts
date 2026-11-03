@@ -818,15 +818,16 @@ export interface WaitOptions {
  */
 export interface DocumentStatus {
     /**
-     * ID of the document, or undefined if the response does not contain it.
+     * ID of the document.
      */
-    readonly documentId?: string;
+    readonly documentId: string;
 
     /**
-     * One of the status values defined in DocumentStatusCode.
+     * One of the status values defined in DocumentStatusCode, or a status this library does not
+     * know yet.
      * @see DocumentStatusCode
      */
-    readonly status: DocumentStatusCode;
+    readonly status: DocumentStatusCode | (string & Record<never, never>);
 
     /**
      * Estimated time until document translation completes in seconds, otherwise undefined if
@@ -1133,15 +1134,11 @@ export interface TranslationMemoryExport {
 /**
  * Status of a translation memory import or export job, one of 'awaiting_input', 'processing',
  * 'completed', 'failed' or 'expired'.
- *
- * 'downloaded' is deprecated: the API does not report it for translation memory jobs. It is treated
- * like 'completed', and will be removed in the next major version.
  */
 export type TranslationMemoryJobStatus =
     | 'awaiting_input'
     | 'processing'
     | 'completed'
-    | 'downloaded'
     | 'failed'
     | 'expired';
 
@@ -1149,7 +1146,8 @@ export type TranslationMemoryJobStatus =
  * The outcome of a translation memory import or export job.
  */
 export interface TranslationMemoryJobResult {
-    readonly status: TranslationMemoryJobStatus;
+    /** One of TranslationMemoryJobStatus, or a status this library does not know yet. */
+    readonly status: TranslationMemoryJobStatus | (string & Record<never, never>);
     /** Human-readable action the caller must take, set while the job waits on the caller. */
     readonly requiredAction?: string;
     /** Download URL of the exported TMX file, set once an export completes. */
@@ -1172,10 +1170,10 @@ export interface TranslationMemoryJob {
     readonly product: string;
     /** Results of the job; the API returns exactly one. */
     readonly results: TranslationMemoryJobResult[];
-    /** Time the job was created, or undefined if the response does not contain it. */
-    readonly creationTime?: Date;
-    /** Time the job was last updated, or undefined if the response does not contain it. */
-    readonly updatedTime?: Date;
+    /** Time the job was created. */
+    readonly creationTime: Date;
+    /** Time the job was last updated. */
+    readonly updatedTime: Date;
     /** Translation memory an export job reads from. */
     readonly translationMemoryId?: string;
     /** Display name an import job assigns to the new translation memory. */
@@ -1190,18 +1188,15 @@ export interface TranslationMemoryJob {
     readonly status?: TranslationMemoryJobStatus | (string & Record<never, never>);
 
     /**
-     * True if the job completed successfully (status is 'completed', or the deprecated
-     * 'downloaded'), otherwise false. Always set on jobs returned by this library; optional so
-     * that objects built without it still compile.
+     * True if the job completed successfully (status is 'completed'), otherwise false.
      */
-    done?(): boolean;
+    done(): boolean;
 
     /**
      * True if the job has not failed (status is not 'failed' or 'expired'), otherwise false. Note
-     * that while the job is in progress, this returns true. Always set on jobs returned by this
-     * library; optional so that objects built without it still compile.
+     * that while the job is in progress, this returns true.
      */
-    ok?(): boolean;
+    ok(): boolean;
 }
 
 /**

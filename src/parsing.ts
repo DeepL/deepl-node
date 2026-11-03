@@ -33,7 +33,6 @@ import {
     TranslationMemoryImport,
     TranslationMemoryJob,
     TranslationMemoryJobResult,
-    TranslationMemoryJobStatus,
     TranslationMemorySegments,
     LanguageResource,
     ResourceFeature,
@@ -455,15 +454,15 @@ class UsageImpl implements Usage {
 }
 
 class DocumentStatusImpl implements DocumentStatus {
-    public status: DocumentStatusCode;
+    public status: DocumentStatusCode | (string & Record<never, never>);
     public secondsRemaining?: number;
     public billedCharacters?: number;
     public errorMessage?: string;
-    public documentId?: string;
+    public documentId: string;
 
     constructor(
-        status: DocumentStatusCode,
-        documentId: string | undefined,
+        status: string,
+        documentId: string,
         secondsRemaining?: number,
         billedCharacters?: number,
         errorMessage?: string,
@@ -702,14 +701,15 @@ function parseOptionalString(value: unknown): string | undefined {
 
 /**
  * Parses the given JSON string to a DocumentStatus object.
+ * @param documentId ID used when the response does not contain one, e.g. the handle's.
  * @private
  */
-export function parseDocumentStatus(json: string): DocumentStatus {
+export function parseDocumentStatus(json: string, documentId?: string): DocumentStatus {
     try {
         const obj = JSON.parse(json) as DocumentStatusApiResponse;
         return new DocumentStatusImpl(
-            obj.status as DocumentStatusCode,
-            parseOptionalString(obj.document_id),
+            obj.status,
+            parseOptionalString(obj.document_id) ?? documentId ?? '',
             obj.seconds_remaining,
             obj.billed_characters,
             obj.error_message,
@@ -1189,12 +1189,11 @@ export function parseTranslationMemoryExport(
 }
 
 /**
- * True if a translation memory job with the given status has finished successfully: 'completed',
- * or the deprecated 'downloaded'.
+ * True if a translation memory job with the given status has finished successfully.
  * @private
  */
 export function isTranslationMemoryJobStatusDone(status: string | undefined): boolean {
-    return status === 'completed' || status === 'downloaded';
+    return status === 'completed';
 }
 
 /**
@@ -1213,7 +1212,7 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
     try {
         const obj = JSON.parse(json) as TranslationMemoryJobApiResponse;
         const results: TranslationMemoryJobResult[] = (obj.results ?? []).map((result) => ({
-            status: (result.status ?? '') as TranslationMemoryJobStatus,
+            status: result.status ?? '',
             requiredAction: result.status_metadata?.required_action,
             downloadUrl: result.download_url,
             expiresAt: parseOptionalTimestamp(result.expires_at),
@@ -1228,8 +1227,8 @@ export function parseTranslationMemoryJob(json: string): TranslationMemoryJob {
             operation: (obj.operation ?? '') as 'import' | 'export',
             product: obj.product ?? 'translation_memory',
             results,
-            creationTime: parseOptionalTimestamp(obj.creation_time),
-            updatedTime: parseOptionalTimestamp(obj.updated_time),
+            creationTime: parseOptionalTimestamp(obj.creation_time) ?? new Date(NaN),
+            updatedTime: parseOptionalTimestamp(obj.updated_time) ?? new Date(NaN),
             translationMemoryId: obj.parameters?.translation_memory_id,
             displayName: obj.parameters?.display_name,
             sourceContentType: obj.source_file?.content_type,
