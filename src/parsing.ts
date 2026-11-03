@@ -422,14 +422,15 @@ class UsageImpl implements Usage {
     }
 
     /**
-     * Returns true if the character, document or team document usage has reached or passed its
-     * limit, otherwise false. Does not check apiKeyCharacter or the speech usage.
+     * Returns true if the character, document, team document or per-key character usage has
+     * reached or passed its limit, otherwise false. Does not check the speech usage.
      */
     anyLimitReached(): boolean {
         return (
             this.character?.limitReached() ||
             this.document?.limitReached() ||
             this.teamDocument?.limitReached() ||
+            this.apiKeyCharacter?.limitReached() ||
             false
         );
     }

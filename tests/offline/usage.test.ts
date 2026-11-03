@@ -118,6 +118,20 @@ describe('DeepLClient.getUsage', () => {
         expect(usage.toString()).toBe('Usage this billing period:\nCharacters: 180118 of 1250000');
     });
 
+    it('reports anyLimitReached when only the per-key character limit is reached', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, {
+            character_count: 10,
+            character_limit: 100,
+            api_key_character_count: 50,
+            api_key_character_limit: 50,
+        });
+
+        const usage = await makeDeeplClient().getUsage();
+
+        expect(usage.character?.limitReached()).toBe(false);
+        expect(usage.anyLimitReached()).toBe(true);
+    });
+
     it('leaves the API Pro fields undefined for a Free response', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, { character_count: 10, character_limit: 100 });
 

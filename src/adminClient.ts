@@ -14,6 +14,7 @@ import {
     AdminUsageGroupBy,
     AdminUsageReport,
     BaseRequestOptions,
+    RequestOptions,
     CreateDeveloperKeyOptions,
     CustomTagUsageAggregateBy,
     CustomTagUsageReport,
@@ -68,6 +69,7 @@ export class DeepLAdminClient {
      * @param endDate End date of the report, in the same format as startDate.
      * @param groupBy Optional grouping of the usage by key ('key') or by key and day
      *     ('key_and_day'); not sent if omitted.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
      * @return Fulfills with an AdminUsageReport.
      */
@@ -75,12 +77,16 @@ export class DeepLAdminClient {
         startDate: Date | string,
         endDate: Date | string,
         groupBy?: AdminUsageGroupBy,
+        options?: RequestOptions,
     ): Promise<AdminUsageReport> {
         const data = DeepLAdminClient.dateRangeParams(startDate, endDate);
         if (groupBy !== undefined) {
             data.append('group_by', groupBy);
         }
-        const content = await this.request('GET', '/v2/admin/analytics', { data });
+        const content = await this.request('GET', '/v2/admin/analytics', {
+            data,
+            signal: options?.signal,
+        });
         return parseAdminUsageReport(content);
     }
 
@@ -97,6 +103,7 @@ export class DeepLAdminClient {
      * @param aggregateBy Optional aggregation over the whole period ('period', the API default) or
      *     by day ('day'); not sent if omitted.
      * @param page Optional page number, from the `nextPage` value of a previous report.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
      * @return Fulfills with a CustomTagUsageReport.
      */
@@ -105,6 +112,7 @@ export class DeepLAdminClient {
         endDate: Date | string,
         aggregateBy?: CustomTagUsageAggregateBy,
         page?: number,
+        options?: RequestOptions,
     ): Promise<CustomTagUsageReport> {
         const data = DeepLAdminClient.dateRangeParams(startDate, endDate);
         if (aggregateBy !== undefined) {
@@ -113,7 +121,10 @@ export class DeepLAdminClient {
         if (page !== undefined) {
             data.append('page', String(page));
         }
-        const content = await this.request('GET', '/v2/admin/analytics/custom-tags', { data });
+        const content = await this.request('GET', '/v2/admin/analytics/custom-tags', {
+            data,
+            signal: options?.signal,
+        });
         return parseCustomTagUsageReport(content);
     }
 
@@ -131,16 +142,20 @@ export class DeepLAdminClient {
         const content = await this.request('POST', '/v2/admin/developer-keys', {
             jsonBody: DeepLAdminClient.withExtraBodyParameters(jsonBody, options),
             retryOnlyUnprocessed: true,
+            signal: options?.signal,
         });
         return parseDeveloperKey(content);
     }
 
     /**
      * Retrieves all developer keys of the organization, including deactivated ones.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with an array of DeveloperKey objects.
      */
-    async listDeveloperKeys(): Promise<DeveloperKey[]> {
-        const content = await this.request('GET', '/v2/admin/developer-keys');
+    async listDeveloperKeys(options?: RequestOptions): Promise<DeveloperKey[]> {
+        const content = await this.request('GET', '/v2/admin/developer-keys', {
+            signal: options?.signal,
+        });
         return parseDeveloperKeyList(content);
     }
 
@@ -208,6 +223,7 @@ export class DeepLAdminClient {
     ): Promise<DeveloperKey> {
         const content = await this.request('PUT', `/v2/admin/developer-keys/${action}`, {
             jsonBody: DeepLAdminClient.withExtraBodyParameters(jsonBody, options),
+            signal: options?.signal,
         });
         return parseDeveloperKey(content);
     }
@@ -226,6 +242,7 @@ export class DeepLAdminClient {
             data?: URLSearchParams;
             jsonBody?: Record<string, unknown>;
             retryOnlyUnprocessed?: boolean;
+            signal?: AbortSignal;
         },
     ): Promise<string> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(

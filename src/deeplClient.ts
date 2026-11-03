@@ -5,6 +5,7 @@
 import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
 import {
     BaseRequestOptions,
+    RequestOptions,
     DocumentHandle,
     DocumentStatus,
     DocumentTranslateOptions,
@@ -331,12 +332,14 @@ export class DeepLClient {
 
     /**
      * Queries character and document usage during the current billing period.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with Usage object on success.
      */
-    public async getUsage(): Promise<Usage> {
+    public async getUsage(options?: RequestOptions): Promise<Usage> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v2/usage',
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseUsage(content);
@@ -344,15 +347,17 @@ export class DeepLClient {
 
     /**
      * Queries source languages supported by DeepL API.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with array of Language objects containing available source languages.
      */
-    async getSourceLanguages(): Promise<readonly Language[]> {
+    async getSourceLanguages(options?: RequestOptions): Promise<readonly Language[]> {
         const data = new URLSearchParams({ resource: 'translate_text' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/languages',
             {
                 data,
+                signal: options?.signal,
             },
         );
         await checkStatusCode(statusCode, content);
@@ -361,15 +366,17 @@ export class DeepLClient {
 
     /**
      * Queries target languages supported by DeepL API.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with array of Language objects containing available target languages.
      */
-    async getTargetLanguages(): Promise<readonly Language[]> {
+    async getTargetLanguages(options?: RequestOptions): Promise<readonly Language[]> {
         const data = new URLSearchParams({ resource: 'translate_text' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/languages',
             {
                 data,
+                signal: options?.signal,
             },
         );
         await checkStatusCode(statusCode, content);
@@ -378,15 +385,19 @@ export class DeepLClient {
 
     /**
      * Queries language pairs supported for glossaries by DeepL API.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with an array of GlossaryLanguagePair objects containing languages supported for glossaries.
      */
-    async getGlossaryLanguagePairs(): Promise<readonly GlossaryLanguagePair[]> {
+    async getGlossaryLanguagePairs(
+        options?: RequestOptions,
+    ): Promise<readonly GlossaryLanguagePair[]> {
         const data = new URLSearchParams({ resource: 'glossary' });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/languages',
             {
                 data,
+                signal: options?.signal,
             },
         );
         await checkStatusCode(statusCode, content);
@@ -422,7 +433,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/translate',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         const textResults = parseTextResultArray(content);
@@ -492,11 +503,18 @@ export class DeepLClient {
             );
             const status = await this.translateDocumentWaitUntilDone(documentHandle, {
                 timeoutMs: options?.timeoutMs,
+                signal: options?.signal,
             });
-            await this.translateDocumentDownload(documentHandle, outputHandle);
+            await this.translateDocumentDownload(documentHandle, outputHandle, {
+                signal: options?.signal,
+            });
             return status;
         } catch (errorUnknown: unknown) {
             if (onError) await onError();
+            if (options?.signal?.aborted) {
+                // Caller cancellation is never wrapped.
+                throw errorUnknown;
+            }
             const error =
                 errorUnknown instanceof Error || util.types.isNativeError(errorUnknown)
                     ? (errorUnknown as Error)
@@ -586,14 +604,18 @@ export class DeepLClient {
     /**
      * Retrieves the status of the document translation associated with the given document handle.
      * @param handle Document handle associated with document.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with a DocumentStatus giving the document translation status.
      */
-    async translateDocumentGetStatus(handle: DocumentHandle): Promise<DocumentStatus> {
+    async translateDocumentGetStatus(
+        handle: DocumentHandle,
+        options?: RequestOptions,
+    ): Promise<DocumentStatus> {
         const data = new URLSearchParams({ document_key: handle.documentKey });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             `/v2/document/${encodeURIComponent(handle.documentId)}`,
-            { data },
+            { data, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, false, true);
         return parseDocumentStatus(content, handle.documentId);
@@ -603,6 +625,7 @@ export class DeepLClient {
      * Downloads the translated document associated with the given document handle to the specified output file path or stream.handle.
      * @param handle Document handle associated with document.
      * @param outputFile String containing output file path, or Stream or FileHandle to store file data.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with undefined, or rejects if the document translation has not been completed.
      * @throws {DocumentNotReadyError} If the document translation has not completed yet.
      * @throws {ConnectionError} If the connection fails while the document is downloaded.
@@ -612,6 +635,7 @@ export class DeepLClient {
     async translateDocumentDownload(
         handle: DocumentHandle,
         outputFile: string | fs.WriteStream | fs.promises.FileHandle,
+        options?: RequestOptions,
     ): Promise<void> {
         if (isString(outputFile)) {
             // Created before the request, so an existing or unwritable path rejects at once
@@ -620,7 +644,7 @@ export class DeepLClient {
             const fileStream = fs.createWriteStream(outputFile, { fd });
             const streamClosed = new Promise<void>((resolve) => fileStream.once('close', resolve));
             try {
-                await this.internalDownloadDocument(handle, fileStream);
+                await this.internalDownloadDocument(handle, fileStream, options);
                 await streamClosed;
             } catch (e) {
                 fileStream.destroy();
@@ -629,12 +653,12 @@ export class DeepLClient {
                 throw e;
             }
         } else if (outputFile instanceof fs.WriteStream) {
-            return this.internalDownloadDocument(handle, outputFile);
+            return this.internalDownloadDocument(handle, outputFile, options);
         } else {
             // FileHandle
             const dummyFilePath = '';
             const outputStream = fs.createWriteStream(dummyFilePath, { fd: outputFile.fd });
-            await this.internalDownloadDocument(handle, outputStream);
+            await this.internalDownloadDocument(handle, outputStream, options);
             try {
                 await outputFile.close();
             } catch {
@@ -647,7 +671,8 @@ export class DeepLClient {
      * Polls the status of the given document translation every 5 seconds until it completes.
      * Statuses this library does not know are polled through.
      * @param handle {DocumentHandle} Handle to the document translation.
-     * @param options {WaitOptions} Optional `timeoutMs`: maximum time to wait in milliseconds.
+     * @param options {WaitOptions} Optional `timeoutMs`: maximum time to wait in milliseconds, and
+     *     `signal` to cancel the wait.
      * @return Fulfills with the final DocumentStatus when the document translation completes
      * successfully, rejects with a DeepLError if the translation fails, the timeout expires or a
      * communication error occurs.
@@ -658,7 +683,7 @@ export class DeepLClient {
     ): Promise<DocumentStatus> {
         const timeoutMs = options?.timeoutMs;
         const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
-        let status = await this.translateDocumentGetStatus(handle);
+        let status = await this.translateDocumentGetStatus(handle, options);
         while (!status.done() && status.ok()) {
             // status.secondsRemaining is currently unreliable, so just poll equidistantly
             let sleepMs = 5000;
@@ -671,9 +696,9 @@ export class DeepLClient {
                 }
                 sleepMs = Math.min(sleepMs, remainingMs);
             }
-            await timeout(sleepMs);
+            await timeout(sleepMs, options?.signal);
             logInfo(`Rechecking document translation status after sleeping for ${sleepMs} ms.`);
-            status = await this.translateDocumentGetStatus(handle);
+            status = await this.translateDocumentGetStatus(handle, options);
         }
         if (!status.ok()) {
             const message = status.errorMessage || 'unknown error';
@@ -688,6 +713,7 @@ export class DeepLClient {
      * @param sourceLang Language code of the glossary source terms.
      * @param targetLang Language code of the glossary target terms.
      * @param entries The source- & target-term pairs to add to the glossary.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with a GlossaryInfo containing details about the created glossary.
      */
     async createGlossary(
@@ -695,13 +721,14 @@ export class DeepLClient {
         sourceLang: LanguageCodeInput,
         targetLang: LanguageCodeInput,
         entries: GlossaryEntries,
+        options?: RequestOptions,
     ): Promise<GlossaryInfo> {
         if (Object.keys(entries.entries()).length === 0) {
             throw new DeepLError('glossary entries must not be empty');
         }
 
         const tsv = entries.toTsv();
-        return this.internalCreateGlossary(name, sourceLang, targetLang, 'tsv', tsv);
+        return this.internalCreateGlossary(name, sourceLang, targetLang, 'tsv', tsv, options);
     }
 
     /**
@@ -711,6 +738,7 @@ export class DeepLClient {
      * @param targetLang Language code of the glossary target terms.
      * @param csvFile String containing the path of the CSV file to be translated, or a Stream,
      *     Buffer, or a FileHandle containing CSV file content.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with a GlossaryInfo containing details about the created glossary.
      */
     async createGlossaryWithCsv(
@@ -718,6 +746,7 @@ export class DeepLClient {
         sourceLang: LanguageCodeInput,
         targetLang: LanguageCodeInput,
         csvFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
+        options?: RequestOptions,
     ): Promise<GlossaryInfo> {
         let csvContent;
         if (isString(csvFile)) {
@@ -732,18 +761,27 @@ export class DeepLClient {
             await csvFile.close();
         }
 
-        return this.internalCreateGlossary(name, sourceLang, targetLang, 'csv', csvContent);
+        return this.internalCreateGlossary(
+            name,
+            sourceLang,
+            targetLang,
+            'csv',
+            csvContent,
+            options,
+        );
     }
 
     /**
      * Gets information about an existing glossary.
      * @param glossaryId Glossary ID of the glossary.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with a GlossaryInfo containing details about the glossary.
      */
-    async getGlossary(glossaryId: GlossaryId): Promise<GlossaryInfo> {
+    async getGlossary(glossaryId: GlossaryId, options?: RequestOptions): Promise<GlossaryInfo> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v2/glossaries/${glossaryId}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfo(content);
@@ -751,12 +789,14 @@ export class DeepLClient {
 
     /**
      * Gets information about all existing glossaries.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with an array of GlossaryInfos containing details about all existing glossaries.
      */
-    async listGlossaries(): Promise<GlossaryInfo[]> {
+    async listGlossaries(options?: RequestOptions): Promise<GlossaryInfo[]> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v2/glossaries',
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfoList(content);
@@ -765,14 +805,19 @@ export class DeepLClient {
     /**
      * Retrieves the entries stored with the glossary with the given glossary ID or GlossaryInfo.
      * @param glossary Glossary ID or GlossaryInfo of glossary to retrieve entries of.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with GlossaryEntries holding the glossary entries.
      */
-    async getGlossaryEntries(glossary: GlossaryId | GlossaryInfo): Promise<GlossaryEntries> {
+    async getGlossaryEntries(
+        glossary: GlossaryId | GlossaryInfo,
+        options?: RequestOptions,
+    ): Promise<GlossaryEntries> {
         glossary = isString(glossary) ? glossary : glossary.glossaryId;
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v2/glossaries/${glossary}/entries`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, true);
         return new GlossaryEntries({ tsv: content });
@@ -781,13 +826,18 @@ export class DeepLClient {
     /**
      * Deletes the glossary with the given glossary ID or GlossaryInfo.
      * @param glossary Glossary ID or GlossaryInfo of glossary to be deleted.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with undefined when the glossary is deleted.
      */
-    async deleteGlossary(glossary: GlossaryId | GlossaryInfo): Promise<void> {
+    async deleteGlossary(
+        glossary: GlossaryId | GlossaryInfo,
+        options?: RequestOptions,
+    ): Promise<void> {
         glossary = isString(glossary) ? glossary : glossary.glossaryId;
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v2/glossaries/${glossary}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, true);
     }
@@ -835,6 +885,7 @@ export class DeepLClient {
                 data,
                 fileBuffer,
                 filename,
+                signal: options?.signal,
             },
         );
         await checkStatusCode(statusCode, content);
@@ -844,27 +895,30 @@ export class DeepLClient {
     /**
      * Download translated document associated with specified handle to given stream.
      * @private
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      */
     private async internalDownloadDocument(
         handle: DocumentHandle,
         outputStream: fs.WriteStream,
+        options?: RequestOptions,
     ): Promise<void> {
         const data = new URLSearchParams({ document_key: handle.documentKey });
         const { statusCode, content } =
             await this.httpClient.sendRequestWithBackoff<IncomingMessage>(
                 'POST',
                 `/v2/document/${encodeURIComponent(handle.documentId)}/result`,
-                { data },
+                { data, signal: options?.signal },
                 true,
             );
         await checkStatusCode(statusCode, content, false, true);
 
-        return pipeToStream(content, outputStream);
+        return pipeToStream(content, outputStream, options?.signal);
     }
 
     /**
      * Create glossary with given details.
      * @private
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      */
     private async internalCreateGlossary(
         name: string,
@@ -872,6 +926,7 @@ export class DeepLClient {
         targetLang: LanguageCodeInput,
         entriesFormat: string,
         entries: string,
+        options?: RequestOptions,
     ): Promise<GlossaryInfo> {
         // Glossaries are only supported for base language types
         sourceLang = nonRegionalLanguageCode(sourceLang);
@@ -892,7 +947,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/glossaries',
-            { jsonBody: body },
+            { jsonBody: body, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfo(content);
@@ -936,7 +991,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/rephrase',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -968,7 +1023,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v2/write/correct',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1015,7 +1070,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/glossaries',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1070,7 +1125,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/glossaries',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1081,11 +1136,13 @@ export class DeepLClient {
      * Retrieves information about the glossary with the specified ID.
      * This does not retrieve the glossary entries.
      * @param glossary The ID of the glossary or MultilingualGlossaryInfo object to retrieve.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} object with details about the specified glossary.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async getMultilingualGlossary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
+        options?: RequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
         if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('glossaryId must not be empty');
@@ -1094,6 +1151,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             multilingualGlossaryPath(glossary),
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1108,6 +1166,7 @@ export class DeepLClient {
      * @param glossary The ID of the glossary or MultilingualGlossaryInfo object to query.
      * @param sourceLanguageCode Source language code of the dictionary.
      * @param targetLanguageCode Target language code of the dictionary.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<MultilingualGlossaryDictionaryEntries>} Object containing the dictionary entries.
      *
      * @throws {ArgumentError} If any argument is invalid.
@@ -1118,6 +1177,7 @@ export class DeepLClient {
         glossary: GlossaryId | MultilingualGlossaryInfo,
         sourceLanguageCode: string,
         targetLanguageCode: string,
+        options?: RequestOptions,
     ): Promise<MultilingualGlossaryDictionaryEntries> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -1136,7 +1196,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `${multilingualGlossaryPath(glossary)}/entries`,
-            { data: queryParams },
+            { data: queryParams, signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1154,14 +1214,18 @@ export class DeepLClient {
     /**
      * Retrieves a list of all multilingual glossaries available for the authenticated user.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo[]>} An array of objects containing details about each glossary.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async listMultilingualGlossaries(): Promise<MultilingualGlossaryInfo[]> {
+    async listMultilingualGlossaries(
+        options?: RequestOptions,
+    ): Promise<MultilingualGlossaryInfo[]> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/glossaries',
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1171,11 +1235,13 @@ export class DeepLClient {
     /**
      * Deletes the glossary with the specified ID or MultilingualGlossaryInfo object.
      * @param glossary The ID of the glossary or MultilingualGlossaryInfo object to delete.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {Error} If the glossaryId is empty.
      * @throws {DeepLError} If the glossary could not be deleted.
      */
     async deleteMultilingualGlossary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
+        options?: RequestOptions,
     ): Promise<void> {
         const glossaryId = extractGlossaryId(glossary);
 
@@ -1186,6 +1252,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             multilingualGlossaryPath(glossaryId),
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1197,6 +1264,7 @@ export class DeepLClient {
      * @param glossary ID of the glossary or MultilingualGlossaryInfo object from which the dictionary will be deleted.
      * @param sourceLanguageCode Source language code of the dictionary to delete.
      * @param targetLanguageCode Target language code of the dictionary to delete.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {ArgumentError} If any argument is invalid.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
@@ -1204,6 +1272,7 @@ export class DeepLClient {
         glossary: GlossaryId | MultilingualGlossaryInfo,
         sourceLanguageCode: string,
         targetLanguageCode: string,
+        options?: RequestOptions,
     ): Promise<void> {
         if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
@@ -1223,6 +1292,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `${multilingualGlossaryPath(glossary)}/dictionaries?${query}`,
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1313,7 +1383,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             `${multilingualGlossaryPath(glossary)}/dictionaries`,
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1352,7 +1422,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             multilingualGlossaryPath(glossary),
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1466,7 +1536,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             multilingualGlossaryPath(glossary),
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content, true /* usingGlossary */);
@@ -1497,7 +1567,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/spoken-terms',
-            { jsonBody: body },
+            { jsonBody: body, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTerms(content);
@@ -1506,14 +1576,16 @@ export class DeepLClient {
     /**
      * Lists all spoken terms collections of the account.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<SpokenTerms[]>} Details about each collection, excluding the terms.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async listSpokenTerms(): Promise<SpokenTerms[]> {
+    async listSpokenTerms(options?: RequestOptions): Promise<SpokenTerms[]> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/spoken-terms',
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTermsArray(content);
@@ -1523,15 +1595,20 @@ export class DeepLClient {
      * Retrieves details about a spoken terms collection, excluding the terms.
      *
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<SpokenTerms>} Object with details about the collection.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async getSpokenTerms(spokenTerms: string | SpokenTerms): Promise<SpokenTerms> {
+    async getSpokenTerms(
+        spokenTerms: string | SpokenTerms,
+        options?: RequestOptions,
+    ): Promise<SpokenTerms> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTerms(content);
@@ -1563,7 +1640,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTerms(content);
@@ -1574,6 +1651,7 @@ export class DeepLClient {
      *
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
      * @param lang Language code of the term list, for example 'en'.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<SpokenTermsEntries>} The terms of the list.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -1581,12 +1659,13 @@ export class DeepLClient {
     async getSpokenTermsEntries(
         spokenTerms: string | SpokenTerms,
         lang: string,
+        options?: RequestOptions,
     ): Promise<SpokenTermsEntries> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/entries`,
-            { data: new URLSearchParams({ lang }) },
+            { data: new URLSearchParams({ lang }), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTermsEntries(content);
@@ -1612,7 +1691,10 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists`,
-            { jsonBody: addExtraBodyParametersToJson(spokenTermsEntriesToJson(entries), options) },
+            {
+                jsonBody: addExtraBodyParametersToJson(spokenTermsEntriesToJson(entries), options),
+                signal: options?.signal,
+            },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTermsList(content);
@@ -1623,13 +1705,18 @@ export class DeepLClient {
      *
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async deleteSpokenTerms(spokenTerms: string | SpokenTerms): Promise<void> {
+    async deleteSpokenTerms(
+        spokenTerms: string | SpokenTerms,
+        options?: RequestOptions,
+    ): Promise<void> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
     }
@@ -1640,14 +1727,20 @@ export class DeepLClient {
      * @param spokenTerms ID of the collection, or a SpokenTerms object.
      * @param lang Language code of the term list to delete, for example 'de'.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async deleteSpokenTermsList(spokenTerms: string | SpokenTerms, lang: string): Promise<void> {
+    async deleteSpokenTermsList(
+        spokenTerms: string | SpokenTerms,
+        lang: string,
+        options?: RequestOptions,
+    ): Promise<void> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
         const query = buildQueryString({ lang });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists?${query}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
     }
@@ -1680,7 +1773,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/languages',
-            { data },
+            { data, signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1691,14 +1784,16 @@ export class DeepLClient {
      * Retrieves the resources supported by the DeepL API, along with their features and whether
      * each feature requires support from the source and/or target language.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<LanguageResource[]>} An array of objects, one per supported resource.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async getLanguageResources(): Promise<LanguageResource[]> {
+    async getLanguageResources(options?: RequestOptions): Promise<LanguageResource[]> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/languages/resources',
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1711,6 +1806,7 @@ export class DeepLClient {
      * @param page: Page number for pagination, 0-indexed (optional).
      * @param pageSize: Number of items per page (optional).
      * @param detailed: Whether to include detailed configuration rules in the `configuredRules` property (optional).
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<StyleRuleInfo[]>} An array of objects containing details about each style rule.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -1719,6 +1815,7 @@ export class DeepLClient {
         page?: number,
         pageSize?: number,
         detailed?: boolean,
+        options?: RequestOptions,
     ): Promise<StyleRuleInfo[]> {
         const queryParams = new URLSearchParams();
         if (page !== undefined) {
@@ -1734,7 +1831,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/style_rules',
-            { data: queryParams },
+            { data: queryParams, signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1747,6 +1844,7 @@ export class DeepLClient {
      *
      * @param page: Page number for pagination, 0-indexed (optional).
      * @param pageSize: Number of items per page (optional).
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<TranslationMemoryInfo[]>} An array of objects containing details about each translation memory.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -1754,6 +1852,7 @@ export class DeepLClient {
     async listTranslationMemories(
         page?: number,
         pageSize?: number,
+        options?: RequestOptions,
     ): Promise<TranslationMemoryInfo[]> {
         const queryParams = new URLSearchParams();
         if (page !== undefined) {
@@ -1766,7 +1865,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/translation_memories',
-            { data: queryParams },
+            { data: queryParams, signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1777,17 +1876,20 @@ export class DeepLClient {
      * Retrieves a single translation memory by ID.
      *
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<TranslationMemoryInfo>} Details of the translation memory.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async getTranslationMemory(
         translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+        options?: RequestOptions,
     ): Promise<TranslationMemoryInfo> {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}`,
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1833,7 +1935,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}/segments`,
-            { data: queryParams },
+            { data: queryParams, signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1845,15 +1947,18 @@ export class DeepLClient {
      *
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async deleteTranslationMemory(
         translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+        options?: RequestOptions,
     ): Promise<void> {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}`,
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1902,7 +2007,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/translation_memories/import',
-            { jsonBody: addExtraBodyParametersToJson(jsonBody, options) },
+            { jsonBody: addExtraBodyParametersToJson(jsonBody, options), signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1923,6 +2028,7 @@ export class DeepLClient {
      * @param contentType: MIME type of the file, which must match the content type declared when
      * the import job was created. Defaults to 'application/xml'.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while uploading the file. An error response from the
      * upload URL is a plain DeepLError carrying httpStatusCode, never one of its subclasses.
      */
@@ -1930,6 +2036,7 @@ export class DeepLClient {
         translationMemoryImport: string | TranslationMemoryImport,
         fileBuffer: Buffer,
         contentType = 'application/xml',
+        options?: RequestOptions,
     ): Promise<void> {
         const uploadUrl =
             typeof translationMemoryImport === 'string'
@@ -1942,7 +2049,11 @@ export class DeepLClient {
         const { statusCode, content } = await this.storageHttpClient.sendRequestWithBackoff<string>(
             'PUT',
             uploadUrl,
-            { rawBody: fileBuffer, headers: { 'Content-Type': contentType } },
+            {
+                rawBody: fileBuffer,
+                headers: { 'Content-Type': contentType },
+                signal: options?.signal,
+            },
         );
 
         if (statusCode < 200 || statusCode >= 300) {
@@ -1957,6 +2068,7 @@ export class DeepLClient {
      * exportTranslationMemoryToFilepath() to do both steps and write the file at once.
      *
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<TranslationMemoryExport>} The job ID, and whether the API reused a
      * previously completed export.
      *
@@ -1964,11 +2076,13 @@ export class DeepLClient {
      */
     async createTranslationMemoryExport(
         translationMemory: TranslationMemoryId | TranslationMemoryInfo,
+        options?: RequestOptions,
     ): Promise<TranslationMemoryExport> {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}/export`,
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -1980,12 +2094,14 @@ export class DeepLClient {
      * Retrieves the status of a translation memory import or export job.
      *
      * @param job: ID of the job to query, or a TranslationMemoryJob object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<TranslationMemoryJob>} The current status of the job.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async getTranslationMemoryJob(
         job: string | TranslationMemoryJob,
+        options?: RequestOptions,
     ): Promise<TranslationMemoryJob> {
         const jobId = typeof job === 'string' ? job : job?.jobId;
         if (!jobId) {
@@ -1994,6 +2110,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/translation_memories/jobs/${encodeURIComponent(jobId)}`,
+            { signal: options?.signal },
         );
 
         await checkStatusCode(statusCode, content);
@@ -2010,9 +2127,9 @@ export class DeepLClient {
      * on its own, so set a timeout when that is a possibility.
      *
      * @param job: ID of the job to wait for, or a TranslationMemoryJob object.
-     * @param options: (Optional) WaitOptions with timeoutMs, or the timeout in milliseconds as a
-     * number: maximum time to wait before rejecting. Note that this is not accurate to the
-     * millisecond, as the job is only polled every 5 seconds.
+     * @param options: (Optional) WaitOptions with timeoutMs and signal, or the timeout in
+     * milliseconds as a number. timeoutMs is the maximum time to wait before rejecting; signal
+     * cancels the wait. The job is polled every 5 seconds.
      * @returns {Promise<TranslationMemoryJob>} The completed job.
      *
      * @throws {DeepLError} If the job fails or expires (with the job's error message), the timeout
@@ -2023,8 +2140,9 @@ export class DeepLClient {
         options?: WaitOptions | number,
     ): Promise<TranslationMemoryJob> {
         const timeoutMs = typeof options === 'number' ? options : options?.timeoutMs;
+        const signal = typeof options === 'number' ? undefined : options?.signal;
         const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : undefined;
-        let current = await this.getTranslationMemoryJob(job);
+        let current = await this.getTranslationMemoryJob(job, { signal });
         while (!current.done() && current.ok()) {
             let sleepMs = 5000;
             if (deadline !== undefined) {
@@ -2036,9 +2154,9 @@ export class DeepLClient {
                 }
                 sleepMs = Math.min(sleepMs, remainingMs);
             }
-            await timeout(sleepMs);
+            await timeout(sleepMs, signal);
             logInfo(`Rechecking translation memory job status after sleeping for ${sleepMs} ms.`);
-            current = await this.getTranslationMemoryJob(current.jobId);
+            current = await this.getTranslationMemoryJob(current.jobId, { signal });
         }
         if (!current.ok()) {
             throw new DeepLError(current.result?.errorMessage || `Job ${current.status}`);
@@ -2052,6 +2170,7 @@ export class DeepLClient {
      * @param job: Completed export job carrying the download URL.
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If the job has no download URL, the output file already exists or cannot
      * be created or written (the Node error in `error`), or any error occurs while downloading.
      * An error response from the download URL is mapped like a document download response
@@ -2060,6 +2179,7 @@ export class DeepLClient {
     async downloadTranslationMemoryExport(
         job: Omit<TranslationMemoryJob, 'done' | 'ok' | 'creationTime' | 'updatedTime'>,
         outputFile: string | fs.WriteStream,
+        options?: RequestOptions,
     ): Promise<void> {
         const downloadUrl = job.results[0]?.downloadUrl;
         if (!downloadUrl) {
@@ -2090,7 +2210,7 @@ export class DeepLClient {
                 await this.storageHttpClient.sendRequestWithBackoff<IncomingMessage>(
                     'GET',
                     downloadUrl,
-                    {},
+                    { signal: options?.signal },
                     true,
                 );
             // The released status code mapping (e.g. 403 to AuthorizationError, 503 to
@@ -2098,13 +2218,13 @@ export class DeepLClient {
             await checkStatusCode(statusCode, content, false, true);
 
             if (fd === undefined) {
-                return await pipeToStream(content, outputFile as fs.WriteStream);
+                return await pipeToStream(content, outputFile as fs.WriteStream, options?.signal);
             }
             // The stream owns the descriptor from here on and closes it when it finishes or is
             // destroyed, so it must not be closed a second time.
             fileStream = fs.createWriteStream(outputFile as string, { fd });
             streamClosed = new Promise<void>((resolve) => fileStream?.once('close', resolve));
-            await pipeToStream(content, fileStream);
+            await pipeToStream(content, fileStream, options?.signal);
             await streamClosed;
         } catch (e) {
             if (fd !== undefined) {
@@ -2118,6 +2238,10 @@ export class DeepLClient {
                 // Never leave a truncated TMX behind: a caller that logs and continues would
                 // otherwise see a file that looks like a successful export.
                 await fs.promises.unlink(outputFile as string).catch(() => undefined);
+            }
+            if (options?.signal?.aborted) {
+                // Caller cancellation is never wrapped.
+                throw e;
             }
             throw wrapLocalFileError('cannot write output file', e);
         }
@@ -2177,11 +2301,13 @@ export class DeepLClient {
             displayName: options?.displayName,
             contentType: options?.contentType,
             extraBodyParameters: options?.extraBodyParameters,
+            signal: options?.signal,
         });
         await this.uploadTranslationMemoryFile(
             created,
             fileBuffer,
             options?.contentType ?? 'application/xml',
+            { signal: options?.signal },
         );
         return this.waitUntilTranslationMemoryJobDone(created.jobId, options);
     }
@@ -2193,7 +2319,7 @@ export class DeepLClient {
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      * @param options: Optional WaitOptions with timeoutMs limiting how long to wait for the export
-     * to finish.
+     * to finish, and signal to cancel the export.
      * @returns {Promise<TranslationMemoryJob>} The completed export job.
      *
      * @throws {DeepLError} If a file already exists at the output path or the output directory is
@@ -2216,9 +2342,9 @@ export class DeepLClient {
                 throw wrapLocalFileError('cannot write output directory', error);
             }
         }
-        const created = await this.createTranslationMemoryExport(translationMemory);
+        const created = await this.createTranslationMemoryExport(translationMemory, options);
         const job = await this.waitUntilTranslationMemoryJobDone(created.jobId, options);
-        await this.downloadTranslationMemoryExport(job, outputFile);
+        await this.downloadTranslationMemoryExport(job, outputFile, options);
         return job;
     }
 
@@ -2255,7 +2381,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/style_rules',
-            { jsonBody: addExtraBodyParametersToJson(body, options) },
+            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseStyleRuleInfo);
@@ -2265,15 +2391,20 @@ export class DeepLClient {
      * Retrieves a single style rule by ID.
      *
      * @param styleRule: The style rule to retrieve, as an ID or a StyleRuleInfo object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<StyleRuleInfo>} The style rule info.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async getStyleRule(styleRule: StyleId | StyleRuleInfo): Promise<StyleRuleInfo> {
+    async getStyleRule(
+        styleRule: StyleId | StyleRuleInfo,
+        options?: RequestOptions,
+    ): Promise<StyleRuleInfo> {
         const styleId = extractStyleRuleId(styleRule);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/style_rules/${encodeURIComponent(styleId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseStyleRuleInfo);
@@ -2301,7 +2432,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             `/v3/style_rules/${encodeURIComponent(styleId)}`,
-            { jsonBody: addExtraBodyParametersToJson({ name }, options) },
+            { jsonBody: addExtraBodyParametersToJson({ name }, options), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseStyleRuleInfo);
@@ -2312,13 +2443,18 @@ export class DeepLClient {
      *
      * @param styleRule: The style rule to delete, as an ID or a StyleRuleInfo object.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async deleteStyleRule(styleRule: StyleId | StyleRuleInfo): Promise<void> {
+    async deleteStyleRule(
+        styleRule: StyleId | StyleRuleInfo,
+        options?: RequestOptions,
+    ): Promise<void> {
         const styleId = extractStyleRuleId(styleRule);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/style_rules/${encodeURIComponent(styleId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
     }
@@ -2342,7 +2478,10 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             `/v3/style_rules/${encodeURIComponent(styleId)}/configured_rules`,
-            { jsonBody: addExtraBodyParametersToJson(configuredRules, options) },
+            {
+                jsonBody: addExtraBodyParametersToJson(configuredRules, options),
+                signal: options?.signal,
+            },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseStyleRuleInfo);
@@ -2378,7 +2517,10 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions`,
-            { jsonBody: addExtraBodyParametersToJson(instruction, options) },
+            {
+                jsonBody: addExtraBodyParametersToJson(instruction, options),
+                signal: options?.signal,
+            },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseCustomInstruction);
@@ -2389,6 +2531,7 @@ export class DeepLClient {
      *
      * @param styleRule: The style rule, as an ID or a StyleRuleInfo object.
      * @param instructionId: The custom instruction, as an ID or a CustomInstruction object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<CustomInstruction>} The custom instruction.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
@@ -2396,12 +2539,14 @@ export class DeepLClient {
     async getStyleRuleCustomInstruction(
         styleRule: StyleId | StyleRuleInfo,
         instructionId: string | CustomInstruction,
+        options?: RequestOptions,
     ): Promise<CustomInstruction> {
         const styleId = extractStyleRuleId(styleRule);
         const id = extractCustomInstructionId(instructionId);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             customInstructionPath(styleId, id),
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseCustomInstruction);
@@ -2440,7 +2585,10 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PUT',
             customInstructionPath(styleId, id),
-            { jsonBody: addExtraBodyParametersToJson(instruction, options) },
+            {
+                jsonBody: addExtraBodyParametersToJson(instruction, options),
+                signal: options?.signal,
+            },
         );
         await checkStatusCode(statusCode, content);
         return parseResponse(content, parseCustomInstruction);
@@ -2452,17 +2600,20 @@ export class DeepLClient {
      * @param styleRule: The style rule, as an ID or a StyleRuleInfo object.
      * @param instructionId: The custom instruction to delete, as an ID or a CustomInstruction object.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async deleteStyleRuleCustomInstruction(
         styleRule: StyleId | StyleRuleInfo,
         instructionId: string | CustomInstruction,
+        options?: RequestOptions,
     ): Promise<void> {
         const styleId = extractStyleRuleId(styleRule);
         const id = extractCustomInstructionId(instructionId);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             customInstructionPath(styleId, id),
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
     }
@@ -2472,11 +2623,16 @@ export class DeepLClient {
      *
      * @param page: Page number for pagination, 0-indexed (optional, API default 0).
      * @param pageSize: Number of items per page (optional, API default 10, at most 100).
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<StyleProfile[]>} The style profiles on the page.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async listStyleProfiles(page?: number, pageSize?: number): Promise<StyleProfile[]> {
+    async listStyleProfiles(
+        page?: number,
+        pageSize?: number,
+        options?: RequestOptions,
+    ): Promise<StyleProfile[]> {
         const queryParams = new URLSearchParams();
         if (page !== undefined) {
             queryParams.append('page', String(page));
@@ -2487,7 +2643,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             '/v3/style_profiles',
-            { data: queryParams },
+            { data: queryParams, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseStyleProfileList(content);
@@ -2515,7 +2671,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
             '/v3/style_profiles',
-            { jsonBody: body },
+            { jsonBody: body, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseStyleProfile(content);
@@ -2525,15 +2681,20 @@ export class DeepLClient {
      * Retrieves a style profile.
      *
      * @param styleProfile: ID of the style profile, or a StyleProfile object.
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<StyleProfile>} The style profile.
      *
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async getStyleProfile(styleProfile: string | StyleProfile): Promise<StyleProfile> {
+    async getStyleProfile(
+        styleProfile: string | StyleProfile,
+        options?: RequestOptions,
+    ): Promise<StyleProfile> {
         const styleProfileId = extractStyleProfileId(styleProfile);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseStyleProfile(content);
@@ -2564,7 +2725,7 @@ export class DeepLClient {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'PATCH',
             `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
-            { jsonBody: body },
+            { jsonBody: body, signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseStyleProfile(content);
@@ -2576,13 +2737,18 @@ export class DeepLClient {
      *
      * @param styleProfile: ID of the style profile, or a StyleProfile object.
      *
+     * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
-    async deleteStyleProfile(styleProfile: string | StyleProfile): Promise<void> {
+    async deleteStyleProfile(
+        styleProfile: string | StyleProfile,
+        options?: RequestOptions,
+    ): Promise<void> {
         const styleProfileId = extractStyleProfileId(styleProfile);
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/style_profiles/${encodeURIComponent(styleProfileId)}`,
+            { signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
     }

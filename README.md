@@ -1007,8 +1007,8 @@ your account type: `character`, `document` and `teamDocument`. For API accounts
 Each usage subtypes (if defined) have `count` and `limit` properties giving the
 amount used and maximum amount respectively, and the `limitReached()` function
 that checks if the usage has reached the limit. The top level `Usage` object has
-the `anyLimitReached()` function to check the `character`, `document` and
-`teamDocument` usage.
+the `anyLimitReached()` function to check the `character`, `document`,
+`teamDocument` and `apiKeyCharacter` usage.
 
 For API Pro accounts, the `Usage` object also contains:
 
@@ -1024,8 +1024,8 @@ For API Pro accounts, the `Usage` object also contains:
 
 These fields are `undefined` when the response does not contain them, for
 example for API Free accounts. `anyLimitReached()` does not check
-`apiKeyCharacter`, `speechToTextMinutes` or `speechToSpeechMinutes`; call their
-`limitReached()` function yourself.
+`speechToTextMinutes` or `speechToSpeechMinutes`; call their `limitReached()`
+function yourself.
 
 ```javascript
 const usage = await deeplClient.getUsage();
@@ -1039,9 +1039,6 @@ if (usage.apiKeyCharacter) {
     console.log(
         `Characters (this API key): ${usage.apiKeyCharacter.count} of ${usage.apiKeyCharacter.limit}`,
     );
-    if (usage.apiKeyCharacter.limitReached()) {
-        console.log('API key character limit exceeded.');
-    }
 }
 if (usage.document) {
     console.log(`Documents: ${usage.document.count} of ${usage.document.limit}`);
@@ -1410,9 +1407,43 @@ requests that fail multiple times will incur delays: with the default
 and timeouts before the connection was established, as repeating it after other
 failures could create a second key.
 
+### Cancelling requests
+
+Every method of `DeepLClient` and `DeepLAdminClient` that sends a request
+accepts an `AbortSignal` as the `signal` option. Methods without other options
+take it as a trailing `options` argument, for example
+`getUsage({ signal })`. Aborting cancels the request in flight, any retry not
+sent yet and, for `translateDocument()`, `translateDocumentWaitUntilDone()`,
+`waitUntilTranslationMemoryJobDone()` and the translation memory file helpers,
+the wait between status checks. The returned promise rejects with the signal's
+abort reason as is, not wrapped in a `DeepLError`: an `AbortError`
+`DOMException` unless `abort()` was given a reason. Aborting does not undo what
+the API already processed; a document translation that was uploaded keeps
+running.
+
+```javascript
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 2000);
+try {
+    await deeplClient.translateText('Hello, world!', null, 'de', {
+        signal: controller.signal,
+    });
+} catch (error) {
+    if (controller.signal.aborted) {
+        console.log('Translation cancelled');
+    } else {
+        throw error;
+    }
+}
+
+// The same for a timeout:
+await deeplClient.getUsage({ signal: AbortSignal.timeout(5000) });
+```
+
 ### Errors
 
-All errors thrown by the library extend `DeepLError`. It has an
+All errors thrown by the library extend `DeepLError`, except the abort reason
+of a cancelled request (see [Cancelling requests](#cancelling-requests)). It has an
 `httpStatusCode` property with the HTTP status of the failed response
 (`undefined` if there was no response) and a `shouldRetry` property that is
 true for failures a later retry could resolve (HTTP 429, 5xx and transient

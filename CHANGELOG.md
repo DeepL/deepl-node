@@ -5,7 +5,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Cancellation: every `DeepLClient` and `DeepLAdminClient` method that sends a
+  request accepts `signal?: AbortSignal`, through its options object or, for
+  methods that had none, a new trailing `options` argument of the new type
+  `RequestOptions` (which `BaseRequestOptions`, `WaitOptions`,
+  `TranslationMemorySegmentsOptions` and `GetLanguagesForResourceOptions` now
+  extend). Aborting cancels the request in flight, pending retries and the wait
+  between status checks of `translateDocument()`,
+  `translateDocumentWaitUntilDone()`, `waitUntilTranslationMemoryJobDone()` and
+  the translation memory file helpers. The promise rejects with the signal's
+  abort reason, unwrapped: not a `DeepLError`, and `translateDocument()` does
+  not wrap it in a `DocumentTranslationError`. Code that relies on every
+  rejection being a `DeepLError` must check `signal.aborted` first when it
+  passes a signal.
 ### Changed
+- `Usage.anyLimitReached()` also returns true when the per-key character usage
+  (`apiKeyCharacter`) has reached its limit, so it returns true more often for
+  API Pro keys with a key-level limit. If you only want the account limits,
+  check `character`, `document` and `teamDocument` with `limitReached()`.
+  Speech usage is still not included.
 - `DocumentStatus.status` is typed `DocumentStatusCode | (string & {})` and
   `TranslationMemoryJobResult.status` `TranslationMemoryJobStatus | (string & {})`,
   so a status the library does not know yet is visible in the type. Exhaustive

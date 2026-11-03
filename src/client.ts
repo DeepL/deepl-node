@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 import { ArgumentError, ConnectionError } from './errors';
-import { logDebug, logInfo, timeout } from './utils';
+import { abortReason, logDebug, logInfo, throwIfAborted, timeout } from './utils';
 
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { URLSearchParams } from 'url';
@@ -162,6 +162,11 @@ interface SendRequestOptions {
      * to repeat.
      */
     retryOnlyUnprocessed?: boolean;
+    /**
+     * Cancels the request, and any retry not yet sent, when aborted. The returned promise then
+     * rejects with the signal's abort reason, unwrapped.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -195,8 +200,8 @@ class BackoffTimer {
         return Math.max(this.deadline - Date.now(), 0.0);
     }
 
-    async sleepUntilDeadline() {
-        await timeout(this.getTimeUntilDeadline());
+    async sleepUntilDeadline(signal?: AbortSignal) {
+        await timeout(this.getTimeUntilDeadline(), signal);
 
         // Apply multiplier to current backoff time
         this.backoff = Math.min(this.backoff * this.backoffMultiplier, this.backoffMax * 1000.0);
@@ -252,6 +257,9 @@ export class HttpClient {
             timeout: timeoutMs,
             validateStatus: null, // do not throw errors for any status codes
         };
+        if (options.signal !== undefined) {
+            axiosRequestConfig.signal = options.signal;
+        }
 
         if (options.rawBody) {
             axiosRequestConfig.data = options.rawBody;
@@ -307,6 +315,7 @@ export class HttpClient {
         responseAsStream = false,
     ): Promise<{ statusCode: number; content: TContent }> {
         options = options === undefined ? {} : options;
+        throwIfAborted(options.signal);
         logInfo(`Request to DeepL API ${method} ${url}`);
         logDebug(`Request details: ${options.data}`);
         const backoff = new BackoffTimer();
@@ -324,6 +333,10 @@ export class HttpClient {
                 response = await HttpClient.sendAxiosRequest<TContent>(axiosRequestConfig);
                 error = undefined;
             } catch (e) {
+                if (options.signal?.aborted) {
+                    // Caller cancellation is never wrapped or retried.
+                    throw e;
+                }
                 response = undefined;
                 error = e as ConnectionError;
             }
@@ -347,7 +360,7 @@ export class HttpClient {
                 `Starting retry ${backoff.getNumRetries() + 1} for request ${method}` +
                     ` ${url} after sleeping for ${backoff.getTimeUntilDeadline()} seconds.`,
             );
-            await backoff.sleepUntilDeadline();
+            await backoff.sleepUntilDeadline(options.signal);
         }
 
         if (response !== undefined) {
@@ -393,6 +406,11 @@ export class HttpClient {
                 content: response.data,
             };
         } catch (axios_error_raw) {
+            const signal = axiosRequestConfig.signal as AbortSignal | undefined;
+            if (signal?.aborted) {
+                // Caller cancellation is never wrapped.
+                throw abortReason(signal);
+            }
             const axiosError = axios_error_raw as AxiosError;
             const message: string = axiosError.message || '';
 

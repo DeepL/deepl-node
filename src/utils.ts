@@ -93,8 +93,47 @@ export async function streamToString(stream: NodeJS.ReadableStream): Promise<str
     return (await streamToBuffer(stream)).toString('utf8');
 }
 
-// Wrap setTimeout() with Promise
-export const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Returns the reason the given signal was aborted with: the value passed to
+ * AbortController.abort(), or the AbortError DOMException if none was given.
+ * @private
+ */
+export function abortReason(signal: AbortSignal): unknown {
+    // The pinned @types/node does not declare AbortSignal.reason; Node.js >= 17.2 sets it.
+    return (signal as AbortSignal & { reason?: unknown }).reason;
+}
+
+/**
+ * Rejects with the signal's abort reason, unwrapped, if the signal is aborted.
+ * @private
+ */
+export function throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+        throw abortReason(signal);
+    }
+}
+
+/**
+ * Resolves after the given time, or rejects with the signal's abort reason when it is aborted.
+ * @private
+ */
+export const timeout = (ms: number, signal?: AbortSignal) =>
+    new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+            reject(abortReason(signal));
+            return;
+        }
+        let timer: NodeJS.Timeout | undefined = undefined;
+        const onAbort = () => {
+            clearTimeout(timer);
+            reject(abortReason(signal as AbortSignal));
+        };
+        timer = setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort);
+            resolve();
+        }, ms);
+        signal?.addEventListener('abort', onAbort, { once: true });
+    });
 
 /**
  * Builds a URL query string, encoding names and values with encodeURIComponent, so a space is
@@ -116,18 +155,34 @@ export function buildQueryString(params: Record<string, string>): string {
 export function pipeToStream(
     content: IncomingMessage,
     outputStream: NodeJS.WritableStream & { destroy(error?: Error): unknown },
+    signal?: AbortSignal,
 ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const fail = (error: Error) => {
+        let onAbort: (() => void) | undefined = undefined;
+        const fail = (error: unknown) => {
+            if (onAbort) signal?.removeEventListener('abort', onAbort);
             content.destroy();
             outputStream.destroy();
             reject(error);
         };
+        onAbort = () => fail(abortReason(signal as AbortSignal));
+        if (signal?.aborted) {
+            onAbort();
+            return;
+        }
+        signal?.addEventListener('abort', onAbort, { once: true });
         content.on('error', (error: Error) =>
-            fail(new ConnectionError(`Connection failure: ${error.message}`, true, error)),
+            fail(
+                signal?.aborted
+                    ? abortReason(signal)
+                    : new ConnectionError(`Connection failure: ${error.message}`, true, error),
+            ),
         );
         outputStream.on('error', fail);
-        outputStream.on('finish', resolve);
+        outputStream.on('finish', () => {
+            if (onAbort) signal?.removeEventListener('abort', onAbort);
+            resolve();
+        });
         content.pipe(outputStream);
     });
 }

@@ -122,9 +122,22 @@ export type TagList = string | string[];
 export type RequestParameters = Record<string, unknown>;
 
 /**
- * Base options that apply to all translation endpoints. Planned to be extended to other endpoints in future.
+ * Options accepted by every request method.
  */
-export interface BaseRequestOptions {
+export interface RequestOptions {
+    /**
+     * Cancels the call when aborted: the HTTP request in flight, any retry not yet sent and, for
+     * polling methods, the wait between status checks. The returned promise then rejects with the
+     * signal's abort reason (an `AbortError` DOMException unless `abort()` was given a reason),
+     * never wrapped in a DeepLError. Aborting does not undo what the API already processed.
+     */
+    signal?: AbortSignal;
+}
+
+/**
+ * Options for requests that send a body, extended by the options of each operation.
+ */
+export interface BaseRequestOptions extends RequestOptions {
     /**
      * Extra parameters to be added to the request body.
      * Keys in this object will be added to the request body, and can override built-in parameters.
@@ -558,8 +571,8 @@ export type TargetGlossaryLanguageCode = SourceGlossaryLanguageCode;
  * Depending on the account type, different usage types are included: the character, document and
  * teamDocument fields provide details about each corresponding usage type, allowing each usage type
  * to be checked individually. API Pro accounts also get per-key, speech and per-product usage and the
- * billing period. The anyLimitReached() function checks the character, document and teamDocument
- * usage only.
+ * billing period. The anyLimitReached() function checks the character, document, teamDocument and
+ * apiKeyCharacter usage.
  */
 export interface Usage {
     /** Usage details for characters, for example due to the translateText() function. */
@@ -585,8 +598,8 @@ export interface Usage {
     readonly endTime?: Date;
 
     /**
-     * Returns true if the character, document or team document usage has reached or passed its
-     * limit, otherwise false. It does not check apiKeyCharacter, speechToTextMinutes or
+     * Returns true if the character, document, team document or per-key character usage has
+     * reached or passed its limit, otherwise false. It does not check speechToTextMinutes or
      * speechToSpeechMinutes: call limitReached() on those details yourself.
      */
     anyLimitReached(): boolean;
@@ -805,7 +818,7 @@ export type DocumentStatusCode = 'queued' | 'translating' | 'error' | 'done';
 /**
  * Options for methods that poll until an operation completes.
  */
-export interface WaitOptions {
+export interface WaitOptions extends RequestOptions {
     /**
      * Maximum time to wait in milliseconds; when it expires, the method rejects with a
      * DeepLError. Status is polled every 5 seconds. If unset, the method waits without limit.
@@ -1100,7 +1113,7 @@ export interface TranslationMemorySegments {
 /**
  * Options for listing the segments of a translation memory.
  */
-export interface TranslationMemorySegmentsOptions {
+export interface TranslationMemorySegmentsOptions extends RequestOptions {
     /** Maximum segments per page (1-100, defaults to 50). */
     pageSize?: number;
     /** Cursor from a previous response; omit on the first call. */
@@ -1270,7 +1283,7 @@ export type LanguageInclude = 'beta' | 'external' | (string & Record<never, neve
 /**
  * Options for `DeepLClient.getLanguagesForResource()`.
  */
-export interface GetLanguagesForResourceOptions {
+export interface GetLanguagesForResourceOptions extends RequestOptions {
     /** Additional languages and features to include. By default only stable ones are returned. */
     include?: LanguageInclude[];
 }
