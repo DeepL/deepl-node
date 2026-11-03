@@ -27,7 +27,6 @@ import {
     StyleProfile,
     MultilingualGlossaryDictionaryEntries,
     StyleRuleInfo,
-    ConfiguredRules,
     CustomInstruction,
     TranslationMemoryInfo,
     TranslationMemoryExport,
@@ -100,15 +99,7 @@ interface StyleRuleInfoApiResponse {
     updated_time: string;
     language: string;
     version: number;
-    configured_rules?: {
-        dates_and_times?: Record<string, string>;
-        formatting?: Record<string, string>;
-        numbers?: Record<string, string>;
-        punctuation?: Record<string, string>;
-        spelling_and_grammar?: Record<string, string>;
-        style_and_tone?: Record<string, string>;
-        vocabulary?: Record<string, string>;
-    };
+    configured_rules?: Record<string, Record<string, string>>;
     custom_instructions?: Array<{
         id?: string;
         label: string;
@@ -953,27 +944,6 @@ export function parseDocumentHandle(json: string): DocumentHandle {
 }
 
 /**
- * Parses the given style rule API response to a ConfiguredRules object.
- * @private
- */
-function parseConfiguredRules(
-    configuredRulesData?: StyleRuleInfoApiResponse['configured_rules'],
-): ConfiguredRules | undefined {
-    if (!configuredRulesData) {
-        return undefined;
-    }
-    return {
-        datesAndTimes: configuredRulesData.dates_and_times,
-        formatting: configuredRulesData.formatting,
-        numbers: configuredRulesData.numbers,
-        punctuation: configuredRulesData.punctuation,
-        spellingAndGrammar: configuredRulesData.spelling_and_grammar,
-        styleAndTone: configuredRulesData.style_and_tone,
-        vocabulary: configuredRulesData.vocabulary,
-    };
-}
-
-/**
  * Parses the given custom instruction API response to a CustomInstruction object.
  * @private
  */
@@ -1008,7 +978,7 @@ export function parseStyleRuleInfo(styleRule: StyleRuleInfoApiResponse): StyleRu
             updatedTime: new Date(styleRule.updated_time),
             language: styleRule.language,
             version: styleRule.version,
-            configuredRules: parseConfiguredRules(styleRule.configured_rules),
+            configuredRules: styleRule.configured_rules,
             customInstructions,
         };
     } catch (error) {

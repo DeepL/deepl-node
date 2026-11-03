@@ -42,7 +42,11 @@ describe('DeepLClient.getAllStyleRules', () => {
         ]);
     });
 
-    it('sends page, page_size and detailed and parses configured rules and instructions', async () => {
+    it('sends page, page_size and detailed and returns configured rules as the wire map', async () => {
+        const configuredRules = {
+            dates_and_times: { calendar_era: 'use_bc_and_ad' },
+            some_new_category: { some_rule: 'some_value' },
+        };
         nock(serverUrl)
             .get('/v3/style_rules')
             .query({ page: '0', page_size: '10', detailed: 'true' })
@@ -50,7 +54,7 @@ describe('DeepLClient.getAllStyleRules', () => {
                 style_rules: [
                     {
                         ...styleRuleReply,
-                        configured_rules: { dates_and_times: { calendar_era: 'use_bc_and_ad' } },
+                        configured_rules: configuredRules,
                         custom_instructions: [instructionReply],
                     },
                 ],
@@ -58,7 +62,7 @@ describe('DeepLClient.getAllStyleRules', () => {
 
         const [styleRule] = await makeDeeplClient().getAllStyleRules(0, 10, true);
 
-        expect(styleRule.configuredRules?.datesAndTimes).toEqual({ calendar_era: 'use_bc_and_ad' });
+        expect(styleRule.configuredRules).toEqual(configuredRules);
         expect(styleRule.customInstructions).toEqual([
             { id: 'i-1', label: 'Label', prompt: 'Prompt', sourceLanguage: 'de' },
         ]);
@@ -142,7 +146,7 @@ describe('DeepLClient.updateStyleRuleConfiguredRules', () => {
 
         const styleRule = await makeDeeplClient().updateStyleRuleConfiguredRules('s-1', rules);
 
-        expect(styleRule.configuredRules?.datesAndTimes).toEqual(rules.dates_and_times);
+        expect(styleRule.configuredRules).toEqual(rules);
     });
 });
 

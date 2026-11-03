@@ -950,26 +950,6 @@ export type CreateStyleRuleCustomInstructionOptions = BaseRequestOptions;
 export type UpdateStyleRuleCustomInstructionOptions = BaseRequestOptions;
 
 /**
- * Configuration rules for a style rule list.
- */
-export interface ConfiguredRules {
-    /** Date and time formatting rules. */
-    readonly datesAndTimes?: Record<string, string>;
-    /** Text formatting rules. */
-    readonly formatting?: Record<string, string>;
-    /** Number formatting rules. */
-    readonly numbers?: Record<string, string>;
-    /** Punctuation rules. */
-    readonly punctuation?: Record<string, string>;
-    /** Spelling and grammar rules. */
-    readonly spellingAndGrammar?: Record<string, string>;
-    /** Style and tone rules. */
-    readonly styleAndTone?: Record<string, string>;
-    /** Vocabulary rules. */
-    readonly vocabulary?: Record<string, string>;
-}
-
-/**
  * Information about a style rule list.
  */
 export interface StyleRuleInfo {
@@ -985,8 +965,12 @@ export interface StyleRuleInfo {
     readonly language: string;
     /** Version number of the style rule list. */
     readonly version: number;
-    /** The predefined rules that have been enabled. */
-    readonly configuredRules?: ConfiguredRules;
+    /**
+     * The predefined rules that have been enabled, as returned by the API: a map from category
+     * (e.g. `dates_and_times`) to a map from rule to its setting, both with the API's
+     * snake_case names.
+     */
+    readonly configuredRules?: Record<string, Record<string, string>>;
     /** Optional list of custom instructions. */
     readonly customInstructions?: CustomInstruction[];
 }

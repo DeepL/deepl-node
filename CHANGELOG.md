@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- `StyleRuleInfo.configuredRules` is the `configured_rules` map as the API
+  returns it (`Record<string, Record<string, string>>`, snake_case category
+  and rule names), the same shape `createStyleRule()` and
+  `updateStyleRuleConfiguredRules()` take. Categories the library did not know
+  are no longer dropped. Replace the camelCase category properties with the
+  API's names, e.g. `configuredRules.datesAndTimes` with
+  `configuredRules.dates_and_times` and `configuredRules.styleAndTone` with
+  `configuredRules.style_and_tone`.
 - `rephraseText()` takes a `RephraseTextOptions` object as its third argument
   and has no fourth argument. Pass `{ writingStyle, tone }` instead of the
   writing style and tone as the third and fourth arguments. Any other third
@@ -30,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `devDependencies`.
 
 ### Removed
+- The `ConfiguredRules` type. Use `Record<string, Record<string, string>>`
+  (or `StyleRuleInfo['configuredRules']`) instead.
 - The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no
   longer extends `Translator` and now holds all of its methods with the same
   signatures and behaviour. Replace `new deepl.Translator(authKey, options)`

@@ -656,7 +656,10 @@ corresponding to all of your stored style rules. The method accepts optional
 parameters: `page` (page number for pagination, 0-indexed), `pageSize` (number
 of items per page), and `detailed`. When `true`, the response includes
 `configuredRules` and `customInstructions` for each style rule. When `false`
-(default), these fields are omitted for faster responses.
+(default), these fields are omitted for faster responses. `configuredRules` is
+returned as the API sends it: a map from category to a map from rule to its
+setting, with the API's snake_case names (the same shape `createStyleRule()`
+and `updateStyleRuleConfiguredRules()` take).
 
 ```javascript
 // Get a single style rule by ID
