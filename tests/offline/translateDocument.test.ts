@@ -102,6 +102,20 @@ describe('DeepLClient.translateDocumentUpload', () => {
         expect(upload.body()).toContain('name="my-extra-parameter"\r\n\r\nmy-extra-value\r\n');
     });
 
+    it('sends typed extraBodyParameters as multipart strings, and removes null ones', async () => {
+        const upload = expectUpload();
+
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('x'), 'en', 'de', {
+            filename: 'example.txt',
+            extraBodyParameters: { enable_beta: true, n: 2, tags: ['a', 'b'], source_lang: null },
+        });
+
+        expect(upload.body()).toContain('name="enable_beta"\r\n\r\ntrue\r\n');
+        expect(upload.body()).toContain('name="n"\r\n\r\n2\r\n');
+        expect(upload.body()).toContain('name="tags"\r\n\r\na,b\r\n');
+        expect(upload.body()).not.toContain('name="source_lang"');
+    });
+
     it('sends extraBodyParameters once, replacing parameters the SDK sets after the languages', async () => {
         const upload = expectUpload();
 

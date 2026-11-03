@@ -102,6 +102,7 @@ import {
     csvDictionaryToJson,
     dictionaryEntriesToJson,
     isFreeAccountAuthKey,
+    mergeExtraBodyParameters,
     nonRegionalLanguageCode,
     setStyleAndTranslationMemoryOptions,
     setTextsAndReturnIsSingular,
@@ -187,9 +188,7 @@ function addExtraBodyParametersToJson(
     body: Record<string, unknown>,
     options: BaseRequestOptions | undefined,
 ): Record<string, unknown> {
-    // Added last, so they replace library-set fields with the same key
-    const extraBodyParameters = options?.extraBodyParameters;
-    return extraBodyParameters === undefined ? body : { ...body, ...extraBodyParameters };
+    return mergeExtraBodyParameters(body, options?.extraBodyParameters);
 }
 
 function styleProfileOptionsToJson(

@@ -361,6 +361,19 @@ describe('DeepLAdminClient', () => {
         expect(scope.isDone()).toBe(true);
     });
 
+    it('sends typed extraBodyParameters with their JSON types', async () => {
+        const scope = nock(serverUrl)
+            .post('/v2/admin/developer-keys', { beta: true, n: 2 })
+            .reply(200, DEVELOPER_KEY_JSON);
+
+        await makeAdminClient().createDeveloperKey({
+            label: 'mine',
+            extraBodyParameters: { beta: true, n: 2, label: null },
+        });
+
+        expect(scope.isDone()).toBe(true);
+    });
+
     it('sends an empty body to create a developer key without options', async () => {
         const scope = nock(serverUrl)
             .post('/v2/admin/developer-keys', (body) => Object.keys(body).length === 0)

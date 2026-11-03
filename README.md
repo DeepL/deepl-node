@@ -252,11 +252,13 @@ The following options are only used if `tagHandling` is `'xml'`:
 -   `ignoreTags`: list of XML tags that containing content that should not be
     translated. Format and default are the same as for `splittingTags`.
 -   `extraBodyParameters`: Extra body parameters to be passed along with the
-    HTTP request. Only string values are permitted.
-    For example: `{'param': 'value', 'param2': 'value2'}`
-    Text translation sends a JSON body, so the values are sent as JSON strings; the API
-    rejects a string for a field it types as a boolean, number or array (for example,
-    `outline_detection: '0'`).
+    HTTP request, for example `{ param: 'value', show_billed_characters: false }`.
+    Text translation sends a JSON body, and each value keeps its JSON type (string,
+    boolean, number, array or object). The API does not convert strings, so pass a
+    boolean, number or array for a field it types that way (`outline_detection: false`,
+    not `'0'`). A `null` value removes the parameter of that name; `undefined` is ignored.
+    In a document upload (multipart), strings are sent as given, arrays comma-joined,
+    booleans as `true`/`false`, numbers as decimal strings and other objects as JSON.
     Note: Extra body parameters replace parameters of the same name set by the library
     (such as `target_lang`, `source_lang`, `split_sentences`, etc.). This is primarily useful for testing or
     accessing beta features.

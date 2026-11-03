@@ -298,6 +298,33 @@ describe('DeepLClient.translateText', () => {
         });
     });
 
+    it('sends typed extraBodyParameters with their JSON types', async () => {
+        expectTranslateBody({
+            ...baseBody,
+            show_billed_characters: false,
+            translation_memory_id: 'tm-1',
+            translation_memory_threshold: 80,
+            beta_tags: ['a', 'b'],
+        });
+
+        await makeDeeplClient().translateText('abc', null, 'de', {
+            extraBodyParameters: {
+                show_billed_characters: false,
+                translation_memory_id: 'tm-1',
+                translation_memory_threshold: 80,
+                beta_tags: ['a', 'b'],
+            },
+        });
+    });
+
+    it('removes a field for a null extraBodyParameters value and ignores undefined', async () => {
+        expectTranslateBody({ text: ['abc'], target_lang: 'de', source_lang: 'en' });
+
+        await makeDeeplClient().translateText('abc', 'en', 'de', {
+            extraBodyParameters: { show_billed_characters: null, source_lang: undefined },
+        });
+    });
+
     it('sends extraBodyParameters once, replacing parameters the SDK sets after the languages', async () => {
         expectTranslateBody({
             text: 'replaced',

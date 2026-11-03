@@ -286,11 +286,43 @@ export function setExtraBodyParameters(
     data: URLSearchParams,
     extraBodyParameters: RequestParameters | undefined,
 ) {
-    if (extraBodyParameters !== undefined) {
-        for (const paramName in extraBodyParameters) {
-            data.set(paramName, extraBodyParameters[paramName]);
+    if (extraBodyParameters === undefined) return;
+    for (const [name, value] of Object.entries(extraBodyParameters)) {
+        if (value === undefined) continue;
+        if (value === null) {
+            data.delete(name);
+        } else if (isString(value)) {
+            data.set(name, value);
+        } else if (Array.isArray(value)) {
+            data.set(name, value.join(','));
+        } else if (typeof value === 'object') {
+            data.set(name, JSON.stringify(value));
+        } else {
+            data.set(name, String(value));
         }
     }
+}
+
+/**
+ * Returns the JSON body with the extra body parameters added last, replacing fields of the same
+ * name. A `null` value removes the field; an `undefined` value is ignored.
+ * @private
+ */
+export function mergeExtraBodyParameters(
+    body: Record<string, unknown>,
+    extraBodyParameters: RequestParameters | undefined,
+): Record<string, unknown> {
+    if (extraBodyParameters === undefined) return body;
+    const merged = { ...body };
+    for (const [name, value] of Object.entries(extraBodyParameters)) {
+        if (value === undefined) continue;
+        if (value === null) {
+            delete merged[name];
+        } else {
+            merged[name] = value;
+        }
+    }
+    return merged;
 }
 
 /**

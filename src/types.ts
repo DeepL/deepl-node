@@ -116,9 +116,10 @@ export type TranslationMemoryId = string;
 export type TagList = string | string[];
 
 /**
- * Extra request parameters to be passed with translation requests.
+ * Extra request parameters to be passed with requests. In a JSON body each value is sent with
+ * its JSON type; a `null` value removes the field of that name, an `undefined` value is ignored.
  */
-export type RequestParameters = Record<string, string>;
+export type RequestParameters = Record<string, unknown>;
 
 /**
  * Base options that apply to all translation endpoints. Planned to be extended to other endpoints in future.
@@ -127,6 +128,7 @@ export interface BaseRequestOptions {
     /**
      * Extra parameters to be added to the request body.
      * Keys in this object will be added to the request body, and can override built-in parameters.
+     * Values keep their JSON type in JSON bodies; `null` removes the field of that name.
      * This is mostly used by DeepL employees to test functionality, or for beta programs.
      */
     extraBodyParameters?: RequestParameters;

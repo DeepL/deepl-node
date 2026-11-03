@@ -15,11 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `glossary_ids`, `custom_instructions` and the tag lists are sent as JSON
   arrays, booleans and numbers keep their JSON types, and the v3 glossary
   `dictionaries` are a JSON array of objects. Document upload stays multipart.
-  `extraBodyParameters` of these methods are sent as JSON strings, and the API
-  does not convert them: a string for a field it types as a boolean, number or
-  array is rejected, e.g. `{ outline_detection: '0' }`. Pass such fields through
-  the matching option instead (`outlineDetection: false`). Proxies and test
-  doubles that read these request bodies must parse JSON.
+  Proxies and test doubles that read these request bodies must parse JSON.
+- `RequestParameters`, the type of `extraBodyParameters`, is
+  `Record<string, unknown>` (was `Record<string, string>`). In JSON bodies each
+  value keeps its JSON type, so booleans, numbers and arrays can be passed
+  (`{ show_billed_characters: false }`); a `null` value removes the field of that
+  name and `undefined` is ignored. In the multipart document upload, strings are
+  sent as given, arrays comma-joined, booleans as `true`/`false`, numbers via
+  `String()` and other objects as JSON. The API does not convert strings, so a
+  string for a field it types as a boolean, number or array is now rejected,
+  e.g. `{ outline_detection: '0' }`: pass `false` or use the matching option.
+  Objects typed as `Record<string, string>` still compile as extra body
+  parameters; only code that reads values from a `RequestParameters` as strings
+  needs a cast or check.
 - `StyleRuleInfo.configuredRules` is the `configured_rules` map as the API
   returns it (`Record<string, Record<string, string>>`, snake_case category
   and rule names), the same shape `createStyleRule()` and
