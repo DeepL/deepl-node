@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not wrap it in a `DocumentTranslationError`. Code that relies on every
   rejection being a `DeepLError` must check `signal.aborted` first when it
   passes a signal.
+
 ### Changed
 - `Usage.anyLimitReached()` also returns true when the per-key character usage
   (`apiKeyCharacter`) has reached its limit, so it returns true more often for
