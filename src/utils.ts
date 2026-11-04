@@ -10,7 +10,6 @@ import {
     ConnectionError,
     DeepLError,
     DocumentNotReadyError,
-    GlossaryNotFoundError,
     NotFoundError,
     QuotaExceededError,
     TooManyRequestsError,
@@ -622,7 +621,6 @@ function createStatusCodeError(
     statusCode: number,
     message: string,
     content: string,
-    usingGlossary: boolean,
     inDocumentDownload: boolean,
 ): DeepLError {
     switch (statusCode) {
@@ -634,7 +632,6 @@ function createStatusCodeError(
                 `Quota for this billing period has been exceeded${message}`,
             );
         case 404:
-            if (usingGlossary) return new GlossaryNotFoundError(`Glossary not found${message}`);
             return new NotFoundError(`Not found${message}`);
         case 400:
             return new DeepLError(`Bad request${message}`);
@@ -664,7 +661,6 @@ function createStatusCodeError(
 export async function checkStatusCode(
     statusCode: number,
     content: string | IncomingMessage,
-    usingGlossary = false,
     inDocumentDownload = false,
 ): Promise<void> {
     if (200 <= statusCode && statusCode < 300) return;
@@ -691,13 +687,7 @@ export async function checkStatusCode(
         message = ', ' + content;
     }
 
-    const error = createStatusCodeError(
-        statusCode,
-        message,
-        content,
-        usingGlossary,
-        inDocumentDownload,
-    );
+    const error = createStatusCodeError(statusCode, message, content, inDocumentDownload);
     error.httpStatusCode = statusCode;
     error.shouldRetry = statusCode === 429 || statusCode >= 500;
     throw error;

@@ -59,13 +59,6 @@ export class DocumentTranslationError extends DeepLError {
 /** Thrown when the API answers HTTP 404: the requested resource does not exist. */
 export class NotFoundError extends DeepLError {}
 
-/**
- * Thrown when the API answers HTTP 404 to a glossary request.
- * @deprecated Use NotFoundError instead, which this class extends. Will be removed in the next
- * major version.
- */
-export class GlossaryNotFoundError extends NotFoundError {}
-
 export class DocumentNotReadyError extends DeepLError {}
 
 export class ArgumentError extends DeepLError {}

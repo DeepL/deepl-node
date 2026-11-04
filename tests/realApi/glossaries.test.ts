@@ -31,7 +31,7 @@ describe('DeepLClient glossaries', () => {
                     try {
                         fetched = await client.getGlossary(glossary.glossaryId);
                     } catch (e) {
-                        if (!(e instanceof deepl.GlossaryNotFoundError) || attempt >= 9) throw e;
+                        if (!(e instanceof deepl.NotFoundError) || attempt >= 9) throw e;
                         await timeout(1000);
                     }
                 }
@@ -48,7 +48,7 @@ describe('DeepLClient glossaries', () => {
                 await client.deleteGlossary(glossary).catch(() => undefined);
             }
             await expect(client.getGlossary(glossary.glossaryId)).rejects.toThrow(
-                deepl.GlossaryNotFoundError,
+                deepl.NotFoundError,
             );
         },
         testTimeout,

@@ -149,6 +149,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   throw `ArgumentError` for a dictionary without entries.
 
 ### Removed
+- **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
+  answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
+  dictionary is missing, throw `NotFoundError`, which it extended. Replace
+  `GlossaryNotFoundError` with `NotFoundError`.
 - `Usage.document` and `Usage.teamDocument`. The API no longer returns
   document usage; remove reads of these fields. A response that still
   contains the `document_*` fields parses and the fields are ignored.

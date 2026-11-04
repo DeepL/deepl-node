@@ -182,12 +182,13 @@ describe('DeepLClient.getMultilingualGlossary', () => {
         });
     });
 
-    it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
+    it('throws NotFoundError when the glossary does not exist', async () => {
         nock(serverUrl).get('/v3/glossaries/g-1').reply(404, { message: 'not found' });
 
-        await expect(makeDeeplClient().getMultilingualGlossary('g-1')).rejects.toThrow(
-            deepl.GlossaryNotFoundError,
-        );
+        const error = await makeDeeplClient()
+            .getMultilingualGlossary('g-1')
+            .catch((e) => e);
+        expect(error.constructor).toBe(deepl.NotFoundError);
     });
 
     it('throws ArgumentError when the glossary ID is empty', async () => {
@@ -244,15 +245,16 @@ describe('DeepLClient.getMultilingualGlossaryDictionaryEntries', () => {
         expect(dictionary.entries.entries()).toEqual({ Apple: 'Apfel', Banana: 'Banane' });
     });
 
-    it('throws GlossaryNotFoundError when the response has no dictionary', async () => {
+    it('throws NotFoundError when the response has no dictionary', async () => {
         nock(serverUrl)
             .get('/v3/glossaries/g-1/entries')
             .query(true)
             .reply(200, { dictionaries: [] });
 
-        await expect(
-            makeDeeplClient().getMultilingualGlossaryDictionaryEntries('g-1', 'en', 'de'),
-        ).rejects.toThrow(deepl.GlossaryNotFoundError);
+        const error = await makeDeeplClient()
+            .getMultilingualGlossaryDictionaryEntries('g-1', 'en', 'de')
+            .catch((e) => e);
+        expect(error.constructor).toBe(deepl.NotFoundError);
     });
 
     it.each([
@@ -565,10 +567,11 @@ describe('DeepLClient multilingual glossary 404 on collection endpoints', () => 
             () => nock(serverUrl).get('/v3/glossaries'),
             (c) => c.listMultilingualGlossaries(),
         ],
-    ])('%s throws GlossaryNotFoundError', async (_, interceptor, call) => {
+    ])('%s throws NotFoundError', async (_, interceptor, call) => {
         interceptor().reply(404, { message: 'not found' });
 
-        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.GlossaryNotFoundError);
+        const error = (await call(makeDeeplClient()).catch((e) => e)) as Error;
+        expect(error.constructor).toBe(deepl.NotFoundError);
     });
 });
 
@@ -619,7 +622,7 @@ describe('DeepLClient multilingual glossary URL encoding', () => {
     ])('%s encodes the glossary ID in the path', async (_, interceptor, call) => {
         const scope = interceptor().reply(404, { message: 'not found' });
 
-        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.GlossaryNotFoundError);
+        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.NotFoundError);
         expect(scope.isDone()).toBe(true);
     });
 

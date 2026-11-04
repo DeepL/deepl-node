@@ -55,7 +55,6 @@ describe('error mapping', () => {
             .catch((e) => e);
 
         expect(error).toBeInstanceOf(deepl.NotFoundError);
-        expect(error).not.toBeInstanceOf(deepl.GlossaryNotFoundError);
         expect(error.httpStatusCode).toBe(404);
     });
 
@@ -65,15 +64,15 @@ describe('error mapping', () => {
         await expect(makeDeeplClient().getUsage()).rejects.toThrow('Bad request, plain text');
     });
 
-    it('throws GlossaryNotFoundError when a glossary request answers 404', async () => {
+    it('throws NotFoundError itself when a glossary request answers 404', async () => {
         nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'm' });
 
         const error = await makeDeeplClient()
             .getGlossary('g-1')
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.GlossaryNotFoundError);
-        expect(error).toBeInstanceOf(deepl.NotFoundError);
+        expect(error.constructor).toBe(deepl.NotFoundError);
+        expect(error.httpStatusCode).toBe(404);
     });
 
     it('throws DeepLError when the usage response is not valid JSON', async () => {

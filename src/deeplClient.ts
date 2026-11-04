@@ -120,12 +120,7 @@ import {
     timeout,
     pipeToStream,
 } from './utils';
-import {
-    ArgumentError,
-    DeepLError,
-    DocumentTranslationError,
-    GlossaryNotFoundError,
-} from './errors';
+import { ArgumentError, DeepLError, DocumentTranslationError, NotFoundError } from './errors';
 import { GlossaryEntries } from './glossaryEntries';
 import { IncomingMessage } from 'http';
 import * as fs from 'fs';
@@ -622,7 +617,7 @@ export class DeepLClient {
             `/v2/document/${encodeURIComponent(handle.documentId)}`,
             { data, signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, false, true);
+        await checkStatusCode(statusCode, content, true);
         return parseDocumentStatus(content, handle.documentId);
     }
 
@@ -790,7 +785,7 @@ export class DeepLClient {
             `/v2/glossaries/${glossaryId}`,
             { signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content);
         return parseGlossaryInfo(content);
     }
 
@@ -805,7 +800,7 @@ export class DeepLClient {
             '/v2/glossaries',
             { signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content);
         return parseGlossaryInfoList(content);
     }
 
@@ -826,7 +821,7 @@ export class DeepLClient {
             `/v2/glossaries/${glossary}/entries`,
             { signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content);
         return new GlossaryEntries({ tsv: content });
     }
 
@@ -846,7 +841,7 @@ export class DeepLClient {
             `/v2/glossaries/${glossary}`,
             { signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content);
     }
 
     /**
@@ -857,7 +852,6 @@ export class DeepLClient {
     private async sendCreateRequest(
         url: string,
         options: Omit<SendRequestOptions, 'retryOnlyUnprocessed'>,
-        usingGlossary = false,
     ): Promise<{ statusCode: number; content: string }> {
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'POST',
@@ -865,7 +859,7 @@ export class DeepLClient {
             { ...options, retryOnlyUnprocessed: true },
         );
         try {
-            await checkStatusCode(statusCode, content, usingGlossary);
+            await checkStatusCode(statusCode, content);
         } catch (error) {
             // A 5xx may come after the server processed the request, so only a 429 is safe to repeat.
             if (error instanceof DeepLError) {
@@ -939,7 +933,7 @@ export class DeepLClient {
                 { data, signal: options?.signal },
                 true,
             );
-        await checkStatusCode(statusCode, content, false, true);
+        await checkStatusCode(statusCode, content, true);
 
         return pipeToStream(content, outputStream, options?.signal);
     }
@@ -973,11 +967,10 @@ export class DeepLClient {
             entries: entries,
         };
 
-        const { content } = await this.sendCreateRequest(
-            '/v2/glossaries',
-            { jsonBody: body, signal: options?.signal },
-            true,
-        );
+        const { content } = await this.sendCreateRequest('/v2/glossaries', {
+            jsonBody: body,
+            signal: options?.signal,
+        });
         return parseGlossaryInfo(content);
     }
 
@@ -1099,11 +1092,10 @@ export class DeepLClient {
 
         const body = { name, dictionaries: dictionaryEntriesToJson(glossaryDicts) };
 
-        const { content } = await this.sendCreateRequest(
-            '/v3/glossaries',
-            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
-            true,
-        );
+        const { content } = await this.sendCreateRequest('/v3/glossaries', {
+            jsonBody: addExtraBodyParametersToJson(body, options),
+            signal: options?.signal,
+        });
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1153,11 +1145,10 @@ export class DeepLClient {
             dictionaries: [csvDictionaryToJson(sourceLanguageCode, targetLanguageCode, csvContent)],
         };
 
-        const { content } = await this.sendCreateRequest(
-            '/v3/glossaries',
-            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
-            true,
-        );
+        const { content } = await this.sendCreateRequest('/v3/glossaries', {
+            jsonBody: addExtraBodyParametersToJson(body, options),
+            signal: options?.signal,
+        });
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1183,7 +1174,7 @@ export class DeepLClient {
             { signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1200,7 +1191,7 @@ export class DeepLClient {
      *
      * @throws {ArgumentError} If any argument is invalid.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
-     * @throws {GlossaryNotFoundError} If no dictionary is found for the given source and target language codes.
+     * @throws {NotFoundError} If the glossary or the dictionary for the given source and target language codes does not exist.
      */
     async getMultilingualGlossaryDictionaryEntries(
         glossary: GlossaryId | MultilingualGlossaryInfo,
@@ -1228,14 +1219,14 @@ export class DeepLClient {
             { data: queryParams, signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         const dictionaryEntriesList = parseResponse(
             content,
             parseMultilingualGlossaryDictionaryEntries,
         );
 
         if (!dictionaryEntriesList || dictionaryEntriesList.length === 0) {
-            throw new GlossaryNotFoundError('Glossary dictionary not found');
+            throw new NotFoundError('Glossary dictionary not found');
         }
         return dictionaryEntriesList[0];
     }
@@ -1257,7 +1248,7 @@ export class DeepLClient {
             { signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         return parseResponse(content, parseListMultilingualGlossaries);
     }
 
@@ -1283,7 +1274,7 @@ export class DeepLClient {
             { signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
     }
 
     /**
@@ -1323,7 +1314,7 @@ export class DeepLClient {
             { signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
     }
 
     /**
@@ -1406,7 +1397,7 @@ export class DeepLClient {
             { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         return parseResponse(content, parseMultilingualGlossaryDictionaryInfo);
     }
 
@@ -1445,7 +1436,7 @@ export class DeepLClient {
             { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1559,7 +1550,7 @@ export class DeepLClient {
             { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
         );
 
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
+        await checkStatusCode(statusCode, content);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -2230,7 +2221,7 @@ export class DeepLClient {
                 );
             // The released status code mapping (e.g. 403 to AuthorizationError, 503 to
             // DocumentNotReadyError) is kept until the next major version.
-            await checkStatusCode(statusCode, content, false, true);
+            await checkStatusCode(statusCode, content, true);
 
             if (fd === undefined) {
                 return await pipeToStream(content, outputFile as fs.WriteStream, options?.signal);

@@ -38,7 +38,7 @@ describe('DeepLClient multilingual glossaries', () => {
                     try {
                         fetched = await client.getMultilingualGlossary(glossary.glossaryId);
                     } catch (e) {
-                        if (!(e instanceof deepl.GlossaryNotFoundError) || attempt >= 9) throw e;
+                        if (!(e instanceof deepl.NotFoundError) || attempt >= 9) throw e;
                         await timeout(1000);
                     }
                 }

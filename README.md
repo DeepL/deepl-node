@@ -1456,8 +1456,9 @@ response body that is cut off mid-read is retried, except for creates; its
 `ConnectionError` has `shouldRetry` true either way. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
--   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary
-    requests throw its deprecated subclass `GlossaryNotFoundError`.
+-   `NotFoundError`: HTTP 404, the requested resource does not exist, including
+    glossaries, and a glossary dictionary missing from
+    `getMultilingualGlossaryDictionaryEntries()`.
 -   `TooManyRequestsError`: HTTP 429, after all retries.
 -   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
 -   `DocumentNotReadyError`: HTTP 503 while getting the status of a document

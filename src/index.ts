@@ -8,7 +8,6 @@ import {
     DeepLError,
     DocumentNotReadyError,
     DocumentTranslationError,
-    GlossaryNotFoundError,
     QuotaExceededError,
     TooManyRequestsError,
 } from './errors';

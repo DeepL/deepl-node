@@ -92,12 +92,13 @@ describe('DeepLClient.getGlossary', () => {
         await makeDeeplClient().getGlossary('g-1');
     });
 
-    it('throws GlossaryNotFoundError when the glossary does not exist', async () => {
+    it('throws NotFoundError when the glossary does not exist', async () => {
         nock(serverUrl).get('/v2/glossaries/g-1').reply(404, { message: 'not found' });
 
-        await expect(makeDeeplClient().getGlossary('g-1')).rejects.toThrow(
-            deepl.GlossaryNotFoundError,
-        );
+        const error = await makeDeeplClient()
+            .getGlossary('g-1')
+            .catch((e) => e);
+        expect(error.constructor).toBe(deepl.NotFoundError);
     });
 });
 
