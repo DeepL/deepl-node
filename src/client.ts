@@ -91,6 +91,9 @@ const TIMEOUT_AXIOS_ERROR_CODES = new Set(['ETIMEDOUT', 'ECONNABORTED']);
 /** Connection errors whose request was never sent, so the server cannot have processed it. */
 const unsentRequestErrors = new WeakSet<ConnectionError>();
 
+/** Connection errors raised while reading the response body: the request was sent. */
+const bodyCutOffErrors = new WeakSet<ConnectionError>();
+
 /** Sockets created by the agents below, and those of them that connected. */
 const trackedSockets = new WeakSet<object>();
 const connectedSockets = new WeakSet<object>();
@@ -372,8 +375,9 @@ export class HttpClient {
             return response;
         } else {
             if (options.retryOnlyUnprocessed && error !== undefined) {
-                // Only an unsent request is safe to repeat for a non-idempotent call.
-                error.shouldRetry = unsentRequestErrors.has(error);
+                // Only an unsent request is safe to repeat for a non-idempotent call; a cut-off
+                // body is still reported as retryable, the caller decides whether to repeat it.
+                error.shouldRetry = unsentRequestErrors.has(error) || bodyCutOffErrors.has(error);
             }
             throw error as Error;
         }
@@ -416,7 +420,14 @@ export class HttpClient {
 
             const error = new ConnectionError(`Connection failure: ${message}`);
             error.error = axiosError;
-            if (axiosError.code !== undefined && RETRYABLE_AXIOS_ERROR_CODES.has(axiosError.code)) {
+            if (axiosError.response !== undefined) {
+                // The response arrived but its body was cut off mid-read: a reset after sending.
+                error.shouldRetry = true;
+                bodyCutOffErrors.add(error);
+            } else if (
+                axiosError.code !== undefined &&
+                RETRYABLE_AXIOS_ERROR_CODES.has(axiosError.code)
+            ) {
                 error.shouldRetry = true;
             } else {
                 logDebug('Unrecognized axios error', axiosError);
@@ -424,6 +435,7 @@ export class HttpClient {
             }
             const code = axiosError.code;
             if (
+                axiosError.response === undefined &&
                 code !== undefined &&
                 (UNSENT_AXIOS_ERROR_CODES.has(code) ||
                     (TIMEOUT_AXIOS_ERROR_CODES.has(code) &&

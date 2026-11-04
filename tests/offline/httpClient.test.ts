@@ -6,6 +6,7 @@ import * as deepl from 'deepl-node';
 
 import log from 'loglevel';
 import nock from 'nock';
+import { Readable } from 'stream';
 
 import { HttpClient, RETRYABLE_AXIOS_ERROR_CODES } from '../../src/client';
 import { makeDeeplClient, serverUrl } from './client';
@@ -21,6 +22,16 @@ jest.mock('loglevel', () => ({
 }));
 
 const usage = { character_count: 1, character_limit: 2 };
+
+/** A response body that sends some bytes and then fails, like a connection dropped mid-read. */
+function cutOffBody(): Readable {
+    return new Readable({
+        read() {
+            this.push('{"character_');
+            this.destroy(new Error('socket hang up'));
+        },
+    });
+}
 
 describe('HttpClient retries', () => {
     it.each([[429], [500], [503]])('retries when the server answers %i', async (status) => {
@@ -56,6 +67,24 @@ describe('HttpClient retries', () => {
 
         expect(error).toBeInstanceOf(deepl.ConnectionError);
         expect(error.shouldRetry).toBe(false);
+    });
+
+    it('retries a response body cut off mid-read', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, cutOffBody);
+        nock(serverUrl).get('/v2/usage').reply(200, usage);
+
+        await makeDeeplClient().getUsage();
+    });
+
+    it('reports shouldRetry true for a response body cut off mid-read', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, cutOffBody);
+
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .getUsage()
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(true);
     });
 
     it('makes maxRetries retries after the first attempt', async () => {
@@ -235,6 +264,20 @@ describe('Create retries', () => {
 
         expect(error).toBeInstanceOf(deepl.ConnectionError);
         expect(error.shouldRetry).toBe(false);
+        expect(requests).toBe(1);
+    });
+
+    it('does not retry a create whose response body is cut off, and reports shouldRetry true', async () => {
+        const scope = nock(serverUrl).post('/v3/style_profiles').reply(200, cutOffBody).persist();
+        let requests = 0;
+        scope.on('request', () => requests++);
+
+        const error = await makeDeeplClient()
+            .createStyleProfile('p')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(true);
         expect(requests).toBe(1);
     });
 });

@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A 5xx response or a reset connection is no longer retried for them, and the
   error's `shouldRetry` is false for a 5xx, as the API may have created the
   resource. Check for the resource before creating it again.
+- **Breaking:** a response body that is cut off mid-read now fails with a
+  `ConnectionError` whose `shouldRetry` is true, and is retried like a reset
+  connection, except for the creates above. Before, it was never retried and
+  `shouldRetry` was false.
 - `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
   which returns true if the account's character limit (`character`) or this
   API key's character limit (`apiKeyCharacter`) is reached. An absent detail

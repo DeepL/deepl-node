@@ -1388,8 +1388,8 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 
 Requests to the DeepL API that fail due to transient conditions will be
 retried: HTTP 429 and 5xx responses, and network failures such as timeouts,
-refused or reset connections, unreachable hosts or networks and DNS lookup
-failures. The maximum number of
+refused or reset connections, response bodies cut off mid-read, unreachable
+hosts or networks and DNS lookup failures. The maximum number of
 retries can be configured when constructing the `DeepLClient` object using the
 `maxRetries` option. The timeout for each request attempt may be controlled
 using the `minTimeout` option. An exponential-backoff strategy is used, so
@@ -1451,7 +1451,9 @@ network failures), after the library has already retried them `maxRetries`
 times. For methods that create a resource (see [Request retries](#request-retries)),
 `shouldRetry` is true only when the request was not processed (HTTP 429, DNS
 failures, refused connections, unreachable hosts or networks and connect
-timeouts), as resending it after other failures could create a duplicate. The subclasses are:
+timeouts), as resending it after other failures could create a duplicate. A
+response body that is cut off mid-read is retried, except for creates; its
+`ConnectionError` has `shouldRetry` true either way. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
 -   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary
@@ -1461,7 +1463,8 @@ timeouts), as resending it after other failures could create a duplicate. The su
 -   `DocumentNotReadyError`: HTTP 503 while getting the status of a document
     translation, downloading a translated document or downloading a
     translation memory export.
--   `ConnectionError`: the request got no HTTP response, for example a timeout.
+-   `ConnectionError`: the request got no complete HTTP response, for example a
+    timeout or a response body cut off mid-read.
 -   `DocumentTranslationError`: a document translation failed. The cause is in
     its `error` property, and `httpStatusCode` and `shouldRetry` are copied
     from it when it is a `DeepLError`.
