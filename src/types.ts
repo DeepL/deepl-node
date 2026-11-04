@@ -568,19 +568,14 @@ export type TargetGlossaryLanguageCode = SourceGlossaryLanguageCode;
  * Information about the API usage: how much has been translated in this billing period, and the
  * maximum allowable amount.
  *
- * Depending on the account type, different usage types are included: the character, document and
- * teamDocument fields provide details about each corresponding usage type, allowing each usage type
- * to be checked individually. API Pro accounts also get per-key, speech and per-product usage and the
- * billing period. The anyLimitReached() function checks the character, document, teamDocument and
- * apiKeyCharacter usage.
+ * Depending on the account type, different usage types are included: the character field gives the
+ * account's character usage. API Pro accounts also get per-key, speech and per-product usage and the
+ * billing period. The anyCharacterLimitReached() function checks the character and apiKeyCharacter
+ * usage.
  */
 export interface Usage {
     /** Usage details for characters, for example due to the translateText() function. */
     readonly character?: UsageDetail;
-    /** Usage details for documents. */
-    readonly document?: UsageDetail;
-    /** Usage details for documents shared among your team. */
-    readonly teamDocument?: UsageDetail;
     /**
      * Usage details for characters translated with this API key, as opposed to `character`, which
      * covers the whole account. Only present for API Pro accounts.
@@ -598,11 +593,10 @@ export interface Usage {
     readonly endTime?: Date;
 
     /**
-     * Returns true if the character, document, team document or per-key character usage has
-     * reached or passed its limit, otherwise false. It does not check speechToTextMinutes or
-     * speechToSpeechMinutes: call limitReached() on those details yourself.
+     * Returns true if the account's character limit or this API key's character limit is reached;
+     * the speech minutes have their own details. An absent detail counts as not reached.
      */
-    anyLimitReached(): boolean;
+    anyCharacterLimitReached(): boolean;
 
     /** Converts the usage details to a human-readable string. */
     toString(): string;

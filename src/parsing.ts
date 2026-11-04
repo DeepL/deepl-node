@@ -268,10 +268,6 @@ interface GlossaryInfoListApiResponse {
 interface UsageApiResponse {
     character_count?: number;
     character_limit?: number;
-    document_count?: number;
-    document_limit?: number;
-    team_document_count?: number;
-    team_document_limit?: number;
     api_key_character_count?: number;
     api_key_character_limit?: number;
     speech_to_text_minutes_count?: number;
@@ -385,8 +381,6 @@ class UsageDetailImpl implements UsageDetail {
 
 class UsageImpl implements Usage {
     public character?: UsageDetail;
-    public document?: UsageDetail;
-    public teamDocument?: UsageDetail;
     public apiKeyCharacter?: UsageDetail;
     public speechToTextMinutes?: UsageDetail;
     public speechToSpeechMinutes?: UsageDetail;
@@ -399,8 +393,6 @@ class UsageImpl implements Usage {
      */
     constructor(
         character?: UsageDetail,
-        document?: UsageDetail,
-        teamDocument?: UsageDetail,
         proUsage?: {
             apiKeyCharacter?: UsageDetail;
             speechToTextMinutes?: UsageDetail;
@@ -411,8 +403,6 @@ class UsageImpl implements Usage {
         },
     ) {
         this.character = character;
-        this.document = document;
-        this.teamDocument = teamDocument;
         this.apiKeyCharacter = proUsage?.apiKeyCharacter;
         this.speechToTextMinutes = proUsage?.speechToTextMinutes;
         this.speechToSpeechMinutes = proUsage?.speechToSpeechMinutes;
@@ -422,26 +412,18 @@ class UsageImpl implements Usage {
     }
 
     /**
-     * Returns true if the character, document, team document or per-key character usage has
-     * reached or passed its limit, otherwise false. Does not check the speech usage.
+     * Returns true if the account's character limit or this API key's character limit is reached;
+     * the speech minutes have their own details.
      */
-    anyLimitReached(): boolean {
+    anyCharacterLimitReached(): boolean {
         return (
-            this.character?.limitReached() ||
-            this.document?.limitReached() ||
-            this.teamDocument?.limitReached() ||
-            this.apiKeyCharacter?.limitReached() ||
-            false
+            this.character?.limitReached() === true || this.apiKeyCharacter?.limitReached() === true
         );
     }
 
     /** Converts the usage details to a human-readable string. */
     toString(): string {
-        const labelledDetails: Array<[string, UsageDetail?]> = [
-            ['Characters', this.character],
-            ['Documents', this.document],
-            ['Team documents', this.teamDocument],
-        ];
+        const labelledDetails: Array<[string, UsageDetail?]> = [['Characters', this.character]];
         const detailsString = labelledDetails
             .filter(([, detail]) => detail)
             .map(
@@ -729,8 +711,6 @@ function parseUsageDetail(
     obj: UsageApiResponse,
     prefix:
         | 'character'
-        | 'document'
-        | 'team_document'
         | 'api_key_character'
         | 'speech_to_text_minutes'
         | 'speech_to_speech_minutes',
@@ -780,19 +760,14 @@ function parseUsageProducts(products: unknown): UsageProduct[] | undefined {
 export function parseUsage(json: string): Usage {
     try {
         const obj = JSON.parse(json) as UsageApiResponse;
-        return new UsageImpl(
-            parseUsageDetail(obj, 'character'),
-            parseUsageDetail(obj, 'document'),
-            parseUsageDetail(obj, 'team_document'),
-            {
-                apiKeyCharacter: parseUsageDetail(obj, 'api_key_character'),
-                speechToTextMinutes: parseUsageDetail(obj, 'speech_to_text_minutes'),
-                speechToSpeechMinutes: parseUsageDetail(obj, 'speech_to_speech_minutes'),
-                products: parseUsageProducts(obj.products),
-                startTime: parseOptionalDate(obj.start_time),
-                endTime: parseOptionalDate(obj.end_time),
-            },
-        );
+        return new UsageImpl(parseUsageDetail(obj, 'character'), {
+            apiKeyCharacter: parseUsageDetail(obj, 'api_key_character'),
+            speechToTextMinutes: parseUsageDetail(obj, 'speech_to_text_minutes'),
+            speechToSpeechMinutes: parseUsageDetail(obj, 'speech_to_speech_minutes'),
+            products: parseUsageProducts(obj.products),
+            startTime: parseOptionalDate(obj.start_time),
+            endTime: parseOptionalDate(obj.end_time),
+        });
     } catch (error) {
         throw new DeepLError(`Error parsing response JSON: ${error}`);
     }

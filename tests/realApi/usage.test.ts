@@ -9,6 +9,6 @@ describe('DeepLClient.getUsage', () => {
         const usage = await makeDeeplClient().getUsage();
 
         expect(usage.toString()).toContain('Usage this billing period');
-        expect(typeof usage.anyLimitReached()).toBe('boolean');
+        expect(typeof usage.anyCharacterLimitReached()).toBe('boolean');
     });
 });

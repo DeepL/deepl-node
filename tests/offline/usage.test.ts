@@ -7,55 +7,37 @@ import nock from 'nock';
 import { makeDeeplClient, serverUrl } from './client';
 
 describe('DeepLClient.getUsage', () => {
-    it('parses character, document and team document usage', async () => {
+    it('parses a response that still contains document usage and ignores it', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, {
             character_count: 10,
             character_limit: 100,
-            document_count: 1,
+            document_count: 5,
             document_limit: 5,
-            team_document_count: 2,
+            team_document_count: 50,
             team_document_limit: 50,
         });
 
         const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character).toMatchObject({ count: 10, limit: 100 });
-        expect(usage.document).toMatchObject({ count: 1, limit: 5 });
-        expect(usage.teamDocument).toMatchObject({ count: 2, limit: 50 });
-        expect(usage.anyLimitReached()).toBe(false);
-        expect(usage.toString()).toBe(
-            'Usage this billing period:\nCharacters: 10 of 100\nDocuments: 1 of 5\nTeam documents: 2 of 50',
-        );
-    });
-
-    it('leaves out the usage types that the response does not contain', async () => {
-        nock(serverUrl)
-            .get('/v2/usage')
-            .reply(200, { team_document_count: 1, team_document_limit: 1 });
-
-        const usage = await makeDeeplClient().getUsage();
-
-        expect([usage.character, usage.document]).toEqual([undefined, undefined]);
-        expect(usage.teamDocument?.limitReached()).toBe(true);
-        expect(usage.anyLimitReached()).toBe(true);
+        expect(usage).not.toHaveProperty('document');
+        expect(usage).not.toHaveProperty('teamDocument');
+        expect(usage.anyCharacterLimitReached()).toBe(false);
+        expect(usage.toString()).toBe('Usage this billing period:\nCharacters: 10 of 100');
     });
 
     it('leaves out the usage types whose count or limit is not a number', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, {
             character_count: null,
             character_limit: 100,
-            document_count: '1',
-            document_limit: 5,
-            team_document_count: 2,
-            team_document_limit: 50,
+            api_key_character_count: '1',
+            api_key_character_limit: 1,
         });
 
         const usage = await makeDeeplClient().getUsage();
 
-        expect([usage.character, usage.document]).toEqual([undefined, undefined]);
-        expect(usage.teamDocument).toMatchObject({ count: 2, limit: 50 });
-        expect(usage.anyLimitReached()).toBe(false);
-        expect(usage.toString()).toBe('Usage this billing period:\nTeam documents: 2 of 50');
+        expect([usage.character, usage.apiKeyCharacter]).toEqual([undefined, undefined]);
+        expect(usage.anyCharacterLimitReached()).toBe(false);
     });
 
     it('parses the API Pro usage fields', async () => {
@@ -114,11 +96,25 @@ describe('DeepLClient.getUsage', () => {
         ]);
         expect(usage.startTime).toEqual(new Date('2025-05-13T09:18:42Z'));
         expect(usage.endTime).toEqual(new Date('2025-06-13T09:18:42Z'));
-        expect(usage.anyLimitReached()).toBe(false);
+        expect(usage.anyCharacterLimitReached()).toBe(false);
         expect(usage.toString()).toBe('Usage this billing period:\nCharacters: 180118 of 1250000');
     });
 
-    it('reports anyLimitReached when only the per-key character limit is reached', async () => {
+    it('reports anyCharacterLimitReached when only the account character limit is reached', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, {
+            character_count: 100,
+            character_limit: 100,
+            api_key_character_count: 10,
+            api_key_character_limit: 50,
+        });
+
+        const usage = await makeDeeplClient().getUsage();
+
+        expect(usage.apiKeyCharacter?.limitReached()).toBe(false);
+        expect(usage.anyCharacterLimitReached()).toBe(true);
+    });
+
+    it('reports anyCharacterLimitReached when only the per-key character limit is reached', async () => {
         nock(serverUrl).get('/v2/usage').reply(200, {
             character_count: 10,
             character_limit: 100,
@@ -129,7 +125,26 @@ describe('DeepLClient.getUsage', () => {
         const usage = await makeDeeplClient().getUsage();
 
         expect(usage.character?.limitReached()).toBe(false);
-        expect(usage.anyLimitReached()).toBe(true);
+        expect(usage.anyCharacterLimitReached()).toBe(true);
+    });
+
+    it('does not report anyCharacterLimitReached when only a speech minute limit is reached', async () => {
+        nock(serverUrl).get('/v2/usage').reply(200, {
+            character_count: 10,
+            character_limit: 100,
+            api_key_character_count: 10,
+            api_key_character_limit: 50,
+            speech_to_text_minutes_count: 600,
+            speech_to_text_minutes_limit: 600,
+            speech_to_speech_minutes_count: 600,
+            speech_to_speech_minutes_limit: 600,
+        });
+
+        const usage = await makeDeeplClient().getUsage();
+
+        expect(usage.speechToTextMinutes?.limitReached()).toBe(true);
+        expect(usage.speechToSpeechMinutes?.limitReached()).toBe(true);
+        expect(usage.anyCharacterLimitReached()).toBe(false);
     });
 
     it('leaves the API Pro fields undefined for a Free response', async () => {

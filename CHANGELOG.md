@@ -21,11 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passes a signal.
 
 ### Changed
-- `Usage.anyLimitReached()` also returns true when the per-key character usage
-  (`apiKeyCharacter`) has reached its limit, so it returns true more often for
-  API Pro keys with a key-level limit. If you only want the account limits,
-  check `character`, `document` and `teamDocument` with `limitReached()`.
-  Speech usage is still not included.
+- `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
+  which returns true if the account's character limit (`character`) or this
+  API key's character limit (`apiKeyCharacter`) is reached. An absent detail
+  counts as not reached; the speech minutes are not included. Rename calls to
+  `anyCharacterLimitReached()`; if you only want the account limit, call
+  `usage.character?.limitReached()`.
 - `DocumentStatus.status` is typed `DocumentStatusCode | (string & {})` and
   `TranslationMemoryJobResult.status` `TranslationMemoryJobStatus | (string & {})`,
   so a status the library does not know yet is visible in the type. Exhaustive
@@ -106,6 +107,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `devDependencies`.
 
 ### Removed
+- `Usage.document` and `Usage.teamDocument`. The API no longer returns
+  document usage; remove reads of these fields. A response that still
+  contains the `document_*` fields parses and the fields are ignored.
 - The `'downloaded'` member of `TranslationMemoryJobStatus`. The API does not
   report it for translation memory jobs; only `'completed'` counts as done in
   `done()` and `waitUntilTranslationMemoryJobDone()`. Compare with
