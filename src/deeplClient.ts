@@ -128,16 +128,28 @@ import * as path from 'path';
 import * as util from 'util';
 
 /**
- * Rejects with an ArgumentError, before any request, if the input file path cannot be read.
+ * Returns an ArgumentError for a missing input file, or undefined for any other error.
  */
-async function checkInputFileReadable(inputFile: string): Promise<void> {
+function missingInputFileError(inputFile: string, error: unknown): ArgumentError | undefined {
+    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        return undefined;
+    }
+    return new ArgumentError(
+        `input file '${inputFile}' does not exist: ${(error as Error).message}`,
+        error as Error,
+    );
+}
+
+/**
+ * Rejects with an ArgumentError, before any request, if the input file path does not exist.
+ * Other failures are left to the read, so they surface where the file is read.
+ */
+async function checkInputFileExists(inputFile: string): Promise<void> {
     try {
-        await fs.promises.access(inputFile, fs.constants.R_OK);
+        await fs.promises.access(inputFile, fs.constants.F_OK);
     } catch (error) {
-        throw new ArgumentError(
-            `cannot read input file '${inputFile}': ${(error as Error).message}`,
-            error as Error,
-        );
+        const argumentError = missingInputFileError(inputFile, error);
+        if (argumentError) throw argumentError;
     }
 }
 
@@ -455,9 +467,9 @@ export class DeepLClient {
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with a DocumentStatus object for the completed translation. You can use the
      *     billedCharacters property to check how many characters were billed for the document.
-     * @throws {ArgumentError} If the input file path is missing or cannot be read; no request is
-     *     sent.
-     * @throws {DocumentTranslationError} If any other error occurs, including an existing output
+     * @throws {ArgumentError} If the input file path does not exist; no request is sent.
+     * @throws {DocumentTranslationError} If any other error occurs, including an unreadable input
+     *     file (the Node error, e.g. `EACCES` or `EISDIR`, is in `error`), an existing output
      *     file or a missing or unwritable output directory (checked before any request), upload,
      *     translation or download. The `documentHandle` property of the error may be used to
      *     recover the document, and `httpStatusCode` and `shouldRetry` are copied from a
@@ -471,7 +483,7 @@ export class DeepLClient {
         options?: DocumentTranslateOptions,
     ): Promise<DocumentStatus> {
         if (isString(inputFile)) {
-            await checkInputFileReadable(inputFile);
+            await checkInputFileExists(inputFile);
         }
 
         // Only a file created here is removed on error.
@@ -535,8 +547,10 @@ export class DeepLClient {
      * @param targetLang Language code of language to translate into.
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with DocumentHandle associated with the in-progress translation.
-     * @throws {ArgumentError} If the input file path is missing or cannot be read; no request is
-     *     sent.
+     * @throws {ArgumentError} If the input file path does not exist, or a Buffer, stream or
+     *     FileHandle is given without `options.filename`; no request is sent.
+     * @throws {Error} The Node error (e.g. `EACCES` or `EISDIR`) if an existing input file path
+     *     cannot be read; no request is sent.
      */
     async translateDocumentUpload(
         inputFile: string | Buffer | fs.ReadStream | fs.promises.FileHandle,
@@ -549,10 +563,7 @@ export class DeepLClient {
             try {
                 buffer = await fs.promises.readFile(inputFile);
             } catch (error) {
-                throw new ArgumentError(
-                    `cannot read input file '${inputFile}': ${(error as Error).message}`,
-                    error as Error,
-                );
+                throw missingInputFileError(inputFile, error) ?? error;
             }
             return this.internalUploadDocument(
                 buffer,

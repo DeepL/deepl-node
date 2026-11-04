@@ -5,6 +5,7 @@
 import * as deepl from 'deepl-node';
 
 import fs from 'fs';
+import os from 'os';
 import nock from 'nock';
 import { Readable } from 'stream';
 
@@ -230,6 +231,16 @@ describe('DeepLClient.translateDocumentUpload', () => {
 
         expect(error).toBeInstanceOf(deepl.ArgumentError);
         expect(error.error.code).toBe('ENOENT');
+    });
+
+    it('rejects with the Node error before any request when the input path cannot be read', async () => {
+        // No request is declared: nock rejects any request with a different error.
+        const error = await makeDeeplClient()
+            .translateDocumentUpload(os.tmpdir(), null, 'de')
+            .catch((e) => e);
+
+        expect(error).not.toBeInstanceOf(deepl.ArgumentError);
+        expect(error.code).toBe('EISDIR');
     });
 
     it('sends options.filename instead of the base name of a file path', async () => {
@@ -572,6 +583,19 @@ describe('DeepLClient.translateDocument', () => {
         expect(error).toBeInstanceOf(deepl.ArgumentError);
         expect(error).not.toBeInstanceOf(deepl.DocumentTranslationError);
         expect(error.error.code).toBe('ENOENT');
+        expect(fs.existsSync(outputPath)).toBe(false);
+    });
+
+    it('rejects with DocumentTranslationError before any request when the input path cannot be read', async () => {
+        const [, outputPath] = createTextDocument();
+
+        const error = await makeDeeplClient()
+            .translateDocument(os.tmpdir(), outputPath, null, 'de')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
+        expect(error.documentHandle).toBeUndefined();
+        expect(error.error.code).toBe('EISDIR');
         expect(fs.existsSync(outputPath)).toBe(false);
     });
 

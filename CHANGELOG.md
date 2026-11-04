@@ -53,9 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Date`. Code that builds `TranslationMemoryJob` objects itself must set them,
   and `job.done?.()` can become `job.done()`.
 - `translateDocument()` and `translateDocumentUpload()` reject with an
-  `ArgumentError` before any request when the input file path is missing or
-  cannot be read (was a `DocumentTranslationError`, or the Node error for
-  `translateDocumentUpload()`). `translateDocument()` rejects with a
+  `ArgumentError` before any request when the input file path does not exist
+  (was a `DocumentTranslationError`, or the Node error for
+  `translateDocumentUpload()`). An existing input file that cannot be read
+  (e.g. `EACCES`, `EISDIR`) still rejects with a `DocumentTranslationError`
+  from `translateDocument()` and the Node error from
+  `translateDocumentUpload()`. `translateDocument()` rejects with a
   `DocumentTranslationError` for an existing output file or a missing or
   unwritable output directory (was the Node error); the Node error is in
   `error`. Catch `ArgumentError` and `DocumentTranslationError` instead of

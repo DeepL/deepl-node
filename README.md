@@ -302,8 +302,11 @@ try {
 }
 ```
 
-An input file path that is missing or cannot be read rejects with an
-`ArgumentError` before any request is sent; so does `translateDocumentUpload()`.
+An input file path that does not exist rejects with an `ArgumentError` before
+any request is sent; so does `translateDocumentUpload()`. An existing input file
+that cannot be read (for example a directory or a file without read permission)
+rejects with a `DocumentTranslationError` holding the Node error in `error`, and
+`translateDocumentUpload()` rejects with the Node error itself.
 An existing file at the output path, or an output directory that is missing or
 not writable, rejects with a `DocumentTranslationError` (the Node error in
 `error`) before any request is sent. Every other failure also rejects with a
