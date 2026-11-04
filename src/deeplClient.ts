@@ -617,7 +617,7 @@ export class DeepLClient {
             `/v2/document/${encodeURIComponent(handle.documentId)}`,
             { data, signal: options?.signal },
         );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content);
         return parseDocumentStatus(content, handle.documentId);
     }
 

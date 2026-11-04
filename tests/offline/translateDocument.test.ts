@@ -347,15 +347,16 @@ describe('DeepLClient.translateDocumentGetStatus', () => {
         expect(status.done()).toBe(true);
     });
 
-    it('throws DocumentNotReadyError when the server answers 503', async () => {
+    it('throws a plain DeepLError when the server answers 503', async () => {
         nock(serverUrl).post('/v2/document/doc-id').reply(503);
 
         const error = await makeDeeplClient({ maxRetries: 0 })
             .translateDocumentGetStatus(handle)
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DocumentNotReadyError);
-        expect(error.httpStatusCode).toBe(503);
+        expect(error.constructor).toBe(deepl.DeepLError);
+        expect(error).not.toBeInstanceOf(deepl.DocumentNotReadyError);
+        expect([error.httpStatusCode, error.shouldRetry]).toEqual([503, true]);
     });
 
     it('sends the document key and parses the status', async () => {

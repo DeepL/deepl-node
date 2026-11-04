@@ -147,6 +147,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an empty dictionary list, and it, `replaceMultilingualGlossaryDictionary()`,
   `updateMultilingualGlossaryDictionary()` and `updateMultilingualGlossary()`
   throw `ArgumentError` for a dictionary without entries.
+- **Breaking:** `translateDocumentGetStatus()` and
+  `translateDocumentWaitUntilDone()` throw a `DeepLError` for HTTP 503 (was
+  `DocumentNotReadyError`). Only `translateDocumentDownload()` throws
+  `DocumentNotReadyError`. Check `httpStatusCode === 503` or `shouldRetry`
+  instead.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
