@@ -1397,10 +1397,15 @@ requests that fail multiple times will incur delays: with the default
 `maxRetries` an unreachable server fails after about 16 seconds. Set
 `maxRetries: 0` to fail at once.
 
-`DeepLAdminClient.createDeveloperKey()` is retried only after rate limiting
-(HTTP 429), DNS failures, refused connections, unreachable hosts or networks
-and timeouts before the connection was established, as repeating it after other
-failures could create a second key.
+Methods that create a resource are retried only when the request was not
+sent: after rate limiting (HTTP 429), DNS failures, refused connections,
+unreachable hosts or networks and timeouts before the connection was
+established, as repeating them after other failures could create a duplicate.
+They are `translateDocument()` and `translateDocumentUpload()`, the glossary,
+spoken terms, style rule, custom instruction and style profile creates,
+`createTranslationMemoryImport()`, `createTranslationMemoryExport()` and the
+translation memory file helpers that call them, and
+`DeepLAdminClient.createDeveloperKey()`.
 
 ### Cancelling requests
 
@@ -1443,9 +1448,10 @@ of a cancelled request (see [Cancelling requests](#cancelling-requests)). It has
 (`undefined` if there was no response) and a `shouldRetry` property that is
 true for failures a later retry could resolve (HTTP 429, 5xx and transient
 network failures), after the library has already retried them `maxRetries`
-times. For `DeepLAdminClient.createDeveloperKey()`, `shouldRetry` is true only
-when the request was not processed (HTTP 429, DNS failures, refused
-connections, unreachable hosts or networks and connect timeouts), as resending it after other failures could create a second key. The subclasses are:
+times. For methods that create a resource (see [Request retries](#request-retries)),
+`shouldRetry` is true only when the request was not processed (HTTP 429, DNS
+failures, refused connections, unreachable hosts or networks and connect
+timeouts), as resending it after other failures could create a duplicate. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
 -   `NotFoundError`: HTTP 404, the requested resource does not exist. Glossary

@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passes a signal.
 
 ### Changed
+- **Breaking:** methods that create a resource are retried only when the
+  request was not sent (HTTP 429, DNS failures, refused connections,
+  unreachable hosts or networks and connect timeouts), as
+  `DeepLAdminClient.createDeveloperKey()` already was: `translateDocument()`,
+  `translateDocumentUpload()`, the glossary, spoken terms, style rule, custom
+  instruction and style profile creates, `createTranslationMemoryImport()`,
+  `createTranslationMemoryExport()` and the translation memory file helpers.
+  A 5xx response or a reset connection is no longer retried for them, and the
+  error's `shouldRetry` is false for a 5xx, as the API may have created the
+  resource. Check for the resource before creating it again.
 - `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
   which returns true if the account's character limit (`character`) or this
   API key's character limit (`apiKeyCharacter`) is reached. An absent detail

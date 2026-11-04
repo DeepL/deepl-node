@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { HttpClient, buildRequestHeaders, createHttpClient } from './client';
+import { HttpClient, SendRequestOptions, buildRequestHeaders, createHttpClient } from './client';
 import {
     BaseRequestOptions,
     RequestOptions,
@@ -445,6 +445,7 @@ export class DeepLClient {
     /**
      * Uploads specified document to DeepL to translate into given target language, waits for
      * translation to complete, then downloads translated document to specified output path.
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param inputFile String containing file path of document to be translated, or a Stream,
      *     Buffer, or FileHandle containing file data. Note: unless file path is used, then
      *     `options.filename` must be specified. For a file path, `options.filename` defaults to
@@ -528,6 +529,7 @@ export class DeepLClient {
 
     /**
      * Uploads specified document to DeepL to translate into target language, and returns handle associated with the document.
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param inputFile String containing file path, stream containing file data, or FileHandle.
      *     Note: if a Buffer, Stream, or FileHandle is used, then `options.filename` must be specified.
      *     For a file path, `options.filename` defaults to the path's base name.
@@ -709,6 +711,7 @@ export class DeepLClient {
 
     /**
      * Creates a new glossary on the DeepL server with given name, languages, and entries.
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name User-defined name to assign to the glossary.
      * @param sourceLang Language code of the glossary source terms.
      * @param targetLang Language code of the glossary target terms.
@@ -733,6 +736,7 @@ export class DeepLClient {
 
     /**
      * Creates a new glossary on DeepL server with given name, languages, and CSV data.
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name User-defined name to assign to the glossary.
      * @param sourceLang Language code of the glossary source terms.
      * @param targetLang Language code of the glossary target terms.
@@ -843,6 +847,33 @@ export class DeepLClient {
     }
 
     /**
+     * Sends a POST that creates a resource. Only a request the API cannot have processed is
+     * retried (429 or a request that was not sent), so a retry never creates a duplicate.
+     * @private
+     */
+    private async sendCreateRequest(
+        url: string,
+        options: Omit<SendRequestOptions, 'retryOnlyUnprocessed'>,
+        usingGlossary = false,
+    ): Promise<{ statusCode: number; content: string }> {
+        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
+            'POST',
+            url,
+            { ...options, retryOnlyUnprocessed: true },
+        );
+        try {
+            await checkStatusCode(statusCode, content, usingGlossary);
+        } catch (error) {
+            // A 5xx may come after the server processed the request, so only a 429 is safe to repeat.
+            if (error instanceof DeepLError) {
+                error.shouldRetry = statusCode === 429;
+            }
+            throw error;
+        }
+        return { statusCode, content };
+    }
+
+    /**
      * Upload given stream for document translation and returns document handle.
      * @private
      */
@@ -878,17 +909,12 @@ export class DeepLClient {
             data.append('enable_watermark', String(options.enableWatermark));
         }
         setExtraBodyParameters(data, options?.extraBodyParameters);
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
-            '/v2/document',
-            {
-                data,
-                fileBuffer,
-                filename,
-                signal: options?.signal,
-            },
-        );
-        await checkStatusCode(statusCode, content);
+        const { content } = await this.sendCreateRequest('/v2/document', {
+            data,
+            fileBuffer,
+            filename,
+            signal: options?.signal,
+        });
         return parseDocumentHandle(content);
     }
 
@@ -944,12 +970,11 @@ export class DeepLClient {
             entries: entries,
         };
 
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
+        const { content } = await this.sendCreateRequest(
             '/v2/glossaries',
             { jsonBody: body, signal: options?.signal },
+            true,
         );
-        await checkStatusCode(statusCode, content, true);
         return parseGlossaryInfo(content);
     }
 
@@ -1048,6 +1073,7 @@ export class DeepLClient {
      * from a CSV file downloaded from the DeepL website, see
      * {@link createMultilingualGlossaryFromCsv}.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name user-defined name to attach to glossary.
      * @param glossaryDicts the dictionaries of the glossary, see {@link MultilingualGlossaryDictionaryEntries}.
      * @param options Additional options, see {@link CreateMultilingualGlossaryOptions}.
@@ -1067,13 +1093,11 @@ export class DeepLClient {
 
         const body = { name, dictionaries: dictionaryEntriesToJson(glossaryDicts) };
 
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
+        const { content } = await this.sendCreateRequest(
             '/v3/glossaries',
             { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
+            true,
         );
-
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1087,6 +1111,7 @@ export class DeepLClient {
      * regional specific: a glossary with target language EN may be used to
      * translate texts into both EN-US and EN-GB.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name User-defined name to attach to the glossary.
      * @param sourceLanguageCode Source language code for the glossary.
      * @param targetLanguageCode Target language code for the glossary.
@@ -1122,13 +1147,11 @@ export class DeepLClient {
             dictionaries: [csvDictionaryToJson(sourceLanguageCode, targetLanguageCode, csvContent)],
         };
 
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
+        const { content } = await this.sendCreateRequest(
             '/v3/glossaries',
             { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
+            true,
         );
-
-        await checkStatusCode(statusCode, content, true /* usingGlossary */);
         return parseMultilingualGlossaryInfo(content);
     }
 
@@ -1547,6 +1570,7 @@ export class DeepLClient {
      * Creates a spoken terms collection with the given name and term lists. Spoken terms
      * improve the transcription of the given terms in speech recognition.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name User-defined name of the collection.
      * @param termLists The term lists of the collection, one per language,
      *     see {@link SpokenTermsEntries}.
@@ -1564,12 +1588,10 @@ export class DeepLClient {
             { name, term_lists: termLists.map(spokenTermsEntriesToJson) },
             options,
         );
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
-            '/v3/spoken-terms',
-            { jsonBody: body, signal: options?.signal },
-        );
-        await checkStatusCode(statusCode, content);
+        const { content } = await this.sendCreateRequest('/v3/spoken-terms', {
+            jsonBody: body,
+            signal: options?.signal,
+        });
         return parseSpokenTerms(content);
     }
 
@@ -1971,6 +1993,7 @@ export class DeepLClient {
      * uploadTranslationMemoryFile(), then poll getTranslationMemoryJob() for the outcome. Use
      * importTranslationMemoryFromFilepath() to do all three steps at once.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param fileName: Name of the TMX file to import, for example 'legal.tmx'.
      * @param contentLength: Size of the TMX file in bytes.
      * @param options: Optional contentType (defaults to 'application/xml'), displayName for the
@@ -2004,13 +2027,10 @@ export class DeepLClient {
             jsonBody.parameters = { display_name: options.displayName };
         }
 
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
-            '/v3/translation_memories/import',
-            { jsonBody: addExtraBodyParametersToJson(jsonBody, options), signal: options?.signal },
-        );
-
-        await checkStatusCode(statusCode, content);
+        const { content } = await this.sendCreateRequest('/v3/translation_memories/import', {
+            jsonBody: addExtraBodyParametersToJson(jsonBody, options),
+            signal: options?.signal,
+        });
         return parseTranslationMemoryImport(content);
     }
 
@@ -2067,6 +2087,7 @@ export class DeepLClient {
      * Poll getTranslationMemoryJob() for the download URL of the exported TMX file. Use
      * exportTranslationMemoryToFilepath() to do both steps and write the file at once.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<TranslationMemoryExport>} The job ID, and whether the API reused a
@@ -2079,13 +2100,10 @@ export class DeepLClient {
         options?: RequestOptions,
     ): Promise<TranslationMemoryExport> {
         const translationMemoryId = extractTranslationMemoryId(translationMemory);
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
+        const { statusCode, content } = await this.sendCreateRequest(
             `/v3/translation_memories/${encodeURIComponent(translationMemoryId)}/export`,
             { signal: options?.signal },
         );
-
-        await checkStatusCode(statusCode, content);
         // 200 means the API reused a previously completed export, 202 that it started a new one.
         return parseTranslationMemoryExport(content, statusCode === 200);
     }
@@ -2254,6 +2272,7 @@ export class DeepLClient {
      * Note that the API detects the upload asynchronously, so the job keeps reporting
      * 'awaiting_input' for a while (usually well under a minute) before it completes.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param input: Path of the TMX file to import, or a Buffer or ReadStream with its content.
      * @param options: Optional displayName for the resulting translation memory (defaults to the
      * file name), contentType (defaults to 'application/xml'), fileName (required for a Buffer or
@@ -2316,6 +2335,7 @@ export class DeepLClient {
      * Exports a translation memory to a TMX file: creates the export job, waits for it to finish,
      * and writes the result to outputFile.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param translationMemory: Translation memory ID, or TranslationMemoryInfo object.
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      * @param options: Optional WaitOptions with timeoutMs limiting how long to wait for the export
@@ -2351,6 +2371,7 @@ export class DeepLClient {
     /**
      * Creates a new style rule.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name: The name of the style rule.
      * @param language: The language code of the style rule.
      * @param configuredRules: Optional configured rules, sent as given as `configured_rules`,
@@ -2378,12 +2399,10 @@ export class DeepLClient {
         const body: CreateStyleRuleRequestBody = { name, language };
         if (configuredRules !== undefined) body.configured_rules = configuredRules;
         if (customInstructions !== undefined) body.custom_instructions = customInstructions;
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
-            '/v3/style_rules',
-            { jsonBody: addExtraBodyParametersToJson(body, options), signal: options?.signal },
-        );
-        await checkStatusCode(statusCode, content);
+        const { content } = await this.sendCreateRequest('/v3/style_rules', {
+            jsonBody: addExtraBodyParametersToJson(body, options),
+            signal: options?.signal,
+        });
         return parseResponse(content, parseStyleRuleInfo);
     }
 
@@ -2490,6 +2509,7 @@ export class DeepLClient {
     /**
      * Creates a custom instruction for a style rule.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param styleRule: The style rule, as an ID or a StyleRuleInfo object.
      * @param label: The label of the custom instruction.
      * @param prompt: The prompt text of the custom instruction.
@@ -2514,15 +2534,13 @@ export class DeepLClient {
             throw new ArgumentError('Parameter "prompt" must not be empty');
         }
         const instruction = customInstructionToWire(label, prompt, sourceLanguage);
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
+        const { content } = await this.sendCreateRequest(
             `/v3/style_rules/${encodeURIComponent(styleId)}/custom_instructions`,
             {
                 jsonBody: addExtraBodyParametersToJson(instruction, options),
                 signal: options?.signal,
             },
         );
-        await checkStatusCode(statusCode, content);
         return parseResponse(content, parseCustomInstruction);
     }
 
@@ -2653,6 +2671,7 @@ export class DeepLClient {
      * Creates a style profile. Only the name is required; options left undefined are not sent.
      * If any of the linked IDs cannot be used, the API rejects the request and creates nothing.
      *
+     * The create request is retried only when it was not sent, so a retry never duplicates it.
      * @param name: Name of the style profile.
      * @param options: Description, industry and the IDs of the glossaries, style rule lists and
      *     translation memories to link, see {@link CreateStyleProfileOptions}.
@@ -2668,12 +2687,10 @@ export class DeepLClient {
             { name, ...styleProfileOptionsToJson(options) },
             options,
         );
-        const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
-            'POST',
-            '/v3/style_profiles',
-            { jsonBody: body, signal: options?.signal },
-        );
-        await checkStatusCode(statusCode, content);
+        const { content } = await this.sendCreateRequest('/v3/style_profiles', {
+            jsonBody: body,
+            signal: options?.signal,
+        });
         return parseStyleProfile(content);
     }
 

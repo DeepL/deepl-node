@@ -133,7 +133,7 @@ const axiosInstance = axios.create({
  * Options for sending HTTP requests.
  * @private
  */
-interface SendRequestOptions {
+export interface SendRequestOptions {
     /**
      * Fields to include in message body (or params) as form-encoded data. Values must be either
      * strings, or arrays of strings (for repeated parameters).

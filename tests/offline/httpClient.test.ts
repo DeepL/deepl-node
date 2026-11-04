@@ -172,3 +172,69 @@ describe('HttpClient debug logging', () => {
         expectRequestTraceAndResponseLogged();
     });
 });
+
+describe('Create retries', () => {
+    const entries = new deepl.GlossaryEntries({ entries: { a: 'b' } });
+
+    it('does not retry a document upload after a server error', async () => {
+        const scope = nock(serverUrl).post('/v2/document').reply(500).persist();
+        let requests = 0;
+        scope.on('request', () => requests++);
+
+        const error = await makeDeeplClient()
+            .translateDocumentUpload(Buffer.from('x'), null, 'de', { filename: 'a.txt' })
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.shouldRetry).toBe(false);
+        expect(requests).toBe(1);
+    });
+
+    it.each<[string, (client: deepl.DeepLClient) => Promise<unknown>]>([
+        ['/v2/glossaries', (c) => c.createGlossary('g', 'en', 'de', entries)],
+        [
+            '/v3/glossaries',
+            (c) =>
+                c.createMultilingualGlossary('g', [
+                    { sourceLangCode: 'en', targetLangCode: 'de', entries },
+                ]),
+        ],
+        ['/v3/glossaries', (c) => c.createMultilingualGlossaryFromCsv('g', 'en', 'de', 'a,b')],
+        ['/v3/spoken-terms', (c) => c.createSpokenTerms('s', [{ lang: 'en', entries: ['a'] }])],
+        ['/v3/translation_memories/import', (c) => c.createTranslationMemoryImport('a.tmx', 1)],
+        ['/v3/translation_memories/tm-1/export', (c) => c.createTranslationMemoryExport('tm-1')],
+        ['/v3/style_rules', (c) => c.createStyleRule('r', 'en')],
+        [
+            '/v3/style_rules/s-1/custom_instructions',
+            (c) => c.createStyleRuleCustomInstruction('s-1', 'l', 'p'),
+        ],
+        ['/v3/style_profiles', (c) => c.createStyleProfile('p')],
+    ])('does not retry POST %s after a server error', async (path, create) => {
+        const scope = nock(serverUrl).post(path).reply(500).persist();
+        let requests = 0;
+        scope.on('request', () => requests++);
+
+        const error = (await create(makeDeeplClient()).catch((e) => e)) as deepl.DeepLError;
+
+        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error.shouldRetry).toBe(false);
+        expect(requests).toBe(1);
+    });
+
+    it('does not retry a create after a connection reset', async () => {
+        const scope = nock(serverUrl)
+            .post('/v3/style_profiles')
+            .replyWithError({ code: 'ECONNRESET' })
+            .persist();
+        let requests = 0;
+        scope.on('request', () => requests++);
+
+        const error = await makeDeeplClient()
+            .createStyleProfile('p')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(false);
+        expect(requests).toBe(1);
+    });
+});

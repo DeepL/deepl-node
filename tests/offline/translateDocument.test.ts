@@ -569,7 +569,7 @@ describe('DeepLClient.translateDocument', () => {
     });
 
     it('copies httpStatusCode and shouldRetry from the cause into DocumentTranslationError', async () => {
-        nock(serverUrl).post('/v2/document').reply(503);
+        nock(serverUrl).post('/v2/document').reply(429);
         const [exampleDocument, outputPath] = createTextDocument();
 
         const error = await makeDeeplClient({ maxRetries: 0 })
@@ -577,7 +577,7 @@ describe('DeepLClient.translateDocument', () => {
             .catch((e) => e);
 
         expect(error).toBeInstanceOf(deepl.DocumentTranslationError);
-        expect([error.httpStatusCode, error.shouldRetry]).toEqual([503, true]);
+        expect([error.httpStatusCode, error.shouldRetry]).toEqual([429, true]);
     });
 
     it('rejects with ConnectionError wrapped in DocumentTranslationError when the download connection fails', async () => {
