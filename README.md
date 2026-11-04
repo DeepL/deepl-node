@@ -1292,10 +1292,10 @@ The third argument is optional and is a `RephraseTextOptions` object (it extends
 -   `tone`: the tone of the rephrased text. Possible values are defined in the `WritingTone` enum. The API accepts either `writingStyle` or `tone` in a request, not both.
 -   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
 
-`rephraseText()` returns a Promise that fulfills with an `Improvement` object or an array of `Improvement` objects corresponding to your input text(s). The `Improvement` object has the following properties:
+`rephraseText()` returns a Promise that fulfills with a `WriteResult` object or an array of `WriteResult` objects corresponding to your input text(s). The `WriteResult` object has the following properties:
 - `text`: the rephrased text,
 - `detectedSourceLang`: the detected source language code,
-- `targetLanguage`: the target language code.
+- `targetLang`: the target language code.
 
 ```javascript
 // Rephrasing a text in academic style:
