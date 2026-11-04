@@ -133,6 +133,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `deleteMultilingualGlossary()` throws `ArgumentError` for an empty or missing
   glossary ID (was a plain `Error`, or a `TypeError` for `null`). Code that
   checks `error.constructor === DeepLError` must also accept `ArgumentError`.
+- **Breaking:** the multilingual glossary methods that take a glossary
+  (`getMultilingualGlossaryDictionaryEntries()`,
+  `deleteMultilingualGlossaryDictionary()`,
+  `replaceMultilingualGlossaryDictionary()`,
+  `replaceMultilingualGlossaryDictionaryFromCsv()`,
+  `updateMultilingualGlossary()`, `updateMultilingualGlossaryName()`,
+  `updateMultilingualGlossaryDictionary()` and
+  `updateMultilingualGlossaryDictionaryFromCsv()`) throw `ArgumentError` before
+  any request for an empty glossary ID or a `MultilingualGlossaryInfo` without
+  one; before, they sent a request to `/v3/glossaries/undefined` or
+  `/v3/glossaries/`. `createMultilingualGlossary()` throws `ArgumentError` for
+  an empty dictionary list, and it, `replaceMultilingualGlossaryDictionary()`,
+  `updateMultilingualGlossaryDictionary()` and `updateMultilingualGlossary()`
+  throw `ArgumentError` for a dictionary without entries.
 
 ### Removed
 - `Usage.document` and `Usage.teamDocument`. The API no longer returns

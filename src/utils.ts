@@ -530,6 +530,11 @@ export function validateAndSetTextOptions(
 export function dictionaryEntriesToJson(
     dictionaries: MultilingualGlossaryDictionaryEntries[],
 ): Record<string, string>[] {
+    for (const dict of dictionaries) {
+        if (!dict?.entries || Object.keys(dict.entries.entries()).length === 0) {
+            throw new ArgumentError('glossary dictionary entries must not be empty');
+        }
+    }
     return dictionaries.map((dict) => ({
         source_lang: dict.sourceLangCode,
         target_lang: dict.targetLangCode,

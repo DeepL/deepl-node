@@ -187,6 +187,9 @@ async function throwStorageError(
 }
 
 function multilingualGlossaryPath(glossary: GlossaryId | MultilingualGlossaryInfo): string {
+    if (!glossary || !extractGlossaryId(glossary)) {
+        throw new ArgumentError('Parameter "glossary" must not be empty/null');
+    }
     return `/v3/glossaries/${encodeURIComponent(extractGlossaryId(glossary))}`;
 }
 
@@ -1090,6 +1093,9 @@ export class DeepLClient {
         if (!name) {
             throw new ArgumentError('glossary name must not be empty');
         }
+        if (!glossaryDicts || glossaryDicts.length === 0) {
+            throw new ArgumentError('Parameter "glossaryDicts" must not be empty');
+        }
 
         const body = { name, dictionaries: dictionaryEntriesToJson(glossaryDicts) };
 
@@ -1202,7 +1208,7 @@ export class DeepLClient {
         targetLanguageCode: string,
         options?: RequestOptions,
     ): Promise<MultilingualGlossaryDictionaryEntries> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!sourceLanguageCode) {
@@ -1296,7 +1302,7 @@ export class DeepLClient {
         targetLanguageCode: string,
         options?: RequestOptions,
     ): Promise<void> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!sourceLanguageCode) {
@@ -1336,23 +1342,15 @@ export class DeepLClient {
         glossaryDict: MultilingualGlossaryDictionaryEntries,
         options?: ReplaceMultilingualGlossaryDictionaryOptions,
     ): Promise<MultilingualGlossaryDictionaryInfo> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!glossaryDict) {
             throw new ArgumentError('Parameter "glossaryDict" must not be null');
         }
 
-        return this.putMultilingualGlossaryDictionary(
-            glossary,
-            {
-                source_lang: glossaryDict.sourceLangCode,
-                target_lang: glossaryDict.targetLangCode,
-                entries: glossaryDict.entries.toTsv(),
-                entries_format: 'tsv',
-            },
-            options,
-        );
+        const [dictionary] = dictionaryEntriesToJson([glossaryDict]);
+        return this.putMultilingualGlossaryDictionary(glossary, dictionary, options);
     }
 
     /**
@@ -1376,7 +1374,7 @@ export class DeepLClient {
         csvContent: string,
         options?: ReplaceMultilingualGlossaryDictionaryOptions,
     ): Promise<MultilingualGlossaryDictionaryInfo> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!sourceLanguageCode) {
@@ -1429,7 +1427,7 @@ export class DeepLClient {
         glossary: GlossaryId | MultilingualGlossaryInfo,
         options?: UpdateMultilingualGlossaryOptions,
     ): Promise<MultilingualGlossaryInfo> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
 
@@ -1459,7 +1457,7 @@ export class DeepLClient {
      * @param options Additional options, see {@link BaseRequestOptions}.
      * @returns {Promise<MultilingualGlossaryInfo>} Object containing details about the updated glossary.
      *
-     * @throws {ArgumentError} If the name is invalid.
+     * @throws {ArgumentError} If the glossary ID or the name is empty.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async updateMultilingualGlossaryName(
@@ -1490,7 +1488,7 @@ export class DeepLClient {
         glossaryDict: MultilingualGlossaryDictionaryEntries,
         options?: BaseRequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!glossaryDict) {
@@ -1525,7 +1523,7 @@ export class DeepLClient {
         csvContent: string,
         options?: BaseRequestOptions,
     ): Promise<MultilingualGlossaryInfo> {
-        if (!glossary) {
+        if (!glossary || !extractGlossaryId(glossary)) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
         if (!sourceLanguageCode) {

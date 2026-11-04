@@ -642,3 +642,70 @@ describe('DeepLClient multilingual glossary URL encoding', () => {
         await makeDeeplClient().deleteMultilingualGlossaryDictionary('g-1', 'e n', 'de');
     });
 });
+
+describe('multilingual glossary argument checks', () => {
+    const dict = { sourceLangCode: 'en', targetLangCode: 'de', entries };
+    const emptyDict = { ...dict, entries: new deepl.GlossaryEntries() };
+    const noId = <deepl.MultilingualGlossaryInfo>{};
+
+    // No nock interceptor: a request would fail with a different error.
+    it.each([
+        [
+            'getMultilingualGlossaryDictionaryEntries',
+            (c: deepl.DeepLClient) => c.getMultilingualGlossaryDictionaryEntries(noId, 'en', 'de'),
+        ],
+        [
+            'deleteMultilingualGlossaryDictionary',
+            (c: deepl.DeepLClient) => c.deleteMultilingualGlossaryDictionary(noId, 'en', 'de'),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionary',
+            (c: deepl.DeepLClient) => c.replaceMultilingualGlossaryDictionary(noId, dict),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionaryFromCsv',
+            (c: deepl.DeepLClient) =>
+                c.replaceMultilingualGlossaryDictionaryFromCsv(noId, 'en', 'de', 'a,b'),
+        ],
+        [
+            'updateMultilingualGlossaryDictionary',
+            (c: deepl.DeepLClient) => c.updateMultilingualGlossaryDictionary(noId, dict),
+        ],
+        [
+            'updateMultilingualGlossaryDictionaryFromCsv',
+            (c: deepl.DeepLClient) =>
+                c.updateMultilingualGlossaryDictionaryFromCsv(noId, 'en', 'de', 'a,b'),
+        ],
+        [
+            'updateMultilingualGlossaryName',
+            (c: deepl.DeepLClient) => c.updateMultilingualGlossaryName(noId, 'n'),
+        ],
+        [
+            'updateMultilingualGlossaryName with an empty ID',
+            (c: deepl.DeepLClient) => c.updateMultilingualGlossaryName('', 'n'),
+        ],
+    ])('%s throws ArgumentError for a glossary without ID', async (_, call) => {
+        await expect(call(makeDeeplClient())).rejects.toBeInstanceOf(deepl.ArgumentError);
+    });
+
+    it.each([
+        [
+            'createMultilingualGlossary without dictionaries',
+            (c: deepl.DeepLClient) => c.createMultilingualGlossary('n', []),
+        ],
+        [
+            'createMultilingualGlossary with an empty dictionary',
+            (c: deepl.DeepLClient) => c.createMultilingualGlossary('n', [dict, emptyDict]),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionary with an empty dictionary',
+            (c: deepl.DeepLClient) => c.replaceMultilingualGlossaryDictionary('g-1', emptyDict),
+        ],
+        [
+            'updateMultilingualGlossaryDictionary with an empty dictionary',
+            (c: deepl.DeepLClient) => c.updateMultilingualGlossaryDictionary('g-1', emptyDict),
+        ],
+    ])('%s throws ArgumentError', async (_, call) => {
+        await expect(call(makeDeeplClient())).rejects.toBeInstanceOf(deepl.ArgumentError);
+    });
+});
