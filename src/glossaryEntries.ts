@@ -2,7 +2,7 @@
 // Use of this source code is governed by an MIT
 // license that can be found in the LICENSE file.
 
-import { DeepLError } from './errors';
+import { ArgumentError, DeepLError } from './errors';
 import { isString } from './utils';
 
 /**
@@ -90,11 +90,11 @@ export class GlossaryEntries {
     /**
      * Checks if the given glossary term contains any disallowed characters.
      * @param term Glossary term to check for validity.
-     * @throws {Error} If the term is not valid or a disallowed character is found.
+     * @throws {ArgumentError} If the term is empty or contains a disallowed character.
      */
     static validateGlossaryTerm(term: string) {
         if (!isString(term) || term.length === 0) {
-            throw new DeepLError(`'${term}' is not a valid term.`);
+            throw new ArgumentError(`'${term}' is not a valid term.`);
         }
         for (let idx = 0; idx < term.length; idx++) {
             const charCode = term.charCodeAt(idx);
@@ -104,7 +104,7 @@ export class GlossaryEntries {
                 charCode === 0x2028 ||
                 charCode === 0x2029 // Unicode newlines
             ) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     `Term '${term}' contains invalid character: '${term[idx]}' (${charCode})`,
                 );
             }

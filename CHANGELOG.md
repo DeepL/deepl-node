@@ -119,6 +119,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer adds it to your project. TypeScript projects that relied on it
   being installed transitively add `@types/node` to their own
   `devDependencies`.
+- **Breaking:** argument checks throw `ArgumentError` (a `DeepLError`
+  subclass) instead of a plain `DeepLError`: an empty auth key in the
+  `DeepLClient` constructor; empty texts, empty language codes, `glossary`
+  with `glossaryIds`, more than 5 `glossaryIds`, a glossary, style rule, style
+  profile or translation memory option without ID, `translationMemoryThreshold`
+  without `translationMemory` or outside 0 to 100, a document glossary without
+  `sourceLang` and a non-path document input without `filename` in
+  `translateText()`, `translateDocument()`, `translateDocumentUpload()`,
+  `rephraseText()` and `correctText()`; an empty name or entries in
+  `createGlossary()` and `createGlossaryWithCsv()`; an empty or control
+  character glossary or spoken term; an empty translation memory ID.
+  `deleteMultilingualGlossary()` throws `ArgumentError` for an empty or missing
+  glossary ID (was a plain `Error`, or a `TypeError` for `null`). Code that
+  checks `error.constructor === DeepLError` must also accept `ArgumentError`.
 
 ### Removed
 - `Usage.document` and `Usage.teamDocument`. The API no longer returns

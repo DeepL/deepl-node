@@ -50,7 +50,7 @@ describe('DeepLClient.createGlossary', () => {
         });
     });
 
-    it('throws DeepLError when the name is empty', async () => {
+    it('throws ArgumentError when the name is empty', async () => {
         await expect(
             makeDeeplClient().createGlossary(
                 '',
@@ -58,13 +58,13 @@ describe('DeepLClient.createGlossary', () => {
                 'de',
                 new deepl.GlossaryEntries({ entries: { a: 'b' } }),
             ),
-        ).rejects.toThrow(/name must be a non-empty string/);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 
-    it('throws DeepLError when there are no entries', async () => {
+    it('throws ArgumentError when there are no entries', async () => {
         await expect(
             makeDeeplClient().createGlossary('n', 'en', 'de', new deepl.GlossaryEntries()),
-        ).rejects.toThrow(/must not be empty/);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 });
 

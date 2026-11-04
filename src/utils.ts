@@ -224,7 +224,7 @@ export function isFreeAccountAuthKey(authKey: string): boolean {
  */
 export function standardizeLanguageCode(langCode: string): LanguageCode {
     if (!isString(langCode) || langCode.length === 0) {
-        throw new DeepLError('langCode must be a non-empty string');
+        throw new ArgumentError('langCode must be a non-empty string');
     }
     const [lang, region] = langCode.split('-', 2);
     return (
@@ -240,7 +240,7 @@ export function standardizeLanguageCode(langCode: string): LanguageCode {
  */
 export function nonRegionalLanguageCode(langCode: string): NonRegionalLanguageCode {
     if (!isString(langCode) || langCode.length === 0) {
-        throw new DeepLError('langCode must be a non-empty string');
+        throw new ArgumentError('langCode must be a non-empty string');
     }
     return langCode.split('-', 2)[0].toLowerCase() as NonRegionalLanguageCode;
 }
@@ -276,13 +276,13 @@ export function buildTranslationBody(
     const hasGlossaryIds = glossaryIds !== undefined && glossaryIds.length > 0;
 
     if (glossary !== undefined && hasGlossaryIds) {
-        throw new DeepLError(
+        throw new ArgumentError(
             'glossary and glossaryIds options cannot be used together, please use only one.',
         );
     }
 
     if (glossaryIds !== undefined && glossaryIds.length > 5) {
-        throw new DeepLError('glossaryIds option supports at most 5 glossaries.');
+        throw new ArgumentError('glossaryIds option supports at most 5 glossaries.');
     }
 
     const body: Record<string, unknown> = { target_lang: targetLang };
@@ -295,7 +295,7 @@ export function buildTranslationBody(
     if (glossary !== undefined) {
         if (!isString(glossary)) {
             if (glossary.glossaryId === undefined) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     'glossary option should be a string containing the Glossary ID or a GlossaryInfo object.',
                 );
             }
@@ -307,7 +307,7 @@ export function buildTranslationBody(
         body.glossary_ids = glossaryIds.map((glossaryId) => {
             if (!isString(glossaryId)) {
                 if (glossaryId.glossaryId === undefined) {
-                    throw new DeepLError(
+                    throw new ArgumentError(
                         'glossaryIds entries should be strings containing the Glossary ID or GlossaryInfo objects.',
                     );
                 }
@@ -396,7 +396,7 @@ export function setTextsAndReturnIsSingular(
     const textArray: unknown[] = singular ? [texts] : texts;
     for (const text of textArray) {
         if (!isString(text) || text.length === 0) {
-            throw new DeepLError(
+            throw new ArgumentError(
                 'texts parameter must be a non-empty string or array of non-empty strings',
             );
         }
@@ -424,7 +424,7 @@ export function setStyleAndTranslationMemoryOptions(
     if (options.styleRule !== undefined) {
         if (!isString(options.styleRule)) {
             if (options.styleRule.styleId === undefined) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
                 );
             }
@@ -436,7 +436,7 @@ export function setStyleAndTranslationMemoryOptions(
     if (options.styleProfile !== undefined) {
         if (!isString(options.styleProfile)) {
             if (options.styleProfile.styleProfileId === undefined) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     'styleProfile option should be a string containing the style profile ID or a StyleProfile object.',
                 );
             }
@@ -448,7 +448,7 @@ export function setStyleAndTranslationMemoryOptions(
     if (options.translationMemory !== undefined) {
         if (!isString(options.translationMemory)) {
             if (options.translationMemory.translationMemoryId === undefined) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
                 );
             }
@@ -459,10 +459,12 @@ export function setStyleAndTranslationMemoryOptions(
     }
     if (options.translationMemoryThreshold !== undefined) {
         if (options.translationMemory === undefined) {
-            throw new DeepLError('translationMemoryThreshold requires translationMemory');
+            throw new ArgumentError('translationMemoryThreshold requires translationMemory');
         }
         if (options.translationMemoryThreshold < 0 || options.translationMemoryThreshold > 100) {
-            throw new DeepLError('translationMemoryThreshold must be a number between 0 and 100.');
+            throw new ArgumentError(
+                'translationMemoryThreshold must be a number between 0 and 100.',
+            );
         }
         body.translation_memory_threshold = options.translationMemoryThreshold;
     }
@@ -604,7 +606,7 @@ export function extractTranslationMemoryId(
         ? translationMemory
         : translationMemory.translationMemoryId;
     if (!translationMemoryId) {
-        throw new DeepLError(
+        throw new ArgumentError(
             'translationMemory should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
         );
     }

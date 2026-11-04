@@ -4,7 +4,7 @@
 
 import nock from 'nock';
 
-import { DeepLError } from '../../src/errors';
+import { ArgumentError, DeepLError } from '../../src/errors';
 import { makeDeeplClient, serverUrl } from './client';
 
 const corrected = {
@@ -45,8 +45,8 @@ describe('DeepLClient.correctText', () => {
         expect(results).toHaveLength(2);
     });
 
-    it('throws DeepLError when a text is empty', async () => {
-        await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(/non-empty string/);
+    it('throws ArgumentError when a text is empty', async () => {
+        await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(ArgumentError);
     });
 
     it('sends the extraBodyParameters of the options last, overriding built-in parameters', async () => {

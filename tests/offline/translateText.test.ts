@@ -347,35 +347,37 @@ describe('DeepLClient.translateText', () => {
     });
 
     it.each([[''], [[''] as unknown as string], [['ok', ''] as unknown as string]])(
-        'throws DeepLError when a text is empty: %p',
+        'throws ArgumentError when a text is empty: %p',
         async (texts) => {
-            await expect(makeDeeplClient().translateText(texts, null, 'de')).rejects.toThrow(
-                /texts parameter/,
-            );
+            const error = await makeDeeplClient()
+                .translateText(texts, null, 'de')
+                .catch((e) => e);
+            expect(error).toBeInstanceOf(deepl.ArgumentError);
+            expect(error.message).toMatch(/texts parameter/);
         },
     );
 
-    it('throws DeepLError when the target language is empty', async () => {
+    it('throws ArgumentError when the target language is empty', async () => {
         await expect(
             makeDeeplClient().translateText('abc', null, <deepl.TargetLanguageCode>''),
-        ).rejects.toThrow(deepl.DeepLError);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 
-    it('throws DeepLError when glossary and glossaryIds are both set', async () => {
+    it('throws ArgumentError when glossary and glossaryIds are both set', async () => {
         await expect(
             makeDeeplClient().translateText('abc', 'en', 'de', {
                 glossary: 'g-1',
                 glossaryIds: ['g-2'],
             }),
-        ).rejects.toThrow(/cannot be used together/);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 
-    it('throws DeepLError when more than 5 glossaryIds are set', async () => {
+    it('throws ArgumentError when more than 5 glossaryIds are set', async () => {
         await expect(
             makeDeeplClient().translateText('abc', 'en', 'de', {
                 glossaryIds: ['1', '2', '3', '4', '5', '6'],
             }),
-        ).rejects.toThrow(/at most 5/);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 
     it.each([
@@ -388,23 +390,23 @@ describe('DeepLClient.translateText', () => {
         await makeDeeplClient().translateText('abc', null, 'de', options);
     });
 
-    it('throws DeepLError when translationMemoryThreshold is set without a translation memory', async () => {
+    it('throws ArgumentError when translationMemoryThreshold is set without a translation memory', async () => {
         await expect(
             makeDeeplClient().translateText('abc', null, 'de', {
                 translationMemoryThreshold: 80,
             }),
-        ).rejects.toThrow(/requires translationMemory/);
+        ).rejects.toThrow(deepl.ArgumentError);
     });
 
     it.each([[-1], [101]])(
-        'throws DeepLError when translationMemoryThreshold is %i',
+        'throws ArgumentError when translationMemoryThreshold is %i',
         async (translationMemoryThreshold) => {
             await expect(
                 makeDeeplClient().translateText('abc', null, 'de', {
                     translationMemory: 'tm-1',
                     translationMemoryThreshold,
                 }),
-            ).rejects.toThrow(/between 0 and 100/);
+            ).rejects.toThrow(deepl.ArgumentError);
         },
     );
 

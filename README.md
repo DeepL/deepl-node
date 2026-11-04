@@ -402,7 +402,7 @@ const glossaryEnToDe = await deeplClient.createMultilingualGlossary('My glossary
 
 Glossary terms are trimmed of leading and trailing whitespace and then
 validated before any request: a term that is empty after trimming or contains a
-control character such as a newline throws a `DeepLError`. The trimmed terms are
+control character such as a newline throws an `ArgumentError`. The trimmed terms are
 sent.
 
 You can also upload a glossary downloaded from the DeepL website using
@@ -559,7 +559,7 @@ terms. A collection has a name and one term list per language (for example `'en'
 Terms are passed and returned as arrays of strings. Before sending, `createSpokenTerms()`,
 `updateSpokenTerms()` and `replaceSpokenTermsList()` trim each term and check it like a
 glossary term: an empty or whitespace-only term or one containing a control character such
-as a newline throws a `DeepLError` and sends no request; valid terms are sent trimmed. The API validates the rest (for example, at most 300
+as a newline throws an `ArgumentError` and sends no request; valid terms are sent trimmed. The API validates the rest (for example, at most 300
 characters per list) and rejects invalid terms with a `DeepLError`.
 
 Every method that takes a collection accepts its ID or a `SpokenTerms` object.
@@ -1468,7 +1468,9 @@ response body that is cut off mid-read is retried, except for creates; its
 -   `DocumentTranslationError`: a document translation failed. The cause is in
     its `error` property, and `httpStatusCode` and `shouldRetry` are copied
     from it when it is a `DeepLError`.
--   `ArgumentError`: an argument failed client-side validation.
+-   `ArgumentError`: an argument failed client-side validation, for example an
+    empty auth key, text, language code, glossary name or ID, or an invalid
+    option combination. No request is sent.
 
 Other failed responses, and responses that cannot be parsed, throw a
 `DeepLError`.

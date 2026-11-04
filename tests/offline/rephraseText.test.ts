@@ -88,8 +88,8 @@ describe('DeepLClient.rephraseText', () => {
         expect(results).toHaveLength(2);
     });
 
-    it('throws DeepLError when a text is empty', async () => {
-        await expect(makeDeeplClient().rephraseText('')).rejects.toThrow(/texts parameter/);
+    it('throws ArgumentError when a text is empty', async () => {
+        await expect(makeDeeplClient().rephraseText('')).rejects.toThrow(ArgumentError);
     });
 
     it('throws DeepLError when the response has no improvement for a single text', async () => {

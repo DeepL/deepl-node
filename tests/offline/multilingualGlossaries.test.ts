@@ -89,7 +89,7 @@ describe('GlossaryEntries terms in multilingual glossary requests', () => {
         ]);
     });
 
-    it('throws DeepLError before any request for a whitespace-only term', async () => {
+    it('throws ArgumentError before any request for a whitespace-only term', async () => {
         // No request is declared: nock rejects any request with a different error.
         await expect(
             makeDeeplClient().replaceMultilingualGlossaryDictionary('g-1', {
@@ -97,7 +97,7 @@ describe('GlossaryEntries terms in multilingual glossary requests', () => {
                 targetLangCode: 'de',
                 entries: new deepl.GlossaryEntries({ entries: { Apple: '   ' } }),
             }),
-        ).rejects.toThrow("'' is not a valid term.");
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 });
 
@@ -276,9 +276,13 @@ describe('DeepLClient.deleteMultilingualGlossary', () => {
         await makeDeeplClient().deleteMultilingualGlossary(glossary);
     });
 
-    it('throws Error when the glossary ID is empty', async () => {
-        await expect(makeDeeplClient().deleteMultilingualGlossary('')).rejects.toThrow(
-            'glossaryId must not be empty',
+    it.each([
+        ['an empty glossary ID', ''],
+        ['a MultilingualGlossaryInfo without ID', <deepl.MultilingualGlossaryInfo>{}],
+        ['null', null as unknown as string],
+    ])('throws ArgumentError for %s', async (_, glossary) => {
+        await expect(makeDeeplClient().deleteMultilingualGlossary(glossary)).rejects.toThrow(
+            deepl.ArgumentError,
         );
     });
 });

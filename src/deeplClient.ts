@@ -305,7 +305,7 @@ export class DeepLClient {
     constructor(authKey: string, options: DeepLClientOptions = {}) {
         if (isString(authKey)) authKey = authKey.trim();
         if (!isString(authKey) || authKey.length === 0) {
-            throw new DeepLError('authKey must be a non-empty string');
+            throw new ArgumentError('authKey must be a non-empty string');
         }
 
         let serverUrl;
@@ -565,7 +565,7 @@ export class DeepLClient {
             );
         } else {
             if (options?.filename === undefined) {
-                throw new DeepLError(
+                throw new ArgumentError(
                     'options.filename must be specified unless using input file path',
                 );
             }
@@ -727,7 +727,7 @@ export class DeepLClient {
         options?: RequestOptions,
     ): Promise<GlossaryInfo> {
         if (Object.keys(entries.entries()).length === 0) {
-            throw new DeepLError('glossary entries must not be empty');
+            throw new ArgumentError('glossary entries must not be empty');
         }
 
         const tsv = entries.toTsv();
@@ -897,7 +897,7 @@ export class DeepLClient {
             options?.glossary !== undefined ||
             (options?.glossaryIds !== undefined && options.glossaryIds.length > 0);
         if (hasGlossary && sourceLang === null) {
-            throw new DeepLError('sourceLang is required if using a glossary');
+            throw new ArgumentError('sourceLang is required if using a glossary');
         }
         setStyleAndTranslationMemoryOptions(body, options ?? {});
         const data = toFormParameters(body);
@@ -959,7 +959,7 @@ export class DeepLClient {
         targetLang = nonRegionalLanguageCode(targetLang);
 
         if (!isString(name) || name.length === 0) {
-            throw new DeepLError('glossary name must be a non-empty string');
+            throw new ArgumentError('glossary name must be a non-empty string');
         }
 
         const body = {
@@ -1259,18 +1259,17 @@ export class DeepLClient {
      * Deletes the glossary with the specified ID or MultilingualGlossaryInfo object.
      * @param glossary The ID of the glossary or MultilingualGlossaryInfo object to delete.
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
-     * @throws {Error} If the glossaryId is empty.
+     * @throws {ArgumentError} If the glossary ID is empty.
      * @throws {DeepLError} If the glossary could not be deleted.
      */
     async deleteMultilingualGlossary(
         glossary: GlossaryId | MultilingualGlossaryInfo,
         options?: RequestOptions,
     ): Promise<void> {
-        const glossaryId = extractGlossaryId(glossary);
-
-        if (!glossaryId) {
-            throw new Error('glossaryId must not be empty');
+        if (!glossary || !extractGlossaryId(glossary)) {
+            throw new ArgumentError('glossaryId must not be empty');
         }
+        const glossaryId = extractGlossaryId(glossary);
 
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
@@ -1430,7 +1429,7 @@ export class DeepLClient {
         glossary: GlossaryId | MultilingualGlossaryInfo,
         options?: UpdateMultilingualGlossaryOptions,
     ): Promise<MultilingualGlossaryInfo> {
-        if (!glossary || !extractGlossaryId(glossary)) {
+        if (!glossary) {
             throw new ArgumentError('Parameter "glossary" must not be empty/null');
         }
 

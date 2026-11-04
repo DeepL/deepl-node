@@ -74,7 +74,12 @@ describe('DeepLClient spoken terms', () => {
             makeDeeplClient().updateSpokenTerms('st-1', {
                 termLists: [{ lang: 'en', entries: ['a', '   '] }],
             }),
-        ).rejects.toThrow(new deepl.DeepLError("'' is not a valid term."));
+        ).rejects.toThrow(new deepl.ArgumentError("'' is not a valid term."));
+        await expect(
+            makeDeeplClient().updateSpokenTerms('st-1', {
+                termLists: [{ lang: 'en', entries: ['   '] }],
+            }),
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 
     it('sends an empty body when updateSpokenTerms() has no options', async () => {
@@ -126,8 +131,6 @@ describe('DeepLClient spoken terms', () => {
         // No nock interceptor: any request fails with a network error instead
         await expect(
             makeDeeplClient().createSpokenTerms('my terms', [{ lang: 'en', entries: ['a\nb'] }]),
-        ).rejects.toThrow(
-            new deepl.DeepLError("Term 'a\nb' contains invalid character: '\n' (10)"),
-        );
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 });

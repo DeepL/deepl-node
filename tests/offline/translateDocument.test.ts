@@ -81,14 +81,20 @@ describe('DeepLClient.translateDocumentUpload', () => {
     it.each([
         ['glossary', { glossary: 'g-1' }],
         ['glossaryIds', { glossaryIds: ['g-1'] }],
-    ])('throws DeepLError when %s is set without a source language', async (_, options) => {
+    ])('throws ArgumentError when %s is set without a source language', async (_, options) => {
         // No request is declared: nock rejects any request with a different error.
         await expect(
             makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
                 filename: 'example.txt',
                 ...options,
             }),
-        ).rejects.toThrow(new deepl.DeepLError('sourceLang is required if using a glossary'));
+        ).rejects.toThrow(new deepl.ArgumentError('sourceLang is required if using a glossary'));
+        await expect(
+            makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+                filename: 'example.txt',
+                ...options,
+            }),
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 
     it('sends extraBodyParameters as multipart parts', async () => {
@@ -185,11 +191,11 @@ describe('DeepLClient.translateDocumentUpload', () => {
         ['a stream', () => fs.createReadStream(createTextDocument()[0])],
         ['a buffer', () => Buffer.from('abc')],
     ])(
-        'throws DeepLError when the input is %s and options.filename is missing',
+        'throws ArgumentError when the input is %s and options.filename is missing',
         async (_, input) => {
             await expect(
                 makeDeeplClient().translateDocumentUpload(input(), null, 'de'),
-            ).rejects.toThrow('options.filename');
+            ).rejects.toThrow(deepl.ArgumentError);
         },
     );
 

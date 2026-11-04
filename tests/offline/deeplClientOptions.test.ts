@@ -18,7 +18,8 @@ function expectUserAgent(matches: (userAgent: string) => boolean, host = serverU
 }
 
 describe('DeepLClient constructor', () => {
-    it('throws DeepLError when the auth key is empty', () => {
+    it('throws ArgumentError when the auth key is empty', () => {
+        expect(() => new deepl.DeepLClient('')).toThrow(deepl.ArgumentError);
         expect(() => new deepl.DeepLClient('')).toThrow(/authKey.*empty/);
     });
 
@@ -30,8 +31,8 @@ describe('DeepLClient constructor', () => {
         await makeDeeplClient({ authKey: 'my-key' }).getUsage();
     });
 
-    it('throws DeepLError when the auth key is only whitespace', () => {
-        expect(() => new deepl.DeepLClient(' \t\n')).toThrow(/authKey.*empty/);
+    it('throws ArgumentError when the auth key is only whitespace', () => {
+        expect(() => new deepl.DeepLClient(' \t\n')).toThrow(deepl.ArgumentError);
     });
 
     it('trims the auth key', async () => {

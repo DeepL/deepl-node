@@ -87,10 +87,13 @@ describe('DeepLClient.getTranslationMemory', () => {
         await makeDeeplClient().getTranslationMemory('a/b?');
     });
 
-    it('throws DeepLError when the translation memory has no ID', async () => {
+    it('throws ArgumentError when the translation memory has no ID', async () => {
         await expect(
             makeDeeplClient().getTranslationMemory(<deepl.TranslationMemoryInfo>{}),
-        ).rejects.toThrow(/should be a TranslationMemoryId/);
+        ).rejects.toThrow(deepl.ArgumentError);
+        await expect(makeDeeplClient().getTranslationMemory('')).rejects.toThrow(
+            deepl.ArgumentError,
+        );
     });
 
     it('throws DeepLError when the translation memory does not exist', async () => {
