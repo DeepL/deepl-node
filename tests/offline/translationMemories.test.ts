@@ -664,20 +664,58 @@ describe('DeepLClient.importTranslationMemoryFromFilepath', () => {
         expect(error.error).toMatchObject({ code: 'ENOENT', path: inputPath });
     });
 
-    it('rejects with DeepLError wrapping EISDIR before any request when the input path is a directory', async () => {
+    it('rejects with TranslationMemoryJobError wrapping EISDIR before any request when the input path is a directory', async () => {
         const error = await makeDeeplClient()
             .importTranslationMemoryFromFilepath(tempDir())
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error).not.toBeInstanceOf(deepl.ArgumentError);
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toBeUndefined();
         expect(error.error).toMatchObject({ code: 'EISDIR' });
     });
 
-    it('throws ArgumentError for a Buffer without fileName or displayName', async () => {
-        await expect(
-            makeDeeplClient().importTranslationMemoryFromFilepath(Buffer.from(tmx)),
-        ).rejects.toThrow(deepl.ArgumentError);
+    it('wraps the ArgumentError for a Buffer without fileName or displayName', async () => {
+        const error = await makeDeeplClient()
+            .importTranslationMemoryFromFilepath(Buffer.from(tmx))
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toBeUndefined();
+        expect(error.error).toBeInstanceOf(deepl.ArgumentError);
+    });
+
+    it('rejects with TranslationMemoryJobError carrying the job when the import fails', async () => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/import')
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+        nock(storageUrl).put('/upload').reply(200);
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-1')
+            .reply(200, jobReply('failed', { error: { message: 'invalid TMX' } }));
+
+        const error = await makeDeeplClient()
+            .importTranslationMemoryFromFilepath(Buffer.from(tmx), { fileName: 'a.tmx' })
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.message).toBe('invalid TMX');
+        expect(error.job).toMatchObject({ jobId: 'job-1', status: 'failed' });
+        expect(error.error).toBeInstanceOf(deepl.DeepLError);
+    });
+
+    it('carries the created job and the status code when the upload fails', async () => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/import')
+            .reply(202, { job_id: 'job-1', upload_url: `${storageUrl}/upload` });
+        nock(storageUrl).put('/upload').reply(403, 'expired');
+
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .importTranslationMemoryFromFilepath(Buffer.from(tmx), { fileName: 'a.tmx' })
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toMatchObject({ jobId: 'job-1' });
+        expect([error.httpStatusCode, error.shouldRetry]).toEqual([403, false]);
     });
 });
 
@@ -697,51 +735,87 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
     });
 
-    it('rejects an existing output file with DeepLError before creating the export job', async () => {
+    it('rejects an existing output file with TranslationMemoryJobError before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         fs.writeFileSync(outputPath, 'existing');
 
+        // No request is declared: nock rejects any request with a different error.
         const error = await makeDeeplClient()
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toBeUndefined();
         expect(error.message).toBe(`output file '${outputPath}' already exists`);
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
-    it('rejects a missing output directory with DeepLError wrapping ENOENT before creating the export job', async () => {
+    it('rejects a missing output directory with TranslationMemoryJobError wrapping ENOENT before creating the export job', async () => {
         const outputPath = path.join(tempDir(), 'missing-dir', 'out.tmx');
 
         const error = await makeDeeplClient()
             .exportTranslationMemoryToFilepath('tm-1', outputPath)
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toBeUndefined();
         expect(error.error).toMatchObject({ code: 'ENOENT' });
     });
 
-    it('rejects with DeepLError wrapping EEXIST when the output file appears during the export', async () => {
+    it('rejects with TranslationMemoryJobError wrapping EEXIST when the output file appears during the export', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
+        nock(serverUrl)
+            .post('/v3/translation_memories/tm-1/export')
+            .reply(202, { job_id: 'job-2' });
+        // The output file appears while the job runs, so opening it fails with EEXIST
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-2')
+            .reply(() => {
+                fs.writeFileSync(outputPath, 'appeared');
+                return [200, jobReply('completed', { download_url: `${storageUrl}/download` })];
+            });
+
+        const error = await makeDeeplClient()
+            .exportTranslationMemoryToFilepath('tm-1', outputPath)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.job).toMatchObject({ status: 'completed' });
+        expect(error.error).toMatchObject({ code: 'EEXIST' });
+    });
+
+    it('rejects with TranslationMemoryJobError carrying the job when the export fails', async () => {
+        nock(serverUrl)
+            .post('/v3/translation_memories/tm-1/export')
+            .reply(202, { job_id: 'job-2' });
+        nock(serverUrl)
+            .get('/v3/translation_memories/jobs/job-2')
+            .reply(200, jobReply('expired', { error: { message: 'export expired' } }));
+
+        const error = await makeDeeplClient()
+            .exportTranslationMemoryToFilepath('tm-1', path.join(tempDir(), 'out.tmx'))
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.message).toBe('export expired');
+        expect(error.job).toMatchObject({ status: 'expired' });
+    });
+
+    it('copies the status code of a failed storage download', async () => {
         nock(serverUrl)
             .post('/v3/translation_memories/tm-1/export')
             .reply(202, { job_id: 'job-2' });
         nock(serverUrl)
             .get('/v3/translation_memories/jobs/job-2')
             .reply(200, jobReply('completed', { download_url: `${storageUrl}/download` }));
-        // The output file appears while the job runs, so opening it fails with EEXIST
-        const client = makeDeeplClient();
-        const wait = client.waitUntilTranslationMemoryJobDone.bind(client);
-        jest.spyOn(client, 'waitUntilTranslationMemoryJobDone').mockImplementation(async (j, o) => {
-            fs.writeFileSync(outputPath, 'appeared');
-            return wait(j, o);
-        });
+        nock(storageUrl).get('/download').reply(503, 'unavailable');
 
-        const error = await client
-            .exportTranslationMemoryToFilepath('tm-1', outputPath)
+        const error = await makeDeeplClient({ maxRetries: 0 })
+            .exportTranslationMemoryToFilepath('tm-1', path.join(tempDir(), 'out.tmx'))
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(deepl.DeepLError);
-        expect(error.error).toMatchObject({ code: 'EEXIST' });
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.error.constructor).toBe(deepl.DeepLError);
+        expect([error.httpStatusCode, error.shouldRetry]).toEqual([503, true]);
     });
 });

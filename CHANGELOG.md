@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `TranslationMemoryJobError`, thrown by `importTranslationMemoryFromFilepath()`
+  and `exportTranslationMemoryToFilepath()`. It extends `DeepLError`, holds the
+  cause in `error` and the job in `job` once it was created, and copies
+  `httpStatusCode` and `shouldRetry` from a `DeepLError` cause.
 - Cancellation: every `DeepLClient` and `DeepLAdminClient` method that sends a
   request accepts `signal?: AbortSignal`, through its options object or, for
   methods that had none, a new trailing `options` argument of the new type
@@ -63,13 +67,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unwritable output directory (was the Node error); the Node error is in
   `error`. Catch `ArgumentError` and `DocumentTranslationError` instead of
   checking `error.code`.
-- `importTranslationMemoryFromFilepath()` rejects with an `ArgumentError` for a
-  missing input file and with a `DeepLError` for other read failures (was the
-  Node error, e.g. `ENOENT` or `EISDIR`). `exportTranslationMemoryToFilepath()`
-  rejects with a `DeepLError` for an existing output file, a missing or
-  unwritable output directory and local write failures (was the Node error).
-  The Node error, where there is one, is in `error`.
-  `downloadTranslationMemoryExport()` still rejects with the Node error (e.g.
+- **Breaking:** `importTranslationMemoryFromFilepath()` rejects with an
+  `ArgumentError` for a missing input file (was the Node error `ENOENT`), and
+  with the new `TranslationMemoryJobError` for every other failure: other read
+  failures (was the Node error, e.g. `EISDIR`), a `Buffer` or stream without
+  `fileName` or `displayName` (was `ArgumentError`) and failures of the job
+  creation, upload and wait (were the `DeepLError` or its subclass).
+  `exportTranslationMemoryToFilepath()` rejects with a
+  `TranslationMemoryJobError` for every failure, including an existing output
+  file, a missing or unwritable output directory and local write failures
+  (were the Node error). The cause is in `error`; catch
+  `TranslationMemoryJobError` instead of the `DeepLError` subclasses and read
+  `error.error` for the cause. `downloadTranslationMemoryExport()` still rejects with the Node error (e.g.
   `EEXIST`) for an existing or uncreatable output file and write failures.
 - `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
   `createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossaryName()`,

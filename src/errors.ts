@@ -3,6 +3,7 @@
 // license that can be found in the LICENSE file.
 
 import { DocumentHandle } from './index';
+import { TranslationMemoryExport, TranslationMemoryImport, TranslationMemoryJob } from './types';
 
 export class DeepLError extends Error {
     public error?: Error;
@@ -49,6 +50,34 @@ export class DocumentTranslationError extends DeepLError {
     constructor(message: string, handle?: DocumentHandle, error?: Error) {
         super(message, error);
         this.documentHandle = handle;
+        if (error instanceof DeepLError) {
+            this.httpStatusCode = error.httpStatusCode;
+            this.shouldRetry = error.shouldRetry;
+        }
+    }
+}
+
+/**
+ * Thrown by importTranslationMemoryFromFilepath() and exportTranslationMemoryToFilepath() for any
+ * failure except a missing input file (ArgumentError) and caller cancellation. The cause is in
+ * `error`; `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
+ */
+export class TranslationMemoryJobError extends DeepLError {
+    /**
+     * The job, once it was created: the create response until the first status check, then the
+     * last status the helper received. Undefined if the failure happened before the job was
+     * created. Pass `job.jobId` to getTranslationMemoryJob() or
+     * waitUntilTranslationMemoryJobDone() to resume.
+     */
+    public readonly job?: TranslationMemoryJob | TranslationMemoryImport | TranslationMemoryExport;
+
+    constructor(
+        message: string,
+        job?: TranslationMemoryJob | TranslationMemoryImport | TranslationMemoryExport,
+        error?: Error,
+    ) {
+        super(message, error);
+        this.job = job;
         if (error instanceof DeepLError) {
             this.httpStatusCode = error.httpStatusCode;
             this.shouldRetry = error.shouldRetry;

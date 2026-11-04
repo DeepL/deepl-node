@@ -887,8 +887,9 @@ option (otherwise `displayName` is used as the file name). The options
 -   `extraBodyParameters`: extra fields added last to the JSON request body.
 
 A file path is read before any request is sent; a missing file rejects with an
-`ArgumentError`, and any other read failure (e.g. a directory) with a
-`DeepLError` whose `error` property holds the Node error.
+`ArgumentError`. Every other failure rejects with a `TranslationMemoryJobError`
+(see below), including a read failure (e.g. a directory), a failed upload and a
+job that fails or times out.
 
 The three steps are also available separately, for example to upload the file
 yourself or to poll for progress. `createTranslationMemoryImport()` returns an
@@ -941,9 +942,27 @@ const job = await deeplClient.exportTranslationMemoryToFilepath(
 ```
 
 The output file must not exist yet and its directory must be writable; both are
-checked before the export job is created. A failure, like a local write failure
-during the download, rejects with a `DeepLError`; for a Node error it is in the
-`error` property.
+checked before the export job is created. Every failure rejects with a
+`TranslationMemoryJobError`.
+
+`importTranslationMemoryFromFilepath()` and `exportTranslationMemoryToFilepath()`
+wrap their failures in a `TranslationMemoryJobError`, like
+`DocumentTranslationError` for `translateDocument()`. Its `error` property holds
+the cause (a `DeepLError` or a Node error), and `httpStatusCode` and
+`shouldRetry` are copied from the cause when it is a `DeepLError`. Its `job`
+property is set once the job was created: the create response until the first
+status check, then the last job status received. Pass `error.job.jobId` to
+`waitUntilTranslationMemoryJobDone()` or `getTranslationMemoryJob()` to resume.
+
+```javascript
+try {
+    await deeplClient.exportTranslationMemoryToFilepath('YOUR_TM_ID', '/path/to/exported.tmx');
+} catch (error) {
+    if (error instanceof deepl.TranslationMemoryJobError && error.job) {
+        console.log(`Export job ${error.job.jobId} failed: ${error.message}`);
+    }
+}
+```
 
 Errors from the pre-signed upload and download URLs, which are not part of the
 DeepL API, are thrown as a plain `DeepLError` carrying `httpStatusCode`, with
@@ -1476,6 +1495,10 @@ response body that is cut off mid-read is retried, except for creates; its
 -   `DocumentTranslationError`: a document translation failed. The cause is in
     its `error` property, and `httpStatusCode` and `shouldRetry` are copied
     from it when it is a `DeepLError`.
+-   `TranslationMemoryJobError`: `importTranslationMemoryFromFilepath()` or
+    `exportTranslationMemoryToFilepath()` failed. The cause is in its `error`
+    property, the job in `job` once it was created, and `httpStatusCode` and
+    `shouldRetry` are copied from the cause when it is a `DeepLError`.
 -   `ArgumentError`: an argument failed client-side validation, for example an
     empty auth key, text, language code, glossary name or ID, or an invalid
     option combination. No request is sent.
