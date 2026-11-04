@@ -532,16 +532,17 @@ describe('DeepLClient.downloadTranslationMemoryExport', () => {
         expect(fs.readFileSync(outputPath, 'utf8')).toBe(tmx);
     });
 
-    it('rejects an existing output file before it downloads anything', async () => {
+    it('rejects an existing output file with the Node error before it downloads anything', async () => {
         const outputPath = path.join(tempDir(), 'out.tmx');
         fs.writeFileSync(outputPath, 'existing');
 
-        await expect(
-            makeDeeplClient().downloadTranslationMemoryExport(
-                job(`${storageUrl}/download`),
-                outputPath,
-            ),
-        ).rejects.toMatchObject({ constructor: deepl.DeepLError, error: { code: 'EEXIST' } });
+        // No request is declared: nock rejects any request with a different error.
+        const error = await makeDeeplClient()
+            .downloadTranslationMemoryExport(job(`${storageUrl}/download`), outputPath)
+            .catch((e) => e);
+
+        expect(error).not.toBeInstanceOf(deepl.DeepLError);
+        expect(error.code).toBe('EEXIST');
         expect(fs.readFileSync(outputPath, 'utf8')).toBe('existing');
     });
 
@@ -559,24 +560,31 @@ describe('DeepLClient.downloadTranslationMemoryExport', () => {
     });
 
     it.each([
-        [403, deepl.AuthorizationError, false],
-        [503, deepl.DocumentNotReadyError, true],
-    ])('maps a %i from the storage as released, to %p', async (status, errorClass, shouldRetry) => {
+        [403, false],
+        [404, false],
+        [456, false],
+        [503, true],
+    ])('throws a plain DeepLError for a %i from the storage', async (status, shouldRetry) => {
         nock(storageUrl).get('/download').reply(status, 'storage error');
 
         const error = await makeDeeplClient({ maxRetries: 0 })
-            .downloadTranslationMemoryExport(job(`${storageUrl}/download`), 'unused.tmx')
+            .downloadTranslationMemoryExport(
+                job(`${storageUrl}/download`),
+                path.join(tempDir(), 'out.tmx'),
+            )
             .catch((e) => e);
 
-        expect(error).toBeInstanceOf(errorClass);
+        expect(error.constructor).toBe(deepl.DeepLError);
         expect(error.message).toContain('storage error');
         expect(error).toMatchObject({ httpStatusCode: status, shouldRetry });
     });
 
-    it('throws ArgumentError when the job has no download URL', async () => {
-        await expect(
-            makeDeeplClient().downloadTranslationMemoryExport(job(), 'unused.tmx'),
-        ).rejects.toThrow(deepl.ArgumentError);
+    it('throws DeepLError when the job has no download URL', async () => {
+        const error = await makeDeeplClient()
+            .downloadTranslationMemoryExport(job(), path.join(tempDir(), 'out.tmx'))
+            .catch((e) => e);
+
+        expect(error.constructor).toBe(deepl.DeepLError);
     });
 });
 

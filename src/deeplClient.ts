@@ -2188,10 +2188,12 @@ export class DeepLClient {
      * @param outputFile: String containing output file path, or a WriteStream to store file data.
      *
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
-     * @throws {DeepLError} If the job has no download URL, the output file already exists or cannot
-     * be created or written (the Node error in `error`), or any error occurs while downloading.
-     * An error response from the download URL is mapped like a document download response
-     * (e.g. 403 to AuthorizationError, 503 to DocumentNotReadyError), with httpStatusCode set.
+     * @throws {DeepLError} If the job has no download URL (it has not completed, or is not an
+     * export), or the download fails. An error response from the download URL, which is not part
+     * of the DeepL API, is a plain DeepLError carrying httpStatusCode, never one of its subclasses.
+     * @throws {Error} The Node error (e.g. `EEXIST`, `ENOENT`, `EACCES`) if the output file path
+     * already exists or cannot be created, which is checked before any request, or if writing the
+     * output fails.
      */
     async downloadTranslationMemoryExport(
         job: Omit<TranslationMemoryJob, 'done' | 'ok' | 'creationTime' | 'updatedTime'>,
@@ -2200,7 +2202,7 @@ export class DeepLClient {
     ): Promise<void> {
         const downloadUrl = job.results[0]?.downloadUrl;
         if (!downloadUrl) {
-            throw new ArgumentError(
+            throw new DeepLError(
                 'translation memory export job has no download URL; it may not have completed yet',
             );
         }
@@ -2213,11 +2215,7 @@ export class DeepLClient {
         let fileStream: fs.WriteStream | undefined;
         let streamClosed: Promise<void> | undefined;
         if (typeof outputFile === 'string') {
-            try {
-                fd = await util.promisify(fs.open)(outputFile, 'wx');
-            } catch (error) {
-                throw wrapLocalFileError('cannot create output file', error);
-            }
+            fd = await util.promisify(fs.open)(outputFile, 'wx');
         }
         try {
             // Streamed rather than buffered as text, mirroring translateDocumentDownload(): a TMX export
@@ -2230,9 +2228,13 @@ export class DeepLClient {
                     { signal: options?.signal },
                     true,
                 );
-            // The released status code mapping (e.g. 403 to AuthorizationError, 503 to
-            // DocumentNotReadyError) is kept until the next major version.
-            await checkStatusCode(statusCode, content, true);
+            if (statusCode < 200 || statusCode >= 300) {
+                await throwStorageError(
+                    'Error downloading translation memory export',
+                    statusCode,
+                    content,
+                );
+            }
 
             if (fd === undefined) {
                 return await pipeToStream(content, outputFile as fs.WriteStream, options?.signal);
@@ -2256,11 +2258,7 @@ export class DeepLClient {
                 // otherwise see a file that looks like a successful export.
                 await fs.promises.unlink(outputFile as string).catch(() => undefined);
             }
-            if (options?.signal?.aborted) {
-                // Caller cancellation is never wrapped.
-                throw e;
-            }
-            throw wrapLocalFileError('cannot write output file', e);
+            throw e;
         }
     }
 
@@ -2363,7 +2361,15 @@ export class DeepLClient {
         }
         const created = await this.createTranslationMemoryExport(translationMemory, options);
         const job = await this.waitUntilTranslationMemoryJobDone(created.jobId, options);
-        await this.downloadTranslationMemoryExport(job, outputFile, options);
+        try {
+            await this.downloadTranslationMemoryExport(job, outputFile, options);
+        } catch (error) {
+            if (options?.signal?.aborted) {
+                // Caller cancellation is never wrapped.
+                throw error;
+            }
+            throw wrapLocalFileError('cannot write output file', error);
+        }
         return job;
     }
 

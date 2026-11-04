@@ -961,6 +961,11 @@ const job = await deeplClient.waitUntilTranslationMemoryJobDone(created.jobId, {
 await deeplClient.downloadTranslationMemoryExport(job, '/path/to/exported.tmx');
 ```
 
+`downloadTranslationMemoryExport()` rejects with a `DeepLError` for a job
+without download URL, and with the Node error (e.g. `EEXIST`) when the output
+file exists or cannot be created (checked before any request) or writing it
+fails.
+
 #### Deleting a translation memory
 
 Use `deleteTranslationMemory()` to delete a translation memory.
@@ -1465,7 +1470,7 @@ response body that is cut off mid-read is retried, except for creates; its
 -   `TooManyRequestsError`: HTTP 429, after all retries.
 -   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
 -   `DocumentNotReadyError`: HTTP 503 while downloading a translated document
-    (`translateDocumentDownload()`) or downloading a translation memory export.
+    (`translateDocumentDownload()`).
 -   `ConnectionError`: the request got no complete HTTP response, for example a
     timeout or a response body cut off mid-read.
 -   `DocumentTranslationError`: a document translation failed. The cause is in

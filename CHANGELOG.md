@@ -66,10 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `importTranslationMemoryFromFilepath()` rejects with an `ArgumentError` for a
   missing input file and with a `DeepLError` for other read failures (was the
   Node error, e.g. `ENOENT` or `EISDIR`). `exportTranslationMemoryToFilepath()`
-  and `downloadTranslationMemoryExport()` reject with a `DeepLError` for an
-  existing output file, a missing or unwritable output directory and local
-  write failures (was the Node error). The Node error, where there is one, is
-  in `error`.
+  rejects with a `DeepLError` for an existing output file, a missing or
+  unwritable output directory and local write failures (was the Node error).
+  The Node error, where there is one, is in `error`.
+  `downloadTranslationMemoryExport()` still rejects with the Node error (e.g.
+  `EEXIST`) for an existing or uncreatable output file and write failures.
 - `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
   `createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossaryName()`,
   `updateMultilingualGlossaryDictionary()`,
@@ -155,6 +156,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DocumentNotReadyError`). Only `translateDocumentDownload()` throws
   `DocumentNotReadyError`. Check `httpStatusCode === 503` or `shouldRetry`
   instead.
+- **Breaking:** `downloadTranslationMemoryExport()` throws a plain `DeepLError`
+  with `httpStatusCode` for an error response from the pre-signed download URL,
+  as `uploadTranslationMemoryFile()` does (was mapped like a DeepL API response:
+  `AuthorizationError` for 403, `NotFoundError` for 404, `QuotaExceededError`
+  for 456, `DocumentNotReadyError` for 503). It throws a `DeepLError` instead
+  of an `ArgumentError` for a job without download URL, as the job state comes
+  from the API.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
