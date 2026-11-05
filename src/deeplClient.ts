@@ -165,7 +165,8 @@ async function checkInputFileExists(inputFile: string): Promise<void> {
  */
 function toTranslationMemoryJobError(
     error: unknown,
-    job: TranslationMemoryJob | TranslationMemoryImport | TranslationMemoryExport | undefined,
+    jobId: string | undefined,
+    job: TranslationMemoryJob | undefined,
     signal: AbortSignal | undefined,
 ): unknown {
     if (signal?.aborted || error instanceof TranslationMemoryJobError) {
@@ -173,7 +174,7 @@ function toTranslationMemoryJobError(
     }
     const cause =
         error instanceof Error || util.types.isNativeError(error) ? (error as Error) : undefined;
-    return new TranslationMemoryJobError(cause?.message ?? String(error), job, cause);
+    return new TranslationMemoryJobError(cause?.message ?? String(error), jobId, job, cause);
 }
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
@@ -2307,8 +2308,9 @@ export class DeepLClient {
      * @throws {TranslationMemoryJobError} For any other failure: the input cannot be read (no
      * request is sent), a Buffer or stream is given without fileName or displayName, the job
      * creation, upload or wait fails (failure status, timeout), or any error occurs while
-     * communicating with the DeepL API. The cause is in `error`; `job` is set once the job was
-     * created; `httpStatusCode` and `shouldRetry` are copied from a DeepLError cause.
+     * communicating with the DeepL API. The cause is in `error`; `jobId` is set once the job was
+     * created and `job` after the first status check; `httpStatusCode` and `shouldRetry` are
+     * copied from a DeepLError cause.
      */
     async importTranslationMemoryFromFilepath(
         input: string | Buffer | fs.ReadStream,
@@ -2323,10 +2325,11 @@ export class DeepLClient {
                     // A missing input file is the one failure that is not wrapped.
                     throw new ArgumentError(`input file '${input}' does not exist`, error as Error);
                 }
-                throw toTranslationMemoryJobError(error, undefined, options?.signal);
+                throw toTranslationMemoryJobError(error, undefined, undefined, options?.signal);
             }
         }
-        let job: TranslationMemoryJob | TranslationMemoryImport | undefined;
+        let jobId: string | undefined;
+        let job: TranslationMemoryJob | undefined;
         try {
             let fileName: string | undefined;
             if (isString(input)) {
@@ -2347,7 +2350,7 @@ export class DeepLClient {
                 extraBodyParameters: options?.extraBodyParameters,
                 signal: options?.signal,
             });
-            job = created;
+            jobId = created.jobId;
             await this.uploadTranslationMemoryFile(
                 created,
                 buffer,
@@ -2362,7 +2365,7 @@ export class DeepLClient {
                 },
             );
         } catch (error) {
-            throw toTranslationMemoryJobError(error, job, options?.signal);
+            throw toTranslationMemoryJobError(error, jobId, job, options?.signal);
         }
     }
 
@@ -2379,17 +2382,19 @@ export class DeepLClient {
      *
      * @throws {TranslationMemoryJobError} For any failure: a file already exists at the output
      * path or the output directory is missing or not writable (checked before the export job is
-     * created, `job` unset), the job creation, wait (failure status, timeout) or download fails,
-     * writing the output fails, or any error occurs while communicating with the DeepL API. The
-     * cause is in `error`; `job` is set once the job was created; `httpStatusCode` and
-     * `shouldRetry` are copied from a DeepLError cause.
+     * created, `jobId` and `job` unset), the job creation, wait (failure status, timeout) or
+     * download fails, writing the output fails, or any error occurs while communicating with the
+     * DeepL API. The cause is in `error`; `jobId` is set once the job was created and `job` after
+     * the first status check; `httpStatusCode` and `shouldRetry` are copied from a DeepLError
+     * cause.
      */
     async exportTranslationMemoryToFilepath(
         translationMemory: TranslationMemoryId | TranslationMemoryInfo,
         outputFile: string | fs.WriteStream,
         options?: WaitOptions,
     ): Promise<TranslationMemoryJob> {
-        let job: TranslationMemoryJob | TranslationMemoryExport | undefined;
+        let jobId: string | undefined;
+        let job: TranslationMemoryJob | undefined;
         try {
             if (isString(outputFile)) {
                 if (fs.existsSync(outputFile)) {
@@ -2398,7 +2403,7 @@ export class DeepLClient {
                 await fs.promises.access(path.dirname(outputFile), fs.constants.W_OK);
             }
             const created = await this.createTranslationMemoryExport(translationMemory, options);
-            job = created;
+            jobId = created.jobId;
             const completed = await this.internalWaitUntilTranslationMemoryJobDone(
                 created.jobId,
                 options,
@@ -2409,7 +2414,7 @@ export class DeepLClient {
             await this.downloadTranslationMemoryExport(completed, outputFile, options);
             return completed;
         } catch (error) {
-            throw toTranslationMemoryJobError(error, job, options?.signal);
+            throw toTranslationMemoryJobError(error, jobId, job, options?.signal);
         }
     }
 

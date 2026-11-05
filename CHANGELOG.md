@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `TranslationMemoryJobError`, thrown by `importTranslationMemoryFromFilepath()`
   and `exportTranslationMemoryToFilepath()`. It extends `DeepLError`, holds the
-  cause in `error` and the job in `job` once it was created, and copies
+  cause in `error`, the job ID in `jobId` once the job was created and the last
+  job status the helper fetched in `job`, and copies
   `httpStatusCode` and `shouldRetry` from a `DeepLError` cause.
 - Cancellation: every `DeepLClient` and `DeepLAdminClient` method that sends a
   request accepts `signal?: AbortSignal`, through its options object or, for

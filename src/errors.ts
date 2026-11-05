@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 import { DocumentHandle } from './index';
-import { TranslationMemoryExport, TranslationMemoryImport, TranslationMemoryJob } from './types';
+import { TranslationMemoryJob } from './types';
 
 export class DeepLError extends Error {
     public error?: Error;
@@ -64,19 +64,21 @@ export class DocumentTranslationError extends DeepLError {
  */
 export class TranslationMemoryJobError extends DeepLError {
     /**
-     * The job, once it was created: the create response until the first status check, then the
-     * last status the helper received. Undefined if the failure happened before the job was
-     * created. Pass `job.jobId` to getTranslationMemoryJob() or
+     * ID of the import or export job, set as soon as the job was created; undefined if the
+     * failure happened before. Pass it to getTranslationMemoryJob() or
      * waitUntilTranslationMemoryJobDone() to resume.
      */
-    public readonly job?: TranslationMemoryJob | TranslationMemoryImport | TranslationMemoryExport;
+    public readonly jobId?: string;
 
-    constructor(
-        message: string,
-        job?: TranslationMemoryJob | TranslationMemoryImport | TranslationMemoryExport,
-        error?: Error,
-    ) {
+    /**
+     * The last job status the helper fetched; undefined before the first status check, e.g.
+     * when the upload of an import fails.
+     */
+    public readonly job?: TranslationMemoryJob;
+
+    constructor(message: string, jobId?: string, job?: TranslationMemoryJob, error?: Error) {
         super(message, error);
+        this.jobId = jobId;
         this.job = job;
         if (error instanceof DeepLError) {
             this.httpStatusCode = error.httpStatusCode;

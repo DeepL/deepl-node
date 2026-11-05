@@ -949,17 +949,18 @@ checked before the export job is created. Every failure rejects with a
 wrap their failures in a `TranslationMemoryJobError`, like
 `DocumentTranslationError` for `translateDocument()`. Its `error` property holds
 the cause (a `DeepLError` or a Node error), and `httpStatusCode` and
-`shouldRetry` are copied from the cause when it is a `DeepLError`. Its `job`
-property is set once the job was created: the create response until the first
-status check, then the last job status received. Pass `error.job.jobId` to
+`shouldRetry` are copied from the cause when it is a `DeepLError`. Its `jobId`
+property is set as soon as the job was created, and its `job` property holds the
+last job status the helper fetched (undefined before the first status check, for
+example when the upload of an import fails). Pass `error.jobId` to
 `waitUntilTranslationMemoryJobDone()` or `getTranslationMemoryJob()` to resume.
 
 ```javascript
 try {
     await deeplClient.exportTranslationMemoryToFilepath('YOUR_TM_ID', '/path/to/exported.tmx');
 } catch (error) {
-    if (error instanceof deepl.TranslationMemoryJobError && error.job) {
-        console.log(`Export job ${error.job.jobId} failed: ${error.message}`);
+    if (error instanceof deepl.TranslationMemoryJobError && error.jobId) {
+        console.log(`Export job ${error.jobId} failed: ${error.message}`);
     }
 }
 ```
@@ -1497,8 +1498,8 @@ response body that is cut off mid-read is retried, except for creates; its
     from it when it is a `DeepLError`.
 -   `TranslationMemoryJobError`: `importTranslationMemoryFromFilepath()` or
     `exportTranslationMemoryToFilepath()` failed. The cause is in its `error`
-    property, the job in `job` once it was created, and `httpStatusCode` and
-    `shouldRetry` are copied from the cause when it is a `DeepLError`.
+    property, the job ID in `jobId` once the job was created, the last fetched
+    job status in `job`, and `httpStatusCode` and `shouldRetry` are copied from the cause when it is a `DeepLError`.
 -   `ArgumentError`: an argument failed client-side validation, for example an
     empty auth key, text, language code, glossary name or ID, or an invalid
     option combination. No request is sent.
