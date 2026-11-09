@@ -182,6 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `'socks5://127.0.0.1:1080'`. Before, any parsable string was accepted and its
   scheme was used as a plain HTTP proxy. The error message no longer contains
   the proxy URL. Use an `http://` or `https://` URL, or a `ProxyConfig`.
+- `createTranslationMemoryExport()` and `exportTranslationMemoryToFilepath()`
+  send the export request without a `Content-Type` header, as it has no body
+  (was `application/x-www-form-urlencoded`).
 - **Breaking:** `null` values in `extraBodyParameters` are sent as JSON `null`
   in JSON bodies instead of removing the field; the document upload (form
   body) still removes them. `undefined` values are still ignored.

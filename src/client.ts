@@ -298,6 +298,9 @@ export class HttpClient {
             } else {
                 axiosRequestConfig.data = options.data;
             }
+        } else {
+            // axios adds a form Content-Type to a bodiless POST, PUT or PATCH; false suppresses it.
+            axiosRequestConfig.headers = { ...headers, 'Content-Type': false };
         }
         axiosRequestConfig.proxy = this.proxy;
         return axiosRequestConfig;

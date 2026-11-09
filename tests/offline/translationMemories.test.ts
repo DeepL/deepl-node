@@ -505,6 +505,20 @@ describe('DeepLClient.createTranslationMemoryExport', () => {
 
         expect(result).toEqual({ jobId: 'job-2', translationMemoryId: 'tm-1', reusedExisting });
     });
+
+    it('sends the export request without body or Content-Type', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl, { badheaders: ['content-type'] })
+            .post('/v3/translation_memories/tm-1/export', (body) => {
+                bodies.push(body);
+                return true;
+            })
+            .reply(202, { job_id: 'job-2' });
+
+        await makeDeeplClient().createTranslationMemoryExport('tm-1');
+
+        expect(bodies).toStrictEqual(['']);
+    });
 });
 
 describe('DeepLClient.downloadTranslationMemoryExport', () => {
