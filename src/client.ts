@@ -523,18 +523,24 @@ export function buildRequestHeaders(
 
 /**
  * Converts a proxy URL such as 'http://user:pass@proxy.example.com:3128' to a ProxyConfig; a
- * ProxyConfig is returned unchanged.
+ * ProxyConfig is returned unchanged. Throws an ArgumentError for a string that is not an http or
+ * https URL with a host.
  * @private
  */
 export function parseProxy(proxy?: ProxyConfig | string): ProxyConfig | undefined {
     if (typeof proxy !== 'string') {
         return proxy;
     }
+    // The value is left out of the message: it may contain credentials (user:password@).
+    const message = 'proxy must be an http or https URL with a host';
     let url: URL;
     try {
         url = new URL(proxy);
-    } catch (error) {
-        throw new ArgumentError(`Invalid proxy URL: ${proxy}`, error as Error);
+    } catch {
+        throw new ArgumentError(message);
+    }
+    if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.hostname === '') {
+        throw new ArgumentError(message);
     }
     const protocol = url.protocol.replace(/:$/, '');
     const config: ProxyConfig = {

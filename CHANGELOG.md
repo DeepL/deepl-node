@@ -176,6 +176,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
   when `serverUrl` is not an absolute `http` or `https` URL, for example
   `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
+- **Breaking:** `DeepLClient` and `DeepLAdminClient` constructors throw an
+  `ArgumentError` when the `proxy` option is a URL string that is not `http` or
+  `https` with a host, for example `'proxy.example.com:3128'` or
+  `'socks5://127.0.0.1:1080'`. Before, any parsable string was accepted and its
+  scheme was used as a plain HTTP proxy. The error message no longer contains
+  the proxy URL. Use an `http://` or `https://` URL, or a `ProxyConfig`.
 - **Breaking:** `null` values in `extraBodyParameters` are sent as JSON `null`
   in JSON bodies instead of removing the field; the document upload (form
   body) still removes them. `undefined` values are still ignored.

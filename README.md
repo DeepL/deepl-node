@@ -1305,7 +1305,8 @@ The available options are:
 -   `proxy`: define the hostname, and port of the proxy server, and optionally
     the protocol, and authorization (as an auth object with username and
     password fields). Alternatively, a proxy URL string such as
-    `'http://user:pass@proxy.example.com:3128'`, see
+    `'http://user:pass@proxy.example.com:3128'` (`http` or `https` with a host;
+    any other string throws an `ArgumentError`), see
     [Proxy configuration](#proxy-configuration).
 
 ### Rephrasing Text
@@ -1392,7 +1393,8 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 The proxy may also be given as a URL; the protocol, host, port and optional
-credentials are taken from it:
+credentials are taken from it. Only `http` and `https` proxy URLs are accepted;
+a SOCKS proxy is not supported:
 
 ```javascript
 const options = {proxy: 'http://user:pass@localhost:3000'};

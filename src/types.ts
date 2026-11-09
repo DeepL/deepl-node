@@ -57,7 +57,8 @@ export interface HttpClientOptions {
 
     /**
      * Define the host, port and protocol of the proxy server, either as a ProxyConfig or as a
-     * proxy URL such as 'http://user:pass@proxy.example.com:3128'.
+     * proxy URL such as 'http://user:pass@proxy.example.com:3128'. A proxy URL must use http or
+     * https and have a host; any other string throws an ArgumentError.
      */
     proxy?: ProxyConfig | string;
 

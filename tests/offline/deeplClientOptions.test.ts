@@ -118,6 +118,23 @@ describe('DeepLClient constructor', () => {
         expect((error as Error).message).not.toContain('secret');
     });
 
+    it.each([
+        ['proxy.example.com:3128'],
+        ['socks5://user:secret@127.0.0.1:1080'],
+        ['ftp://user:secret@proxy.example.com:21'],
+        ['http://user:secret@'],
+    ])('throws ArgumentError for proxy %p without the value in the message', (proxy) => {
+        let error: unknown;
+        try {
+            makeDeeplClient({ proxy });
+        } catch (e) {
+            error = e;
+        }
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect((error as Error).message).not.toContain('secret');
+        expect((error as deepl.DeepLError).error).toBeUndefined();
+    });
+
     it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
         expect(() => makeDeeplClient({ maxRetries })).toThrow(deepl.ArgumentError);
     });
