@@ -329,7 +329,10 @@ describe('DeepLClient style rule methods taking objects', () => {
 
     it('throws ArgumentError for a CustomInstruction without an ID', async () => {
         await expect(
-            client().getStyleRuleCustomInstruction('s', { label: 'L', prompt: 'P' }),
+            client().getStyleRuleCustomInstruction('s', {
+                label: 'L',
+                prompt: 'P',
+            } as unknown as deepl.CustomInstruction),
         ).rejects.toThrow(deepl.ArgumentError);
     });
 });

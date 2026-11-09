@@ -937,8 +937,8 @@ export interface WriteResult {
  * Custom instruction for a style rule.
  */
 export interface CustomInstruction {
-    /** Unique ID of the custom instruction (present in API responses). */
-    readonly id?: string;
+    /** Unique ID of the custom instruction. */
+    readonly id: string;
     /** Label for the custom instruction. */
     readonly label: string;
     /** Prompt text for the custom instruction. */

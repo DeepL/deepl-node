@@ -100,7 +100,7 @@ interface StyleRuleInfoApiResponse {
     version: number;
     configured_rules?: Record<string, Record<string, string>>;
     custom_instructions?: Array<{
-        id?: string;
+        id: string;
         label: string;
         prompt: string;
         source_language?: string;
@@ -924,7 +924,7 @@ export function parseDocumentHandle(json: string): DocumentHandle {
  * @private
  */
 export function parseCustomInstruction(instruction: {
-    id?: string;
+    id: string;
     label: string;
     prompt: string;
     source_language?: string;

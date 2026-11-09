@@ -180,6 +180,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `null` values in `extraBodyParameters` are sent as JSON `null`
   in JSON bodies instead of removing the field; the document upload (form
   body) still removes them. `undefined` values are still ignored.
+- **Breaking:** `CustomInstruction.id` is now `string` instead of
+  `string | undefined`. `CustomInstruction` is only returned by the API, which
+  always sets it; code that builds `CustomInstruction` objects must set `id`.
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
