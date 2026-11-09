@@ -256,9 +256,10 @@ The following options are only used if `tagHandling` is `'xml'`:
     Text translation sends a JSON body, and each value keeps its JSON type (string,
     boolean, number, array or object). The API does not convert strings, so pass a
     boolean, number or array for a field it types that way (`outline_detection: false`,
-    not `'0'`). A `null` value removes the parameter of that name; `undefined` is ignored.
+    not `'0'`). A `null` value is sent as JSON `null`; `undefined` is ignored.
     In a document upload (multipart), strings are sent as given, arrays comma-joined,
-    booleans as `true`/`false`, numbers as decimal strings and other objects as JSON.
+    booleans as `true`/`false`, numbers as decimal strings and other objects as JSON,
+    and a `null` value removes the parameter.
     Note: Extra body parameters replace parameters of the same name set by the library
     (such as `target_lang`, `source_lang`, `split_sentences`, etc.). This is primarily useful for testing or
     accessing beta features.

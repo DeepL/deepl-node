@@ -359,7 +359,7 @@ export function setExtraBodyParameters(
 
 /**
  * Returns the JSON body with the extra body parameters added last, replacing fields of the same
- * name. A `null` value removes the field; an `undefined` value is ignored.
+ * name. A `null` value is sent as JSON `null`; an `undefined` value is ignored.
  * @private
  */
 export function mergeExtraBodyParameters(
@@ -370,11 +370,7 @@ export function mergeExtraBodyParameters(
     const merged = { ...body };
     for (const [name, value] of Object.entries(extraBodyParameters)) {
         if (value === undefined) continue;
-        if (value === null) {
-            delete merged[name];
-        } else {
-            merged[name] = value;
-        }
+        merged[name] = value;
     }
     return merged;
 }

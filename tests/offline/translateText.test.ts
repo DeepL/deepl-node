@@ -317,8 +317,13 @@ describe('DeepLClient.translateText', () => {
         });
     });
 
-    it('removes a field for a null extraBodyParameters value and ignores undefined', async () => {
-        expectTranslateBody({ text: ['abc'], target_lang: 'de', source_lang: 'en' });
+    it('sends a null extraBodyParameters value as JSON null and ignores undefined', async () => {
+        expectTranslateBody({
+            text: ['abc'],
+            target_lang: 'de',
+            source_lang: 'en',
+            show_billed_characters: null,
+        });
 
         await makeDeeplClient().translateText('abc', 'en', 'de', {
             extraBodyParameters: { show_billed_characters: null, source_lang: undefined },

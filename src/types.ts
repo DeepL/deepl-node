@@ -118,7 +118,8 @@ export type TagList = string | string[];
 
 /**
  * Extra request parameters to be passed with requests. In a JSON body each value is sent with
- * its JSON type; a `null` value removes the field of that name, an `undefined` value is ignored.
+ * its JSON type, `null` as JSON `null`; in a form body a `null` value removes the parameter of
+ * that name. An `undefined` value is ignored.
  */
 export type RequestParameters = Record<string, unknown>;
 
@@ -142,7 +143,8 @@ export interface BaseRequestOptions extends RequestOptions {
     /**
      * Extra parameters to be added to the request body.
      * Keys in this object will be added to the request body, and can override built-in parameters.
-     * Values keep their JSON type in JSON bodies; `null` removes the field of that name.
+     * Values keep their JSON type in JSON bodies; `null` is sent as JSON `null` in JSON bodies
+     * and removes the parameter of that name in the document upload's form body.
      * This is mostly used by DeepL employees to test functionality, or for beta programs.
      */
     extraBodyParameters?: RequestParameters;

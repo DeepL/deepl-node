@@ -367,7 +367,7 @@ describe('DeepLAdminClient', () => {
 
     it('sends typed extraBodyParameters with their JSON types', async () => {
         const scope = nock(serverUrl)
-            .post('/v2/admin/developer-keys', { beta: true, n: 2 })
+            .post('/v2/admin/developer-keys', { beta: true, n: 2, label: null })
             .reply(200, DEVELOPER_KEY_JSON);
 
         await makeAdminClient().createDeveloperKey({

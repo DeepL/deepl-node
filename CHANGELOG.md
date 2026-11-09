@@ -177,6 +177,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
   when `serverUrl` is not an absolute `http` or `https` URL, for example
   `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
+- **Breaking:** `null` values in `extraBodyParameters` are sent as JSON `null`
+  in JSON bodies instead of removing the field; the document upload (form
+  body) still removes them. `undefined` values are still ignored.
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
