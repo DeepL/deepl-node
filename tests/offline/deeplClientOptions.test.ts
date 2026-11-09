@@ -101,12 +101,22 @@ describe('DeepLClient constructor', () => {
         );
     });
 
-    it.each([[''], ['api.deepl.com'], ['ftp://example.test'], ['http://']])(
-        'throws ArgumentError for serverUrl %p',
-        (url) => {
-            expect(() => makeDeeplClient({ serverUrl: url })).toThrow(deepl.ArgumentError);
-        },
-    );
+    it.each([
+        [''],
+        ['api.deepl.com'],
+        ['ftp://example.test'],
+        ['http://'],
+        ['ftp://user:secret@host'],
+    ])('throws ArgumentError for serverUrl %p without the value in the message', (url) => {
+        let error: unknown;
+        try {
+            makeDeeplClient({ serverUrl: url });
+        } catch (e) {
+            error = e;
+        }
+        expect(error).toBeInstanceOf(deepl.ArgumentError);
+        expect((error as Error).message).not.toContain('secret');
+    });
 
     it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
         expect(() => makeDeeplClient({ maxRetries })).toThrow(deepl.ArgumentError);

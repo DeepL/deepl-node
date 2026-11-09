@@ -557,9 +557,8 @@ export function parseProxy(proxy?: ProxyConfig | string): ProxyConfig | undefine
  * @private
  */
 function validateServerUrl(serverUrl: unknown): void {
-    const message = `serverUrl must be an absolute http or https URL, got: ${JSON.stringify(
-        serverUrl,
-    )}`;
+    // The value is left out of the message: it may contain credentials (user:password@).
+    const message = 'serverUrl must be an absolute http or https URL with a host';
     let url: URL;
     try {
         url = new URL(String(serverUrl));
