@@ -183,6 +183,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `CustomInstruction.id` is now `string` instead of
   `string | undefined`. `CustomInstruction` is only returned by the API, which
   always sets it; code that builds `CustomInstruction` objects must set `id`.
+- `rephraseText()` and `correctText()` throw an `ArgumentError` for an empty
+  `targetLang` instead of sending the request without a target language;
+  `null` or an omitted `targetLang` still keeps the language of the input text.
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the

@@ -92,6 +92,10 @@ describe('DeepLClient.rephraseText', () => {
         await expect(makeDeeplClient().rephraseText('')).rejects.toThrow(ArgumentError);
     });
 
+    it('throws ArgumentError when targetLang is an empty string', async () => {
+        await expect(makeDeeplClient().rephraseText('abc', '')).rejects.toThrow(ArgumentError);
+    });
+
     it('throws DeepLError when the response has no improvement for a single text', async () => {
         nock(serverUrl).post('/v2/write/rephrase').reply(200, { improvements: [] });
 

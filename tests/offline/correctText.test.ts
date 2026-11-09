@@ -49,6 +49,10 @@ describe('DeepLClient.correctText', () => {
         await expect(makeDeeplClient().correctText('', 'de')).rejects.toThrow(ArgumentError);
     });
 
+    it('throws ArgumentError when targetLang is an empty string', async () => {
+        await expect(makeDeeplClient().correctText('abc', '')).rejects.toThrow(ArgumentError);
+    });
+
     it('sends the extraBodyParameters of the options last, overriding built-in parameters', async () => {
         nock(serverUrl)
             .post('/v2/write/correct', { text: ['abc'], target_lang: 'fr', extra: 'x' })

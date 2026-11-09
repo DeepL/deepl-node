@@ -1311,7 +1311,7 @@ The available options are:
 
 To rephrase text, call `rephraseText()`. The first argument is a string containing the text you want to rephrase, or an array of strings if you want to rephrase multiple texts.
 
-The second argument is the target language code. Language codes are **case-insensitive** strings, for example, `'de'`, `'fr'`, `'en'`. The target language code can also be `null` to enable auto-detection of the target language.
+The second argument is the target language code. Language codes are **case-insensitive** strings, for example, `'de'`, `'fr'`, `'en'`. The target language code can also be `null` to enable auto-detection of the target language. An empty string throws an `ArgumentError`.
 
 The third argument is optional and is a `RephraseTextOptions` object (it extends `BaseRequestOptions`) with the following properties:
 -   `writingStyle`: the writing style of the rephrased text. Possible values are defined in the `WritingStyle` enum.
@@ -1344,7 +1344,7 @@ console.log(rephrasedTexts[1].text); // The rephrased text for "What are you doi
 
 To correct grammar, spelling and punctuation, call `correctText()`. The first argument is a string containing the text you want to correct, or an array of strings if you want to correct multiple texts.
 
-The second argument is optional and is the target language code, for example `'de'` or `'en-US'`. If it is omitted or `null`, the language of the input text is used.
+The second argument is optional and is the target language code, for example `'de'` or `'en-US'`. If it is omitted or `null`, the language of the input text is used. An empty string throws an `ArgumentError`.
 
 The third argument is optional and is a `CorrectTextOptions` object (it is `BaseRequestOptions`) with the following property:
 -   `extraBodyParameters`: extra parameters to add to the request body. They can override parameters set by the library.
