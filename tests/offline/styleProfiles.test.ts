@@ -180,6 +180,15 @@ describe('DeepLClient.createStyleProfile', () => {
         ]);
     });
 
+    it('sends an empty translation memory ID as given', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl).post('/v3/style_profiles', capture(bodies)).reply(201, profileReply);
+
+        await makeDeeplClient().createStyleProfile('Refs', { translationMemoryIds: [''] });
+
+        expect(bodies).toStrictEqual([{ name: 'Refs', translation_memory_ids: [''] }]);
+    });
+
     it('merges extraBodyParameters into the JSON body last', async () => {
         const bodies: unknown[] = [];
         nock(serverUrl).post('/v3/style_profiles', capture(bodies)).reply(201, profileReply);
@@ -287,6 +296,26 @@ describe('DeepLClient.updateStyleProfile', () => {
                 glossary_priority_order_enabled: false,
             },
         ]);
+    });
+
+    it('sends the empty ID of a TranslationMemoryInfo as given', async () => {
+        const bodies: unknown[] = [];
+        nock(serverUrl)
+            .patch(`/v3/style_profiles/${profileId}`, capture(bodies))
+            .reply(200, profileReply);
+        const translationMemory: deepl.TranslationMemoryInfo = {
+            translationMemoryId: '',
+            name: 'tm',
+            sourceLanguage: 'en',
+            targetLanguages: ['de'],
+            segmentCount: 0,
+        };
+
+        await makeDeeplClient().updateStyleProfile(profileId, {
+            translationMemoryIds: [translationMemory],
+        });
+
+        expect(bodies).toStrictEqual([{ translation_memory_ids: [''] }]);
     });
 
     it('sends an empty object when nothing is set, also for a StyleProfile object', async () => {

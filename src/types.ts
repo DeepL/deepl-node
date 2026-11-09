@@ -1027,17 +1027,19 @@ export interface CreateStyleProfileOptions extends BaseRequestOptions {
     /**
      * Glossaries to link, as IDs or GlossaryInfo / MultilingualGlossaryInfo objects, highest
      * priority first. In an update, the array replaces the linked glossaries in full; [] unlinks
-     * all of them.
+     * all of them. Elements are sent as given; the API rejects invalid IDs.
      */
     glossaryIds?: (GlossaryId | GlossaryInfo | MultilingualGlossaryInfo)[];
     /**
      * Style rule lists to link, as IDs or StyleRuleInfo objects. In an update, the array replaces
-     * the linked style rule lists in full; [] unlinks all of them.
+     * the linked style rule lists in full; [] unlinks all of them. Elements are sent as given;
+     * the API rejects invalid IDs.
      */
     styleRuleIds?: (StyleId | StyleRuleInfo)[];
     /**
      * Translation memories to link, as IDs or TranslationMemoryInfo objects. In an update, the
-     * array replaces the linked translation memories in full; [] unlinks all of them.
+     * array replaces the linked translation memories in full; [] unlinks all of them. Elements
+     * are sent as given; the API rejects invalid IDs.
      */
     translationMemoryIds?: (TranslationMemoryId | TranslationMemoryInfo)[];
     /** Whether the order of glossaryIds sets the priority of the glossaries. */

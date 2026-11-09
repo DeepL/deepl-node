@@ -753,7 +753,8 @@ takes `UpdateStyleProfileOptions` (optional; the same options plus `name`):
 -   `glossaryIds`, `styleRuleIds`, `translationMemoryIds`: the components to link, each
     given as its ID or as the object returned by the SDK (`GlossaryInfo` or
     `MultilingualGlossaryInfo`, `StyleRuleInfo`, `TranslationMemoryInfo`). Glossaries
-    are listed highest priority first.
+    are listed highest priority first. The IDs are sent as given; the API rejects
+    invalid ones.
 -   `glossaryPriorityOrderEnabled`: whether the order of `glossaryIds` sets the
     priority of the glossaries.
 -   `extraBodyParameters`: extra fields added to the JSON request body, replacing

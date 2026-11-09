@@ -186,6 +186,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for an empty `targetLang` instead of sending the request without a target
   language; pass `null` or omit `targetLang` to keep the language of the input
   text.
+- **Breaking:** `createStyleProfile()` and `updateStyleProfile()` send the
+  `translationMemoryIds` elements as given, like `glossaryIds` and
+  `styleRuleIds`, instead of throwing `ArgumentError` for an empty ID or a
+  `TranslationMemoryInfo` without ID; the API rejects invalid IDs
+  (`DeepLError`).
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

@@ -236,7 +236,9 @@ function styleProfileOptionsToJson(
         );
     }
     if (options.translationMemoryIds !== undefined) {
-        body.translation_memory_ids = options.translationMemoryIds.map(extractTranslationMemoryId);
+        body.translation_memory_ids = options.translationMemoryIds.map((translationMemory) =>
+            isString(translationMemory) ? translationMemory : translationMemory.translationMemoryId,
+        );
     }
     if (options.glossaryPriorityOrderEnabled !== undefined) {
         body.glossary_priority_order_enabled = options.glossaryPriorityOrderEnabled;
