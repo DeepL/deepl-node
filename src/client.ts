@@ -552,6 +552,26 @@ export function parseProxy(proxy?: ProxyConfig | string): ProxyConfig | undefine
 }
 
 /**
+ * Throws an ArgumentError unless serverUrl is an absolute http or https URL with a host name. A
+ * port and a path prefix are allowed.
+ * @private
+ */
+function validateServerUrl(serverUrl: unknown): void {
+    const message = `serverUrl must be an absolute http or https URL, got: ${JSON.stringify(
+        serverUrl,
+    )}`;
+    let url: URL;
+    try {
+        url = new URL(String(serverUrl));
+    } catch {
+        throw new ArgumentError(message);
+    }
+    if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.hostname === '') {
+        throw new ArgumentError(message);
+    }
+}
+
+/**
  * Creates an HttpClient with the retry and proxy settings from the options.
  * @private
  */
@@ -564,6 +584,7 @@ export function createHttpClient(
     if (!Number.isInteger(maxRetries) || maxRetries < 0) {
         throw new ArgumentError(`maxRetries must be a non-negative integer, got: ${maxRetries}`);
     }
+    validateServerUrl(serverUrl);
     return new HttpClient(
         serverUrl,
         headers,

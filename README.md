@@ -1291,7 +1291,9 @@ The available options are:
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
     for example for testing purposes. By default, the URL is selected based on the
     user account type (free or paid): `deepl.isFreeAccountAuthKey(authKey)`
-    returns true for a Free account key (it ends in `:fx`).
+    returns true for a Free account key (it ends in `:fx`). The value must be an
+    absolute `http` or `https` URL (a path prefix is kept); any other value
+    throws an `ArgumentError`.
 -   `headers`: extra HTTP headers attached to every HTTP request. By default, no
     extra headers are used. Note that Authorization and User-Agent headers are
     added automatically. A header in this option replaces the library's header

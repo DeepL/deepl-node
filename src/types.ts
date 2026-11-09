@@ -78,8 +78,9 @@ export interface HttpClientOptions {
  */
 export interface DeepLClientOptions extends HttpClientOptions {
     /**
-     * Base URL of DeepL API, can be overridden for example for testing purposes. By default, the
-     * correct DeepL API URL is selected based on the user account type (free or paid).
+     * Base URL of DeepL API, can be overridden for example for testing purposes. Must be an
+     * absolute http/https URL; a path prefix is kept. By default, the correct DeepL API URL is
+     * selected based on the user account type (free or paid).
      */
     serverUrl?: string;
 }
@@ -1313,8 +1314,9 @@ export interface LanguageSupport {
  */
 export interface DeepLAdminClientOptions extends HttpClientOptions {
     /**
-     * Base URL of the DeepL API, can be overridden for example for testing purposes. Defaults to
-     * https://api.deepl.com, as the Admin API is only available there.
+     * Base URL of the DeepL API, can be overridden for example for testing purposes. Must be an
+     * absolute http/https URL; a path prefix is kept. Defaults to https://api.deepl.com, as the
+     * Admin API is only available there.
      */
     serverUrl?: string;
 }

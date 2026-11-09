@@ -29,6 +29,10 @@ describe('DeepLAdminClient', () => {
         expect(() => new deepl.DeepLAdminClient('')).toThrow(deepl.ArgumentError);
     });
 
+    it('throws ArgumentError for an invalid serverUrl', () => {
+        expect(() => makeAdminClient({ serverUrl: 'api.deepl.com' })).toThrow(deepl.ArgumentError);
+    });
+
     it('uses the server URL option', async () => {
         nock('http://localhost:3000').get('/v2/admin/developer-keys').reply(200, '[]');
 

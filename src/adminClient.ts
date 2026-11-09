@@ -45,6 +45,8 @@ export class DeepLAdminClient {
      * This does not connect to the API, and returns immediately.
      * @param adminKey Admin API key as specified in your account.
      * @param options Additional options controlling client behavior.
+     * @throws {ArgumentError} If adminKey is empty, or an option is invalid: serverUrl is not an
+     *     absolute http/https URL, or maxRetries is not a non-negative integer.
      */
     constructor(adminKey: string, options?: DeepLAdminClientOptions) {
         if (isString(adminKey)) adminKey = adminKey.trim();

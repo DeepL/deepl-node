@@ -101,6 +101,13 @@ describe('DeepLClient constructor', () => {
         );
     });
 
+    it.each([[''], ['api.deepl.com'], ['ftp://example.test'], ['http://']])(
+        'throws ArgumentError for serverUrl %p',
+        (url) => {
+            expect(() => makeDeeplClient({ serverUrl: url })).toThrow(deepl.ArgumentError);
+        },
+    );
+
     it.each([[-1], [1.5], [NaN]])('rejects maxRetries %p with ArgumentError', (maxRetries) => {
         expect(() => makeDeeplClient({ maxRetries })).toThrow(deepl.ArgumentError);
     });

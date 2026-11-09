@@ -174,6 +174,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of an `ArgumentError` for a job without download URL, as the job state comes
   from the API.
 
+- `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
+  when `serverUrl` is not an absolute `http` or `https` URL, for example
+  `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the

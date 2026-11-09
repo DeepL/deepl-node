@@ -323,6 +323,8 @@ export class DeepLClient {
      * This does not connect to the API, and returns immediately.
      * @param authKey Authentication key as specified in your account.
      * @param options Additional options controlling DeepLClient behavior.
+     * @throws {ArgumentError} If authKey is empty, or an option is invalid: serverUrl is not an
+     *     absolute http/https URL, or maxRetries is not a non-negative integer.
      */
     constructor(authKey: string, options: DeepLClientOptions = {}) {
         if (isString(authKey)) authKey = authKey.trim();
