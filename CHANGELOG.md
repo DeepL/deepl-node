@@ -94,10 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RequestParameters`, the type of `extraBodyParameters`, is
   `Record<string, unknown>` (was `Record<string, string>`). In JSON bodies each
   value keeps its JSON type, so booleans, numbers and arrays can be passed
-  (`{ show_billed_characters: false }`); a `null` value removes the field of that
-  name and `undefined` is ignored. In the multipart document upload, strings are
+  (`{ show_billed_characters: false }`); a `null` value is sent as JSON `null`
+  and `undefined` is ignored. In the multipart document upload, strings are
   sent as given, arrays comma-joined, booleans as `true`/`false`, numbers via
-  `String()` and other objects as JSON. The API does not convert strings, so a
+  `String()`, other objects as JSON, and a `null` value removes the parameter. The API does not convert strings, so a
   string for a field it types as a boolean, number or array is now rejected,
   e.g. `{ outline_detection: '0' }`: pass `false` or use the matching option.
   Objects typed as `Record<string, string>` still compile as extra body
@@ -173,7 +173,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for 456, `DocumentNotReadyError` for 503). It throws a `DeepLError` instead
   of an `ArgumentError` for a job without download URL, as the job state comes
   from the API.
-
 - `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
   when `serverUrl` is not an absolute `http` or `https` URL, for example
   `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
@@ -183,9 +182,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `CustomInstruction.id` is now `string` instead of
   `string | undefined`. `CustomInstruction` is only returned by the API, which
   always sets it; code that builds `CustomInstruction` objects must set `id`.
-- `rephraseText()` and `correctText()` throw an `ArgumentError` for an empty
-  `targetLang` instead of sending the request without a target language;
-  `null` or an omitted `targetLang` still keeps the language of the input text.
+- **Breaking:** `rephraseText()` and `correctText()` throw an `ArgumentError`
+  for an empty `targetLang` instead of sending the request without a target
+  language; pass `null` or omit `targetLang` to keep the language of the input
+  text.
+
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
