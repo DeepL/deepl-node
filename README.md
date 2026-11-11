@@ -33,6 +33,9 @@ The package supports Node.js 18 and later.
 
 TypeScript projects need `@types/node` in their own `devDependencies`.
 
+Upgrading from 1.x? See the [upgrade guide to 2.0.0](upgrading_to_v2.md) for the breaking changes
+and how to migrate.
+
 We strongly recommend using a Node.js version that is still maintained. You can find the Node versions and support timelines [here][node-version-list].
 
 ## Usage

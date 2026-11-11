@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+Upgrading from 1.x: see [upgrading_to_v2.md](upgrading_to_v2.md) for every breaking change
+with before and after code.
+
 ### Added
 - `TranslationMemoryJobError`, thrown by `importTranslationMemoryFromFilepath()`
   and `exportTranslationMemoryToFilepath()`. It extends `DeepLError`, holds the
@@ -41,24 +44,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ConnectionError` whose `shouldRetry` is true, and is retried like a reset
   connection, except for the creates above. Before, it was never retried and
   `shouldRetry` was false.
-- `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
+- **Breaking:** `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
   which returns true if the account's character limit (`character`) or this
   API key's character limit (`apiKeyCharacter`) is reached. An absent detail
   counts as not reached; the speech minutes are not included. Rename calls to
   `anyCharacterLimitReached()`; if you only want the account limit, call
   `usage.character?.limitReached()`.
-- `DocumentStatus.status` is typed `DocumentStatusCode | (string & {})` and
+- **Breaking:** `DocumentStatus.status` is typed `DocumentStatusCode | (string & {})` and
   `TranslationMemoryJobResult.status` `TranslationMemoryJobStatus | (string & {})`,
   so a status the library does not know yet is visible in the type. Exhaustive
   `switch` statements over these fields need a `default` branch.
-- `DocumentStatus.documentId` is a required `string`. When the status response
+- **Breaking:** `DocumentStatus.documentId` is a required `string`. When the status response
   has no document ID, it is the ID of the handle passed to
   `translateDocumentGetStatus()`. Remove `undefined` checks.
-- `TranslationMemoryJob.creationTime`, `updatedTime`, `done()` and `ok()` are
+- **Breaking:** `TranslationMemoryJob.creationTime`, `updatedTime`, `done()` and `ok()` are
   required. The library always set them; a missing timestamp is an invalid
   `Date`. Code that builds `TranslationMemoryJob` objects itself must set them,
   and `job.done?.()` can become `job.done()`.
-- `translateDocument()` and `translateDocumentUpload()` reject with an
+- **Breaking:** `translateDocument()` and `translateDocumentUpload()` reject with an
   `ArgumentError` before any request when the input file path does not exist
   (was a `DocumentTranslationError`, or the Node error for
   `translateDocumentUpload()`). An existing input file that cannot be read
@@ -82,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TranslationMemoryJobError` instead of the `DeepLError` subclasses and read
   `error.error` for the cause. `downloadTranslationMemoryExport()` still rejects with the Node error (e.g.
   `EEXIST`) for an existing or uncreatable output file and write failures.
-- `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
+- **Breaking:** `translateText()`, `createGlossary()`, `createMultilingualGlossary()`,
   `createMultilingualGlossaryFromCsv()`, `updateMultilingualGlossaryName()`,
   `updateMultilingualGlossaryDictionary()`,
   `updateMultilingualGlossaryDictionaryFromCsv()`, `rephraseText()` and
@@ -92,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arrays, booleans and numbers keep their JSON types, and the v3 glossary
   `dictionaries` are a JSON array of objects. Document upload stays multipart.
   Proxies and test doubles that read these request bodies must parse JSON.
-- `RequestParameters`, the type of `extraBodyParameters`, is
+- **Breaking:** `RequestParameters`, the type of `extraBodyParameters`, is
   `Record<string, unknown>` (was `Record<string, string>`). In JSON bodies each
   value keeps its JSON type, so booleans, numbers and arrays can be passed
   (`{ show_billed_characters: false }`); a `null` value is sent as JSON `null`
@@ -104,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Objects typed as `Record<string, string>` still compile as extra body
   parameters; only code that reads values from a `RequestParameters` as strings
   needs a cast or check.
-- `StyleRuleInfo.configuredRules` is the `configured_rules` map as the API
+- **Breaking:** `StyleRuleInfo.configuredRules` is the `configured_rules` map as the API
   returns it (`Record<string, Record<string, string>>`, snake_case category
   and rule names), the same shape `createStyleRule()` and
   `updateStyleRuleConfiguredRules()` take. Categories the library did not know
@@ -112,12 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   API's names, e.g. `configuredRules.datesAndTimes` with
   `configuredRules.dates_and_times` and `configuredRules.styleAndTone` with
   `configuredRules.style_and_tone`.
-- `rephraseText()` takes a `RephraseTextOptions` object as its third argument
+- **Breaking:** `rephraseText()` takes a `RephraseTextOptions` object as its third argument
   and has no fourth argument. Pass `{ writingStyle, tone }` instead of the
   writing style and tone as the third and fourth arguments.
-- `checkStatusCode()` is no longer exported from the package root. It is
+- **Breaking:** `checkStatusCode()` is no longer exported from the package root. It is
   internal and has no replacement.
-- The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,
+- **Breaking:** The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,
   `MultilingualGlossaryDictionaryApiResponse`, `ListMultilingualGlossaryApiResponse`,
   `StyleRuleInfoApiResponse`, `ListStyleRuleApiResponse`,
   `TranslationMemoryInfoApiResponse`, `ListTranslationMemoryApiResponse`,
@@ -126,10 +129,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LanguageResourceApiResponse` are no longer exported. Use the parsed types
   the methods return (`MultilingualGlossaryInfo`, `StyleRuleInfo`,
   `TranslationMemoryInfo`, `TranslationMemoryJob`, `LanguageResource`, ...).
-- Node.js 18 or later is required (`engines.node` is `>=18`, was `>=14.17`),
+- **Breaking:** Node.js 18 or later is required (`engines.node` is `>=18`, was `>=14.17`),
   and the package is compiled to ES2022. Upgrade Node.js to 18 or later before
   upgrading the package.
-- `@types/node` is no longer a runtime dependency, so installing the package
+- **Breaking:** `@types/node` is no longer a runtime dependency, so installing the package
   no longer adds it to your project. TypeScript projects that relied on it
   being installed transitively add `@types/node` to their own
   `devDependencies`.
@@ -261,7 +264,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
   dictionary is missing, throw `NotFoundError`, which it extended. Replace
   `GlossaryNotFoundError` with `NotFoundError`.
-- `Usage.document` and `Usage.teamDocument`. The API no longer returns
+- **Breaking:** `Usage.document` and `Usage.teamDocument`. The API no longer returns
   document usage; remove reads of these fields. A response that still
   contains the `document_*` fields parses and the fields are ignored.
 - The `'downloaded'` member of `TranslationMemoryJobStatus`. The API does not
@@ -270,7 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `'completed'` instead.
 - The `ConfiguredRules` type. Use `Record<string, Record<string, string>>`
   (or `StyleRuleInfo['configuredRules']`) instead.
-- The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no
+- **Breaking:** The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no
   longer extends `Translator` and now holds all of its methods with the same
   signatures and behaviour. Replace `new deepl.Translator(authKey, options)`
   with `new deepl.DeepLClient(authKey, options)`, `TranslatorOptions` with
@@ -290,7 +293,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separate arguments.
 - The `__path` option of `TranslateTextOptions`: `translateText()` always sends
   its request to `/v2/translate`.
-- The `'on'` and `'default'` values of `SentenceSplittingMode`: use `'1'`.
+- **Breaking:** The `'on'` and `'default'` values of `SentenceSplittingMode`: use `'1'`.
   Any other string is still sent unchanged, so these values now reach the API
   as given.
 - `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()`: use
@@ -307,6 +310,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type: rename it to `extraBodyParameters`, which behaves the same.
 - `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
   which takes the same arguments.
+- **Breaking:** the modules `dist/translator`, `dist/documentMinifier` and
+  `dist/fsHelper` no longer exist, so deep imports such as
+  `deepl-node/dist/translator` fail. Import from the package root.
 - The package no longer depends on `adm-zip`.
 - The package no longer depends on `form-data`: document uploads use the
   `FormData` and `Blob` globals of Node.js 18 and send the same multipart
