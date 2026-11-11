@@ -267,11 +267,11 @@ with before and after code.
 - **Breaking:** `Usage.document` and `Usage.teamDocument`. The API no longer returns
   document usage; remove reads of these fields. A response that still
   contains the `document_*` fields parses and the fields are ignored.
-- The `'downloaded'` member of `TranslationMemoryJobStatus`. The API does not
+- **Breaking:** The `'downloaded'` member of `TranslationMemoryJobStatus`. The API does not
   report it for translation memory jobs; only `'completed'` counts as done in
   `done()` and `waitUntilTranslationMemoryJobDone()`. Compare with
   `'completed'` instead.
-- The `ConfiguredRules` type. Use `Record<string, Record<string, string>>`
+- **Breaking:** The `ConfiguredRules` type. Use `Record<string, Record<string, string>>`
   (or `StyleRuleInfo['configuredRules']`) instead.
 - **Breaking:** The `Translator` class and the `TranslatorOptions` type. `DeepLClient` no
   longer extends `Translator` and now holds all of its methods with the same
@@ -279,36 +279,36 @@ with before and after code.
   with `new deepl.DeepLClient(authKey, options)`, `TranslatorOptions` with
   `DeepLClientOptions`, and `instanceof Translator` checks or `Translator`
   type annotations with `DeepLClient`.
-- `createMultilingualGlossaryWithCsv()`,
+- **Breaking:** `createMultilingualGlossaryWithCsv()`,
   `replaceMultilingualGlossaryDictionaryWithCsv()` and
   `updateMultilingualGlossaryDictionaryWithCsv()`: use
   `createMultilingualGlossaryFromCsv()`,
   `replaceMultilingualGlossaryDictionaryFromCsv()` and
   `updateMultilingualGlossaryDictionaryFromCsv()`, which take the same arguments.
-- The object forms of `createStyleRule(styleRule)`,
+- **Breaking:** The object forms of `createStyleRule(styleRule)`,
   `createStyleRuleCustomInstruction(styleRule, instruction)` and
   `updateStyleRuleCustomInstruction(styleRule, instructionId, instruction)`, and
   the `CreateStyleRuleRequestBody` type: pass the name, language, configured
   rules and custom instructions, or the label, prompt and source language, as
   separate arguments.
-- The `__path` option of `TranslateTextOptions`: `translateText()` always sends
+- **Breaking:** The `__path` option of `TranslateTextOptions`: `translateText()` always sends
   its request to `/v2/translate`.
 - **Breaking:** The `'on'` and `'default'` values of `SentenceSplittingMode`: use `'1'`.
   Any other string is still sent unchanged, so these values now reach the API
   as given.
-- `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()`: use
+- **Breaking:** `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()`: use
   `translateDocumentUpload()`, `translateDocumentGetStatus()` and
   `translateDocumentDownload()`, which behave the same.
   `isDocumentTranslationComplete(handle)`: use
   `translateDocumentWaitUntilDone(handle)`, which resolves with the
   `DocumentStatus` instead of `{ handle, status }`.
-- Document minification: the `enableDocumentMinification` option of
+- **Breaking:** Document minification: the `enableDocumentMinification` option of
   `DocumentTranslateOptions`, and `DocumentMinificationError` and
   `DocumentDeminificationError`. Remove the option; the DeepL API accepts
   larger documents, see the usage limits.
-- The `extraRequestParameters` option of `BaseRequestOptions` and every options
+- **Breaking:** The `extraRequestParameters` option of `BaseRequestOptions` and every options
   type: rename it to `extraBodyParameters`, which behaves the same.
-- `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
+- **Breaking:** `isTranslationMemoryJobComplete()`: use `waitUntilTranslationMemoryJobDone()`,
   which takes the same arguments.
 - **Breaking:** the modules `dist/translator`, `dist/documentMinifier` and
   `dist/fsHelper` no longer exist, so deep imports such as

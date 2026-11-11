@@ -62,7 +62,7 @@ move to 2.0.0.
 
 ```ts
 // Before
-const translator = new deepl.Translator(authKey, options as deepl.TranslatorOptions);
+const client = new deepl.Translator(authKey, options as deepl.TranslatorOptions);
 if (client instanceof deepl.Translator) { /* ... */ }
 
 // After
@@ -405,7 +405,9 @@ if (e instanceof deepl.DeepLError && e.constructor === deepl.DeepLError) { /* ba
 if (e instanceof deepl.ArgumentError) { /* invalid input */ }
 ```
 
-`instanceof DeepLError` checks keep working. `GlossaryEntries` still throws a plain `DeepLError`.
+`instanceof DeepLError` checks keep working. The `GlossaryEntries` constructor and `add()` still
+throw a plain `DeepLError` for malformed TSV and duplicate source terms; `toTsv()` and
+`validateGlossaryTerm()` throw `ArgumentError` for invalid terms.
 
 ### Cancelling requests
 
