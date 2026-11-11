@@ -561,7 +561,7 @@ const entriesObj = await deeplClient.getMultilingualGlossaryDictionaryEntries(cr
 console.log(entriesObj.entries.toTsv()); // {'artist': 'Maler', 'hello': 'hallo', 'prize': 'Gewinn'}
 ```
 
-For examples for the other methods please see [this migration guide](upgrade_to_multilingual_glossaries.md)
+For examples for the other methods please see [this migration guide](upgrading_to_multilingual_glossaries.md)
 
 ### Spoken terms
 
