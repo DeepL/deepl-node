@@ -201,12 +201,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TranslationMemoryInfo` without ID; the API rejects invalid IDs
   (`DeepLError`).
 - **Breaking:** `translateText()`, `translateDocument()` and
-  `translateDocumentUpload()` throw an `ArgumentError` for a `null` `glossary`,
-  `styleRule`, `styleProfile` or `translationMemory` option or `glossaryIds`
-  element, and `getTranslationMemory()`, `listTranslationMemorySegments()`,
-  `deleteTranslationMemory()` and `createTranslationMemoryExport()` for a
-  `null` translation memory, without sending a request. They threw a
-  `TypeError` before. `exportTranslationMemoryToFilepath()` rejects with a
+  `translateDocumentUpload()` throw an `ArgumentError` for a `null`
+  `glossaryIds` element, and `getTranslationMemory()`,
+  `listTranslationMemorySegments()`, `deleteTranslationMemory()` and
+  `createTranslationMemoryExport()` for a `null` translation memory, without
+  sending a request. They threw a `TypeError` before.
+  `exportTranslationMemoryToFilepath()` rejects with a
   `TranslationMemoryJobError` whose `error` is the `ArgumentError`. Catch
   `ArgumentError` instead of `TypeError`.
 
@@ -265,6 +265,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The package no longer depends on `form-data`: document uploads use the
   `FormData` and `Blob` globals of Node.js 18 and send the same multipart
   fields, filename and content type. No code change is needed.
+
+### Fixed
+- `translateText()`, `translateDocument()` and `translateDocumentUpload()`
+  treat a `null` `glossary`, `glossaryIds`, `styleRule`, `styleProfile` or
+  `translationMemory` option as unset, like `undefined`: the request is sent
+  without it. They threw a `TypeError` before.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.

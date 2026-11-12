@@ -100,15 +100,36 @@ describe('DeepLClient.translateDocumentUpload', () => {
 
     it.each([
         ['glossary', { glossary: null }],
-        ['a glossaryIds element', { glossaryIds: ['g-1', null] }],
+        ['glossaryIds', { glossaryIds: null }],
         ['styleRule', { styleRule: null }],
         ['styleProfile', { styleProfile: null }],
         ['translationMemory', { translationMemory: null }],
-    ])('throws ArgumentError for a null %s', async (_, options) => {
+    ])('treats a null %s as unset', async (_, options) => {
+        const upload = expectUpload();
+
+        await makeDeeplClient().translateDocumentUpload(Buffer.from('x'), null, 'de', {
+            filename: 'example.txt',
+            ...options,
+        } as unknown as deepl.DocumentTranslateOptions);
+
+        const body = upload.body();
+        expect(body).toContain('name="target_lang"\r\n\r\nde\r\n');
+        for (const name of [
+            'glossary_id',
+            'glossary_ids',
+            'style_id',
+            'style_profile_id',
+            'translation_memory_id',
+        ]) {
+            expect(body).not.toContain(`name="${name}"`);
+        }
+    });
+
+    it('throws ArgumentError for a null glossaryIds element', async () => {
         await expect(
             makeDeeplClient().translateDocumentUpload(Buffer.from('x'), 'en', 'de', {
                 filename: 'example.txt',
-                ...options,
+                glossaryIds: ['g-1', null],
             } as unknown as deepl.DocumentTranslateOptions),
         ).rejects.toThrow(deepl.ArgumentError);
     });

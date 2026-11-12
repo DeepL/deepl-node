@@ -387,18 +387,27 @@ describe('DeepLClient.translateText', () => {
 
     it.each([
         ['glossary', { glossary: null }],
-        ['a glossaryIds element', { glossaryIds: ['g-1', null] }],
+        ['glossaryIds', { glossaryIds: null }],
         ['styleRule', { styleRule: null }],
         ['styleProfile', { styleProfile: null }],
         ['translationMemory', { translationMemory: null }],
-    ])('throws ArgumentError for a null %s', async (_, options) => {
+    ])('treats a null %s as unset', async (_, options) => {
+        // nock matches the exact body, so any resource ID field would fail the match.
+        expectTranslateBody(baseBody);
+
+        await makeDeeplClient().translateText(
+            'abc',
+            null,
+            'de',
+            options as unknown as deepl.TranslateTextOptions,
+        );
+    });
+
+    it('throws ArgumentError for a null glossaryIds element', async () => {
         await expect(
-            makeDeeplClient().translateText(
-                'abc',
-                null,
-                'de',
-                options as unknown as deepl.TranslateTextOptions,
-            ),
+            makeDeeplClient().translateText('abc', null, 'de', {
+                glossaryIds: ['g-1', null],
+            } as unknown as deepl.TranslateTextOptions),
         ).rejects.toThrow(deepl.ArgumentError);
     });
 

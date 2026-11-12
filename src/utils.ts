@@ -270,17 +270,19 @@ export function buildTranslationBody(
         sourceLang = standardizeLanguageCode(sourceLang);
     }
 
-    // Treat an empty glossaryIds array as "no glossaries" so it doesn't send an
-    // empty glossary_ids field.
-    const hasGlossaryIds = glossaryIds !== undefined && glossaryIds.length > 0;
+    // A null option is unset, like undefined. Treat an empty glossaryIds array as
+    // "no glossaries" so it doesn't send an empty glossary_ids field.
+    const hasGlossary = glossary !== undefined && glossary !== null;
+    const hasGlossaryIds =
+        glossaryIds !== undefined && glossaryIds !== null && glossaryIds.length > 0;
 
-    if (glossary !== undefined && hasGlossaryIds) {
+    if (hasGlossary && hasGlossaryIds) {
         throw new ArgumentError(
             'glossary and glossaryIds options cannot be used together, please use only one.',
         );
     }
 
-    if (glossaryIds !== undefined && glossaryIds.length > 5) {
+    if (hasGlossaryIds && glossaryIds.length > 5) {
         throw new ArgumentError('glossaryIds option supports at most 5 glossaries.');
     }
 
@@ -291,9 +293,9 @@ export function buildTranslationBody(
     if (formality !== undefined) {
         body.formality = String(formality).toLowerCase();
     }
-    if (glossary !== undefined) {
+    if (glossary !== undefined && glossary !== null) {
         if (!isString(glossary)) {
-            if (glossary?.glossaryId === undefined) {
+            if (glossary.glossaryId === undefined) {
                 throw new ArgumentError(
                     'glossary option should be a string containing the Glossary ID or a GlossaryInfo object.',
                 );
@@ -302,7 +304,7 @@ export function buildTranslationBody(
         }
         body.glossary_id = glossary;
     }
-    if (glossaryIds !== undefined && glossaryIds.length > 0) {
+    if (hasGlossaryIds) {
         body.glossary_ids = glossaryIds.map((glossaryId) => {
             if (!isString(glossaryId)) {
                 if (glossaryId?.glossaryId === undefined) {
@@ -416,9 +418,10 @@ export function setStyleAndTranslationMemoryOptions(
         translationMemoryThreshold?: number;
     },
 ) {
-    if (options.styleRule !== undefined) {
+    // A null option is unset, like undefined.
+    if (options.styleRule !== undefined && options.styleRule !== null) {
         if (!isString(options.styleRule)) {
-            if (options.styleRule?.styleId === undefined) {
+            if (options.styleRule.styleId === undefined) {
                 throw new ArgumentError(
                     'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
                 );
@@ -428,9 +431,9 @@ export function setStyleAndTranslationMemoryOptions(
             body.style_id = options.styleRule;
         }
     }
-    if (options.styleProfile !== undefined) {
+    if (options.styleProfile !== undefined && options.styleProfile !== null) {
         if (!isString(options.styleProfile)) {
-            if (options.styleProfile?.styleProfileId === undefined) {
+            if (options.styleProfile.styleProfileId === undefined) {
                 throw new ArgumentError(
                     'styleProfile option should be a string containing the style profile ID or a StyleProfile object.',
                 );
@@ -440,9 +443,9 @@ export function setStyleAndTranslationMemoryOptions(
             body.style_profile_id = options.styleProfile;
         }
     }
-    if (options.translationMemory !== undefined) {
+    if (options.translationMemory !== undefined && options.translationMemory !== null) {
         if (!isString(options.translationMemory)) {
-            if (options.translationMemory?.translationMemoryId === undefined) {
+            if (options.translationMemory.translationMemoryId === undefined) {
                 throw new ArgumentError(
                     'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
                 );
@@ -453,7 +456,7 @@ export function setStyleAndTranslationMemoryOptions(
         }
     }
     if (options.translationMemoryThreshold !== undefined) {
-        if (options.translationMemory === undefined) {
+        if (options.translationMemory === undefined || options.translationMemory === null) {
             throw new ArgumentError('translationMemoryThreshold requires translationMemory');
         }
         if (options.translationMemoryThreshold < 0 || options.translationMemoryThreshold > 100) {

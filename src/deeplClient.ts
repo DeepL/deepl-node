@@ -918,8 +918,10 @@ export class DeepLClient {
         // Text translation detects the source language for a glossary; document translation
         // with a glossary requires sourceLang.
         const hasGlossary =
-            options?.glossary !== undefined ||
-            (options?.glossaryIds !== undefined && options.glossaryIds.length > 0);
+            (options?.glossary !== undefined && options.glossary !== null) ||
+            (options?.glossaryIds !== undefined &&
+                options.glossaryIds !== null &&
+                options.glossaryIds.length > 0);
         if (hasGlossary && sourceLang === null) {
             throw new ArgumentError('sourceLang is required if using a glossary');
         }
