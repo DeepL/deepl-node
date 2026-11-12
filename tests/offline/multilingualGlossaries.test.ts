@@ -711,4 +711,42 @@ describe('multilingual glossary argument checks', () => {
     ])('%s throws ArgumentError', async (_, call) => {
         await expect(call(makeDeeplClient())).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
+
+    it.each([
+        [
+            'createMultilingualGlossary',
+            (c: deepl.DeepLClient, d: deepl.MultilingualGlossaryDictionaryEntries) =>
+                c.createMultilingualGlossary('n', [d]),
+        ],
+        [
+            'updateMultilingualGlossary',
+            (c: deepl.DeepLClient, d: deepl.MultilingualGlossaryDictionaryEntries) =>
+                c.updateMultilingualGlossary('g-1', { dictionaries: [d] }),
+        ],
+        [
+            'updateMultilingualGlossaryDictionary',
+            (c: deepl.DeepLClient, d: deepl.MultilingualGlossaryDictionaryEntries) =>
+                c.updateMultilingualGlossaryDictionary('g-1', d),
+        ],
+        [
+            'replaceMultilingualGlossaryDictionary',
+            (c: deepl.DeepLClient, d: deepl.MultilingualGlossaryDictionaryEntries) =>
+                c.replaceMultilingualGlossaryDictionary('g-1', d),
+        ],
+    ])(
+        '%s throws ArgumentError for an empty, null or undefined dictionary language',
+        async (_, call) => {
+            for (const language of ['', null, undefined]) {
+                for (const field of ['sourceLangCode', 'targetLangCode']) {
+                    const bad = {
+                        ...dict,
+                        [field]: language,
+                    } as deepl.MultilingualGlossaryDictionaryEntries;
+                    await expect(call(makeDeeplClient(), bad)).rejects.toBeInstanceOf(
+                        deepl.ArgumentError,
+                    );
+                }
+            }
+        },
+    );
 });

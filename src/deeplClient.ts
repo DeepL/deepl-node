@@ -97,6 +97,7 @@ import {
 } from './parsing';
 import {
     buildTranslationBody,
+    checkLanguageCode,
     checkStatusCode,
     csvDictionaryToJson,
     dictionaryEntriesToJson,
@@ -178,11 +179,12 @@ function toTranslationMemoryJobError(
 }
 
 function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, unknown> {
+    const lang = checkLanguageCode(entries.lang, 'lang');
     // Terms are trimmed, then validated and sent trimmed. Terms are sent newline-separated, so a
     // newline inside a term would split it
     const terms = entries.entries.map((term) => (typeof term === 'string' ? term.trim() : term));
     terms.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
-    return { lang: entries.lang, entries: terms.join('\n') };
+    return { lang, entries: terms.join('\n') };
 }
 
 /**
@@ -284,10 +286,12 @@ function customInstructionPath(styleId: StyleId, instructionId: string): string 
 function customInstructionToWire(
     label: string,
     prompt: string,
-    sourceLanguage?: string,
+    sourceLanguage?: string | null,
 ): CustomInstructionRequestBody {
     const body: CustomInstructionRequestBody = { label, prompt };
-    if (sourceLanguage !== undefined) body.source_language = sourceLanguage;
+    if (sourceLanguage !== undefined && sourceLanguage !== null) {
+        body.source_language = checkLanguageCode(sourceLanguage, 'sourceLanguage');
+    }
     return body;
 }
 
@@ -1705,6 +1709,7 @@ export class DeepLClient {
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<SpokenTermsEntries>} The terms of the list.
      *
+     * @throws {ArgumentError} If `lang` is empty or null.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async getSpokenTermsEntries(
@@ -1713,10 +1718,11 @@ export class DeepLClient {
         options?: RequestOptions,
     ): Promise<SpokenTermsEntries> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
+        const langCode = checkLanguageCode(lang, 'lang');
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'GET',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/entries`,
-            { data: new URLSearchParams({ lang }), signal: options?.signal },
+            { data: new URLSearchParams({ lang: langCode }), signal: options?.signal },
         );
         await checkStatusCode(statusCode, content);
         return parseSpokenTermsEntries(content);
@@ -1779,6 +1785,7 @@ export class DeepLClient {
      * @param lang Language code of the term list to delete, for example 'de'.
      *
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
+     * @throws {ArgumentError} If `lang` is empty or null.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async deleteSpokenTermsList(
@@ -1787,7 +1794,8 @@ export class DeepLClient {
         options?: RequestOptions,
     ): Promise<void> {
         const spokenTermsId = extractSpokenTermsId(spokenTerms);
-        const query = buildQueryString({ lang });
+        const langCode = checkLanguageCode(lang, 'lang');
+        const query = buildQueryString({ lang: langCode });
         const { statusCode, content } = await this.httpClient.sendRequestWithBackoff<string>(
             'DELETE',
             `/v3/spoken-terms/${encodeURIComponent(spokenTermsId)}/term-lists?${query}`,
@@ -2445,7 +2453,8 @@ export class DeepLClient {
      * @param configuredRules: Optional configured rules, sent as given as `configured_rules`,
      *     e.g. `{ dates_and_times: { calendar_era: 'use_bc_and_ad' } }`.
      * @param customInstructions: Optional custom instructions, sent as given as
-     *     `custom_instructions`, e.g. `[{ label, prompt, source_language: 'de' }]`.
+     *     `custom_instructions`, e.g. `[{ label, prompt, source_language: 'de' }]`. An empty
+     *     `source_language` throws an ArgumentError.
      * @param options: Optional request options, see {@link CreateStyleRuleOptions}.
      * @returns {Promise<StyleRuleInfo>} The created style rule info.
      *
@@ -2463,6 +2472,11 @@ export class DeepLClient {
         }
         if (!language) {
             throw new ArgumentError('Parameter "language" must not be empty');
+        }
+        for (const instruction of customInstructions ?? []) {
+            if (instruction.source_language !== undefined && instruction.source_language !== null) {
+                checkLanguageCode(instruction.source_language, 'source_language');
+            }
         }
         const body: CreateStyleRuleRequestBody = { name, language };
         if (configuredRules !== undefined) body.configured_rules = configuredRules;
@@ -2581,7 +2595,8 @@ export class DeepLClient {
      * @param styleRule: The style rule, as an ID or a StyleRuleInfo object.
      * @param label: The label of the custom instruction.
      * @param prompt: The prompt text of the custom instruction.
-     * @param sourceLanguage: Optional source language code the instruction applies to.
+     * @param sourceLanguage: Optional source language code the instruction applies to; an empty
+     *     string throws an ArgumentError.
      * @param options: Optional request options, see {@link CreateStyleRuleCustomInstructionOptions}.
      * @returns {Promise<CustomInstruction>} The created custom instruction.
      *
@@ -2645,7 +2660,8 @@ export class DeepLClient {
      * @param instructionId: The custom instruction to update, as an ID or a CustomInstruction object.
      * @param label: The new label of the custom instruction.
      * @param prompt: The new prompt text of the custom instruction.
-     * @param sourceLanguage: Optional source language code the instruction applies to.
+     * @param sourceLanguage: Optional source language code the instruction applies to; an empty
+     *     string throws an ArgumentError.
      * @param options: Optional request options, see {@link UpdateStyleRuleCustomInstructionOptions}.
      * @returns {Promise<CustomInstruction>} The updated custom instruction.
      *

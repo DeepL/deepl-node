@@ -404,6 +404,9 @@ const entries = new deepl.GlossaryEntries({ entries: { artist: 'Maler', prize: '
 const glossaryEnToDe = await deeplClient.createMultilingualGlossary('My glossary', [{sourceLangCode: 'en', targetLangCode: 'de', entries: entries}]);
 ```
 
+A dictionary with an empty or missing `sourceLangCode` or `targetLangCode` throws
+an `ArgumentError` and sends no request.
+
 Glossary terms are trimmed of leading and trailing whitespace and then
 validated before any request: a term that is empty after trimming or contains a
 control character such as a newline throws an `ArgumentError`. The trimmed terms are
@@ -563,7 +566,8 @@ terms. A collection has a name and one term list per language (for example `'en'
 Terms are passed and returned as arrays of strings. Before sending, `createSpokenTerms()`,
 `updateSpokenTerms()` and `replaceSpokenTermsList()` trim each term and check it like a
 glossary term: an empty or whitespace-only term or one containing a control character such
-as a newline throws an `ArgumentError` and sends no request; valid terms are sent trimmed. The API validates the rest (for example, at most 300
+as a newline throws an `ArgumentError` and sends no request; valid terms are sent trimmed. An empty or `null` language of a term list, or passed to
+`getSpokenTermsEntries()` or `deleteSpokenTermsList()`, throws an `ArgumentError` too. The API validates the rest (for example, at most 300
 characters per list) and rejects invalid terms with a `DeepLError`.
 
 Every method that takes a collection accepts its ID or a `SpokenTerms` object.
@@ -622,7 +626,8 @@ using the API's names: `configuredRules` is sent as given as `configured_rules`
 (the same shape `updateStyleRuleConfiguredRules()` takes, e.g.
 `{ dates_and_times: { calendar_era: 'use_bc_and_ad' } }`), and
 `customInstructions` as `custom_instructions`, an array of objects with
-`label`, `prompt` and an optional `source_language`.
+`label`, `prompt` and an optional `source_language` (an empty `source_language`
+throws an `ArgumentError`).
 
 ```javascript
 const rule = await deeplClient.createStyleRule('My Style Rule', 'en');
@@ -712,7 +717,8 @@ Custom instructions allow you to add free-text prompts to a style rule. Use
 `createStyleRuleCustomInstruction()`, `getStyleRuleCustomInstruction()`,
 `updateStyleRuleCustomInstruction()`, and
 `deleteStyleRuleCustomInstruction()` to manage them. The create and update
-methods take the label, the prompt and an optional source language code.
+methods take the label, the prompt and an optional source language code; an
+empty string throws an `ArgumentError`, and `null` or omitting it leaves it unset.
 
 ```javascript
 // Create a custom instruction

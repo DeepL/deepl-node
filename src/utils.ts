@@ -245,6 +245,20 @@ export function nonRegionalLanguageCode(langCode: string): NonRegionalLanguageCo
 }
 
 /**
+ * Checks a language code that is sent as given, and returns it. Throws for null, undefined and
+ * an empty string; callers with an optional code call it only when the code is set.
+ * @param langCode Language code to check.
+ * @param name Name of the parameter or field, for the error message.
+ * @private
+ */
+export function checkLanguageCode(langCode: string | null | undefined, name: string): string {
+    if (!isString(langCode) || langCode.length === 0) {
+        throw new ArgumentError(`Parameter "${name}" must be a non-empty string`);
+    }
+    return langCode;
+}
+
+/**
  * Converts the given TagList to an array of tags; a string may hold several comma-separated tags.
  * @private
  */
@@ -532,6 +546,8 @@ export function dictionaryEntriesToJson(
         if (!dict?.entries || Object.keys(dict.entries.entries()).length === 0) {
             throw new ArgumentError('glossary dictionary entries must not be empty');
         }
+        checkLanguageCode(dict.sourceLangCode, 'sourceLangCode');
+        checkLanguageCode(dict.targetLangCode, 'targetLangCode');
     }
     return dictionaries.map((dict) => ({
         source_lang: dict.sourceLangCode,

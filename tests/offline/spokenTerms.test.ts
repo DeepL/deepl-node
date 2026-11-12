@@ -133,4 +133,32 @@ describe('DeepLClient spoken terms', () => {
             makeDeeplClient().createSpokenTerms('my terms', [{ lang: 'en', entries: ['a\nb'] }]),
         ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
+
+    it.each([[''], [null], [undefined]])(
+        'rejects the language %p of a term list before sending a request',
+        async (lang) => {
+            const client = makeDeeplClient();
+            const entries = { lang, entries: ['a'] } as unknown as deepl.SpokenTermsEntries;
+            for (const call of [
+                () => client.createSpokenTerms('my terms', [entries]),
+                () => client.updateSpokenTerms('st-1', { termLists: [entries] }),
+                () => client.replaceSpokenTermsList('st-1', entries),
+            ]) {
+                await expect(call()).rejects.toBeInstanceOf(deepl.ArgumentError);
+            }
+        },
+    );
+
+    it.each([[''], [null], [undefined]])(
+        'rejects the language %p of getSpokenTermsEntries() and deleteSpokenTermsList() before sending a request',
+        async (lang) => {
+            const client = makeDeeplClient();
+            await expect(
+                client.getSpokenTermsEntries('st-1', lang as unknown as string),
+            ).rejects.toBeInstanceOf(deepl.ArgumentError);
+            await expect(
+                client.deleteSpokenTermsList('st-1', lang as unknown as string),
+            ).rejects.toBeInstanceOf(deepl.ArgumentError);
+        },
+    );
 });

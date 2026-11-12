@@ -209,6 +209,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `exportTranslationMemoryToFilepath()` rejects with a
   `TranslationMemoryJobError` whose `error` is the `ArgumentError`. Catch
   `ArgumentError` instead of `TypeError`.
+- **Breaking:** `createMultilingualGlossary()`,
+  `updateMultilingualGlossary()`, `updateMultilingualGlossaryDictionary()` and
+  `replaceMultilingualGlossaryDictionary()` throw an `ArgumentError` for a
+  dictionary with an empty, `null` or missing `sourceLangCode` or
+  `targetLangCode`; `createSpokenTerms()`, `updateSpokenTerms()` and
+  `replaceSpokenTermsList()` for a term list with an empty, `null` or missing
+  `lang`; `getSpokenTermsEntries()` and `deleteSpokenTermsList()` for an
+  empty, `null` or missing `lang`. `createStyleRule()` throws an
+  `ArgumentError` for a custom instruction with an empty `source_language`,
+  and `createStyleRuleCustomInstruction()` and
+  `updateStyleRuleCustomInstruction()` for an empty `sourceLanguage`; these
+  two leave out a `null` `sourceLanguage` instead of sending JSON `null`. No
+  request is sent; the API rejected these values with a `DeepLError` before.
+  Catch `ArgumentError` where you handled that `DeepLError`.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

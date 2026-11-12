@@ -111,6 +111,14 @@ describe('DeepLClient.createStyleRule', () => {
             deepl.ArgumentError,
         );
     });
+
+    it('throws ArgumentError before any request for an empty custom instruction source_language', async () => {
+        await expect(
+            makeDeeplClient().createStyleRule('my rule', 'en', undefined, [
+                { label: 'L', prompt: 'P', source_language: '' },
+            ]),
+        ).rejects.toBeInstanceOf(deepl.ArgumentError);
+    });
 });
 
 describe('DeepLClient.getStyleRule', () => {
@@ -187,6 +195,33 @@ describe('DeepLClient custom instructions', () => {
         await makeDeeplClient().createStyleRuleCustomInstruction('s-1', 'Label', 'Prompt');
     });
 
+    it('createStyleRuleCustomInstruction and updateStyleRuleCustomInstruction omit a null source_language', async () => {
+        nock(serverUrl)
+            .post('/v3/style_rules/s-1/custom_instructions', { label: 'Label', prompt: 'Prompt' })
+            .reply(201, instructionReply);
+        nock(serverUrl)
+            .put('/v3/style_rules/s-1/custom_instructions/i-1', {
+                label: 'Label',
+                prompt: 'Prompt',
+            })
+            .reply(200, instructionReply);
+
+        const client = makeDeeplClient();
+        await client.createStyleRuleCustomInstruction(
+            's-1',
+            'Label',
+            'Prompt',
+            null as unknown as string,
+        );
+        await client.updateStyleRuleCustomInstruction(
+            's-1',
+            'i-1',
+            'Label',
+            'Prompt',
+            null as unknown as string,
+        );
+    });
+
     it('updateStyleRuleCustomInstruction sends the instruction as JSON with PUT', async () => {
         nock(serverUrl)
             .put('/v3/style_rules/s-1/custom_instructions/i-1', instruction)
@@ -230,6 +265,10 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
             () => client().createStyleRuleCustomInstruction('s', 'L', ''),
         ],
         [
+            'createStyleRuleCustomInstruction with an empty source language',
+            () => client().createStyleRuleCustomInstruction('s', 'L', 'P', ''),
+        ],
+        [
             'getStyleRuleCustomInstruction without ID',
             () => client().getStyleRuleCustomInstruction('', 'i'),
         ],
@@ -252,6 +291,10 @@ describe('DeepLClient style rule methods that validate their arguments', () => {
         [
             'updateStyleRuleCustomInstruction without prompt',
             () => client().updateStyleRuleCustomInstruction('s', 'i', 'L', ''),
+        ],
+        [
+            'updateStyleRuleCustomInstruction with an empty source language',
+            () => client().updateStyleRuleCustomInstruction('s', 'i', 'L', 'P', ''),
         ],
         [
             'deleteStyleRuleCustomInstruction without ID',
