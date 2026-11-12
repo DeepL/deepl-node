@@ -79,6 +79,20 @@ describe('DeepLClient.translateDocumentUpload', () => {
         expect(result).toEqual(handle);
     });
 
+    it('sends no source_lang part for an undefined source language, like null', async () => {
+        const upload = expectUpload();
+
+        await makeDeeplClient().translateDocumentUpload(
+            Buffer.from('x'),
+            undefined as unknown as null,
+            'de',
+            { filename: 'example.txt' },
+        );
+
+        expect(upload.body()).not.toContain('name="source_lang"');
+        expect(upload.body()).toContain('name="target_lang"\r\n\r\nde\r\n');
+    });
+
     it.each([
         ['glossary', { glossary: 'g-1' }],
         ['glossaryIds', { glossaryIds: ['g-1'] }],
@@ -96,6 +110,17 @@ describe('DeepLClient.translateDocumentUpload', () => {
                 ...options,
             }),
         ).rejects.toBeInstanceOf(deepl.ArgumentError);
+    });
+
+    it('throws the missing-sourceLang error when a glossary is set and the source language is undefined', async () => {
+        await expect(
+            makeDeeplClient().translateDocumentUpload(
+                Buffer.from('x'),
+                undefined as unknown as null,
+                'de',
+                { filename: 'example.txt', glossary: 'g-1' },
+            ),
+        ).rejects.toThrow(new deepl.ArgumentError('sourceLang is required if using a glossary'));
     });
 
     it.each([

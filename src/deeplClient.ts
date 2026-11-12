@@ -437,7 +437,8 @@ export class DeepLClient {
     /**
      * Translates specified text string or array of text strings into the target language.
      * @param texts Text string or array of strings containing input text(s) to translate.
-     * @param sourceLang Language code of input text language, or null to use auto-detection.
+     * @param sourceLang Language code of input text language, or null (or undefined) to use
+     *     auto-detection.
      * @param targetLang Language code of language to translate into.
      * @param options Optional TranslateTextOptions object containing additional options controlling translation.
      * @return Fulfills with a TextResult object or an array of TextResult objects corresponding to input texts; use the `TextResult.text` property to access the translated text.
@@ -482,7 +483,8 @@ export class DeepLClient {
      *     the path's base name.
      * @param outputFile String containing file path to create translated document, or Stream or
      *     FileHandle to write translated document content.
-     * @param sourceLang Language code of input document, or null to use auto-detection.
+     * @param sourceLang Language code of input document, or null (or undefined) to use
+     *     auto-detection.
      * @param targetLang Language code of language to translate into.
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with a DocumentStatus object for the completed translation. You can use the
@@ -563,7 +565,8 @@ export class DeepLClient {
      * @param inputFile String containing file path, stream containing file data, or FileHandle.
      *     Note: if a Buffer, Stream, or FileHandle is used, then `options.filename` must be specified.
      *     For a file path, `options.filename` defaults to the path's base name.
-     * @param sourceLang Language code of input document, or null to use auto-detection.
+     * @param sourceLang Language code of input document, or null (or undefined) to use
+     *     auto-detection.
      * @param targetLang Language code of language to translate into.
      * @param options Optional DocumentTranslateOptions object containing additional options controlling translation.
      * @return Fulfills with DocumentHandle associated with the in-progress translation.
@@ -926,7 +929,7 @@ export class DeepLClient {
             (options?.glossaryIds !== undefined &&
                 options.glossaryIds !== null &&
                 options.glossaryIds.length > 0);
-        if (hasGlossary && sourceLang === null) {
+        if (hasGlossary && (sourceLang === null || sourceLang === undefined)) {
             throw new ArgumentError('sourceLang is required if using a glossary');
         }
         setStyleAndTranslationMemoryOptions(body, options ?? {});

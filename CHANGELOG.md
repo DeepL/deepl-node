@@ -223,6 +223,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   two leave out a `null` `sourceLanguage` instead of sending JSON `null`. No
   request is sent; the API rejected these values with a `DeepLError` before.
   Catch `ArgumentError` where you handled that `DeepLError`.
+- `translateText()`, `translateDocument()` and `translateDocumentUpload()`
+  treat an `undefined` `sourceLang` like `null`: the source language is
+  auto-detected. They threw an `ArgumentError` before.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

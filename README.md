@@ -120,8 +120,9 @@ Language codes are **case-insensitive** strings according to ISO 639-1, for
 example `'de'`, `'fr'`, `'ja''`. Some target languages also include the regional
 variant according to ISO 3166-1, for example `'en-US'`, or `'pt-BR'`. Target
 languages without a variant use a default variant, for example `'en'` translates
-to `'en-US'` and `'pt'` to `'pt-PT'`. The source language also accepts `null`, to
-enable auto-detection of the source language.
+to `'en-US'` and `'pt'` to `'pt-PT'`. The source language also accepts `null`
+(JavaScript callers may also pass `undefined`) to enable auto-detection of the
+source language.
 
 The language parameters accept any language code returned by
 `getSourceLanguages()` and `getTargetLanguages()`, not only the members of the

@@ -280,7 +280,7 @@ export function buildTranslationBody(
     glossaryIds?: Array<GlossaryId | GlossaryInfo | MultilingualGlossaryInfo>,
 ): Record<string, unknown> {
     targetLang = standardizeLanguageCode(targetLang);
-    if (sourceLang !== null) {
+    if (sourceLang !== null && sourceLang !== undefined) {
         sourceLang = standardizeLanguageCode(sourceLang);
     }
 
@@ -301,7 +301,7 @@ export function buildTranslationBody(
     }
 
     const body: Record<string, unknown> = { target_lang: targetLang };
-    if (sourceLang !== null) {
+    if (sourceLang !== null && sourceLang !== undefined) {
         body.source_lang = sourceLang;
     }
     if (formality !== undefined) {

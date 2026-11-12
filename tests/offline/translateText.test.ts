@@ -103,6 +103,13 @@ describe('DeepLClient.translateText', () => {
         );
     });
 
+    it('sends no source_lang for an undefined source language, like null', async () => {
+        // nock matches the exact body, so a source_lang field would fail the match.
+        expectTranslateBody(baseBody);
+
+        await makeDeeplClient().translateText('abc', undefined as unknown as null, 'de');
+    });
+
     it.each([
         ['less', 'less'],
         ['more', 'more'],
