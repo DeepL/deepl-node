@@ -98,6 +98,21 @@ describe('DeepLClient.translateDocumentUpload', () => {
         ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 
+    it.each([
+        ['glossary', { glossary: null }],
+        ['a glossaryIds element', { glossaryIds: ['g-1', null] }],
+        ['styleRule', { styleRule: null }],
+        ['styleProfile', { styleProfile: null }],
+        ['translationMemory', { translationMemory: null }],
+    ])('throws ArgumentError for a null %s', async (_, options) => {
+        await expect(
+            makeDeeplClient().translateDocumentUpload(Buffer.from('x'), 'en', 'de', {
+                filename: 'example.txt',
+                ...options,
+            } as unknown as deepl.DocumentTranslateOptions),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+
     it('sends extraBodyParameters as multipart parts', async () => {
         const upload = expectUpload();
 

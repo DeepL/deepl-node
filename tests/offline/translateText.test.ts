@@ -386,6 +386,23 @@ describe('DeepLClient.translateText', () => {
     });
 
     it.each([
+        ['glossary', { glossary: null }],
+        ['a glossaryIds element', { glossaryIds: ['g-1', null] }],
+        ['styleRule', { styleRule: null }],
+        ['styleProfile', { styleProfile: null }],
+        ['translationMemory', { translationMemory: null }],
+    ])('throws ArgumentError for a null %s', async (_, options) => {
+        await expect(
+            makeDeeplClient().translateText(
+                'abc',
+                null,
+                'de',
+                options as unknown as deepl.TranslateTextOptions,
+            ),
+        ).rejects.toThrow(deepl.ArgumentError);
+    });
+
+    it.each([
         ['glossary', { glossary: 'g-1' }, { glossary_id: 'g-1' }],
         ['glossaryIds', { glossaryIds: ['g-1'] }, { glossary_ids: ['g-1'] }],
     ])('sends %s without a source language', async (_, options, glossaryParam) => {

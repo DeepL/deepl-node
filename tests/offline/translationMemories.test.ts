@@ -96,6 +96,24 @@ describe('DeepLClient.getTranslationMemory', () => {
         );
     });
 
+    it.each([
+        ['getTranslationMemory', (c: deepl.DeepLClient) => c.getTranslationMemory(null as never)],
+        [
+            'listTranslationMemorySegments',
+            (c: deepl.DeepLClient) => c.listTranslationMemorySegments(null as never),
+        ],
+        [
+            'deleteTranslationMemory',
+            (c: deepl.DeepLClient) => c.deleteTranslationMemory(null as never),
+        ],
+        [
+            'createTranslationMemoryExport',
+            (c: deepl.DeepLClient) => c.createTranslationMemoryExport(null as never),
+        ],
+    ])('%s throws ArgumentError for a null translation memory', async (_, call) => {
+        await expect(call(makeDeeplClient())).rejects.toThrow(deepl.ArgumentError);
+    });
+
     it('throws DeepLError when the translation memory does not exist', async () => {
         nock(serverUrl).get('/v3/translation_memories/tm-1').reply(404, { message: 'm' });
 
@@ -780,6 +798,19 @@ describe('DeepLClient.exportTranslationMemoryToFilepath', () => {
         expect(error.jobId).toBeUndefined();
         expect(error.job).toBeUndefined();
         expect(error.error).toMatchObject({ code: 'ENOENT' });
+    });
+
+    it('rejects a null translation memory with TranslationMemoryJobError wrapping ArgumentError', async () => {
+        const outputPath = path.join(tempDir(), 'out.tmx');
+
+        const error = await makeDeeplClient()
+            .exportTranslationMemoryToFilepath(null as never, outputPath)
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.TranslationMemoryJobError);
+        expect(error.error).toBeInstanceOf(deepl.ArgumentError);
+        expect(error.jobId).toBeUndefined();
+        expect(fs.existsSync(outputPath)).toBe(false);
     });
 
     it('rejects with TranslationMemoryJobError wrapping EEXIST when the output file appears during the export', async () => {

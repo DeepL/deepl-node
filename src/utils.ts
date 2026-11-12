@@ -293,7 +293,7 @@ export function buildTranslationBody(
     }
     if (glossary !== undefined) {
         if (!isString(glossary)) {
-            if (glossary.glossaryId === undefined) {
+            if (glossary?.glossaryId === undefined) {
                 throw new ArgumentError(
                     'glossary option should be a string containing the Glossary ID or a GlossaryInfo object.',
                 );
@@ -305,7 +305,7 @@ export function buildTranslationBody(
     if (glossaryIds !== undefined && glossaryIds.length > 0) {
         body.glossary_ids = glossaryIds.map((glossaryId) => {
             if (!isString(glossaryId)) {
-                if (glossaryId.glossaryId === undefined) {
+                if (glossaryId?.glossaryId === undefined) {
                     throw new ArgumentError(
                         'glossaryIds entries should be strings containing the Glossary ID or GlossaryInfo objects.',
                     );
@@ -418,7 +418,7 @@ export function setStyleAndTranslationMemoryOptions(
 ) {
     if (options.styleRule !== undefined) {
         if (!isString(options.styleRule)) {
-            if (options.styleRule.styleId === undefined) {
+            if (options.styleRule?.styleId === undefined) {
                 throw new ArgumentError(
                     'styleRule option should be a StyleId (string) containing the Style Rule ID or a StyleRuleInfo object.',
                 );
@@ -430,7 +430,7 @@ export function setStyleAndTranslationMemoryOptions(
     }
     if (options.styleProfile !== undefined) {
         if (!isString(options.styleProfile)) {
-            if (options.styleProfile.styleProfileId === undefined) {
+            if (options.styleProfile?.styleProfileId === undefined) {
                 throw new ArgumentError(
                     'styleProfile option should be a string containing the style profile ID or a StyleProfile object.',
                 );
@@ -442,7 +442,7 @@ export function setStyleAndTranslationMemoryOptions(
     }
     if (options.translationMemory !== undefined) {
         if (!isString(options.translationMemory)) {
-            if (options.translationMemory.translationMemoryId === undefined) {
+            if (options.translationMemory?.translationMemoryId === undefined) {
                 throw new ArgumentError(
                     'translationMemory option should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',
                 );
@@ -604,7 +604,7 @@ export function extractTranslationMemoryId(
 ): TranslationMemoryId {
     const translationMemoryId = isString(translationMemory)
         ? translationMemory
-        : translationMemory.translationMemoryId;
+        : translationMemory?.translationMemoryId;
     if (!translationMemoryId) {
         throw new ArgumentError(
             'translationMemory should be a TranslationMemoryId (string) or a TranslationMemoryInfo object.',

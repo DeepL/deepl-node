@@ -1507,8 +1507,9 @@ response body that is cut off mid-read is retried, except for creates; its
     property, the job ID in `jobId` once the job was created, the last fetched
     job status in `job`, and `httpStatusCode` and `shouldRetry` are copied from the cause when it is a `DeepLError`.
 -   `ArgumentError`: an argument failed client-side validation, for example an
-    empty auth key, text, language code, glossary name or ID, or an invalid
-    option combination. No request is sent.
+    empty auth key, text, language code, glossary name or ID, an invalid
+    option combination, or a `null` resource option such as `glossary` or
+    `translationMemory`. No request is sent.
 
 Other failed responses, and responses that cannot be parsed, throw a
 `DeepLError`.

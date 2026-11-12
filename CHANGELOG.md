@@ -200,6 +200,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `styleRuleIds`, instead of throwing `ArgumentError` for an empty ID or a
   `TranslationMemoryInfo` without ID; the API rejects invalid IDs
   (`DeepLError`).
+- **Breaking:** `translateText()`, `translateDocument()` and
+  `translateDocumentUpload()` throw an `ArgumentError` for a `null` `glossary`,
+  `styleRule`, `styleProfile` or `translationMemory` option or `glossaryIds`
+  element, and `getTranslationMemory()`, `listTranslationMemorySegments()`,
+  `deleteTranslationMemory()` and `createTranslationMemoryExport()` for a
+  `null` translation memory, without sending a request. They threw a
+  `TypeError` before. `exportTranslationMemoryToFilepath()` rejects with a
+  `TranslationMemoryJobError` whose `error` is the `ArgumentError`. Catch
+  `ArgumentError` instead of `TypeError`.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
