@@ -5,6 +5,7 @@
 import * as deepl from 'deepl-node';
 
 import log from 'loglevel';
+import * as net from 'net';
 import nock from 'nock';
 import { Readable } from 'stream';
 
@@ -141,6 +142,44 @@ describe('HttpClient retries', () => {
 
     it.each([['CERT_HAS_EXPIRED']])('classifies axios error code %s as not retryable', (code) => {
         expect(RETRYABLE_AXIOS_ERROR_CODES.has(code)).toBe(false);
+    });
+});
+
+describe('HttpClient proxy timeouts', () => {
+    let proxy: net.Server;
+    let sockets: net.Socket[];
+
+    // nock steps aside so the request reaches a local proxy that never answers CONNECT
+    async function startProxy(close: boolean): Promise<string> {
+        nock.restore();
+        sockets = [];
+        proxy = net.createServer((socket) => {
+            sockets.push(socket);
+            if (close) socket.once('data', () => socket.end());
+        });
+        await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+        return `http://127.0.0.1:${(proxy.address() as net.AddressInfo).port}`;
+    }
+
+    afterEach(() => {
+        sockets.forEach((socket) => socket.destroy());
+        proxy.close();
+        nock.activate();
+    });
+
+    it.each([
+        ['never answers', false],
+        ['closes the connection', true],
+    ])('times out and retries when the proxy %s before answering CONNECT', async (_, close) => {
+        const proxyUrl = await startProxy(close);
+
+        const error = await makeDeeplClient({ proxy: proxyUrl, maxRetries: 1, minTimeout: 100 })
+            .getUsage()
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.error.code).toBe('ECONNABORTED');
+        expect(sockets).toHaveLength(2);
     });
 });
 

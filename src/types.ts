@@ -50,8 +50,9 @@ export interface HttpClientOptions {
     maxRetries?: number;
 
     /**
-     * Connection timeout used for each HTTP request retry, in milliseconds. The default timeout
-     * if this value is unspecified is 10 seconds (10000).
+     * Timeout for each HTTP request attempt, in milliseconds: connecting (through a proxy
+     * included) and waiting for the response. The default timeout if this value is unspecified
+     * is 10 seconds (10000).
      */
     minTimeout?: number;
 

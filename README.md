@@ -1295,8 +1295,9 @@ The available options are:
     function call. By default, 5 retries are made (6 attempts in total); 0
     disables retries. A negative or non-integer value throws an `ArgumentError`.
     See [Request retries](#request-retries).
--   `minTimeout`: the `Number` of milliseconds used as connection timeout for each
-    HTTP request retry. The default value is 10000 (10 seconds).
+-   `minTimeout`: the `Number` of milliseconds each HTTP request attempt may
+    take, connecting (through a proxy included) and waiting for the response.
+    The default value is 10000 (10 seconds).
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
     for example for testing purposes. By default, the URL is selected based on the
     user account type (free or paid): `deepl.isFreeAccountAuthKey(authKey)`
@@ -1409,7 +1410,9 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 The proxy argument is passed to the underlying `axios` request, see the
-[documentation for axios][axios-proxy-docs].
+[documentation for axios][axios-proxy-docs]. A proxy that does not answer within
+the timeout of an attempt (`minTimeout`) fails it with a `ConnectionError`,
+which is retried like other timeouts.
 
 #### Anonymous platform information
 

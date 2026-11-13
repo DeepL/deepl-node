@@ -297,6 +297,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treat a `null` `glossary`, `glossaryIds`, `styleRule`, `styleProfile` or
   `translationMemory` option as unset, like `undefined`: the request is sent
   without it. They threw a `TypeError` before.
+- Requests through a `proxy` that accepts the connection but does not answer
+  the CONNECT request, or closes the connection before answering, fail after
+  the attempt's timeout (`minTimeout`) with a `ConnectionError` (`error.code`
+  `ECONNABORTED`) and are retried like other timeouts. They never settled
+  before.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.

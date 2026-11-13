@@ -409,8 +409,18 @@ export class HttpClient {
     private static async sendAxiosRequest<TContent extends string | IncomingMessage>(
         axiosRequestConfig: AxiosRequestConfig,
     ): Promise<{ statusCode: number; content: TContent }> {
+        const signal = axiosRequestConfig.signal as AbortSignal | undefined;
+        // axios starts its timeout when the request gets a socket, which a proxy tunnel hands over
+        // only after CONNECT; this timer bounds the whole attempt.
+        const attempt = new AbortController();
+        const timer = setTimeout(() => attempt.abort(), axiosRequestConfig.timeout);
+        const forwardAbort = () => attempt.abort();
+        signal?.addEventListener('abort', forwardAbort, { once: true });
         try {
-            const response = await axiosInstance.request(axiosRequestConfig);
+            const response = await axiosInstance.request({
+                ...axiosRequestConfig,
+                signal: attempt.signal,
+            });
             if (response.headers !== undefined) {
                 logDebug('Trace details:', {
                     xTraceId: response.headers['x-trace-id'],
@@ -428,12 +438,19 @@ export class HttpClient {
                 content: response.data,
             };
         } catch (axios_error_raw) {
-            const signal = axiosRequestConfig.signal as AbortSignal | undefined;
             if (signal?.aborted) {
                 // Caller cancellation is never wrapped.
                 throw abortReason(signal);
             }
-            const axiosError = axios_error_raw as AxiosError;
+            let axiosError = axios_error_raw as AxiosError;
+            if (attempt.signal.aborted) {
+                axiosError = new AxiosError(
+                    `timeout of ${axiosRequestConfig.timeout}ms exceeded`,
+                    AxiosError.ECONNABORTED,
+                    axiosError.config,
+                    axiosError.request,
+                );
+            }
             const message: string = axiosError.message || '';
 
             const error = new ConnectionError(`Connection failure: ${message}`);
@@ -462,6 +479,9 @@ export class HttpClient {
                 unsentRequestErrors.add(error);
             }
             throw error;
+        } finally {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', forwardAbort);
         }
     }
 
