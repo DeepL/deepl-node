@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Breaking:** methods that create a resource are retried only when the
   request was not sent (HTTP 429, DNS failures, refused connections,
-  unreachable hosts or networks and connect timeouts), as
-  `DeepLAdminClient.createDeveloperKey()` already was: `translateDocument()`,
+  unreachable hosts or networks, and timeouts or resets while connecting, TLS
+  handshake included), as `DeepLAdminClient.createDeveloperKey()` already was,
+  except for the TLS handshake: `translateDocument()`,
   `translateDocumentUpload()`, the glossary, spoken terms, style rule, custom
   instruction and style profile creates, `createTranslationMemoryImport()`,
   `createTranslationMemoryExport()` and the translation memory file helpers.
@@ -226,6 +227,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `translateText()`, `translateDocument()` and `translateDocumentUpload()`
   treat an `undefined` `sourceLang` like `null`: the source language is
   auto-detected. They threw an `ArgumentError` before.
+- **Breaking:** `DeepLAdminClient.createDeveloperKey()` is now also retried
+  after a timeout or connection reset during the TLS handshake, before the
+  request is written; a reset after the handshake is still not retried. It
+  rejected at once with a `ConnectionError` whose `shouldRetry` was false
+  before; now that error comes after `maxRetries` retries and has
+  `shouldRetry` true. The other methods that create a resource behave the same
+  from this release on. Code that retries `createDeveloperKey()` itself after
+  such an error now sees the library's retries first.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

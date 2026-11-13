@@ -637,8 +637,9 @@ describe('DeepLAdminClient developer key creation timeouts', () => {
     let createConnection: jest.SpyInstance;
 
     // Real agent sockets are needed to tell a connect timeout apart, so nock steps aside and
-    // the agent gets sockets that never answer
-    function stubSockets(connected: boolean) {
+    // the agent gets sockets that never answer. A TLS socket emits 'connect' once TCP is up
+    // and 'secureConnect' after the handshake; events lists those the stub socket emits.
+    function stubSockets(events: string[], reset = false) {
         nock.restore();
         createConnection = jest
             .spyOn(
@@ -649,7 +650,12 @@ describe('DeepLAdminClient developer key creation timeouts', () => {
                 const socket = new net.Socket();
                 // Writes stay buffered, as on a socket that is still connecting
                 (socket as { connecting: boolean }).connecting = true;
-                if (connected) process.nextTick(() => socket.emit('connect'));
+                process.nextTick(() => {
+                    events.forEach((event) => socket.emit(event));
+                    if (reset) {
+                        socket.destroy(Object.assign(new Error('reset'), { code: 'ECONNRESET' }));
+                    }
+                });
                 return socket;
             });
     }
@@ -660,7 +666,7 @@ describe('DeepLAdminClient developer key creation timeouts', () => {
     });
 
     it('retries developer key creation after a connect timeout', async () => {
-        stubSockets(false);
+        stubSockets([]);
 
         const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
             .createDeveloperKey()
@@ -672,7 +678,34 @@ describe('DeepLAdminClient developer key creation timeouts', () => {
     });
 
     it('does not retry developer key creation after a timeout on a connected socket', async () => {
-        stubSockets(true);
+        stubSockets(['connect', 'secureConnect']);
+
+        const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
+            .createDeveloperKey()
+            .catch((e) => e);
+
+        expect(createConnection).toHaveBeenCalledTimes(1);
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(false);
+    });
+
+    it.each<[string, boolean]>([
+        ['a timeout', false],
+        ['a reset', true],
+    ])('retries developer key creation after %s during the TLS handshake', async (_, reset) => {
+        stubSockets(['connect'], reset);
+
+        const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
+            .createDeveloperKey()
+            .catch((e) => e);
+
+        expect(createConnection).toHaveBeenCalledTimes(2);
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(true);
+    });
+
+    it('does not retry developer key creation after a reset on a connected socket', async () => {
+        stubSockets(['connect', 'secureConnect'], true);
 
         const error = await makeAdminClient({ maxRetries: 1, minTimeout: 100 })
             .createDeveloperKey()

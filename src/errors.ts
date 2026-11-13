@@ -14,8 +14,9 @@ export class DeepLError extends Error {
      * The client has already retried these up to `maxRetries` times before throwing. For
      * methods that create a resource, which are not safe to repeat, it is true only for
      * failures where the request was not processed: HTTP 429, DNS failures, refused connections,
-     * unreachable hosts or networks and timeouts before the connection was established. A
-     * response body cut off mid-read is true in both cases.
+     * unreachable hosts or networks and timeouts or resets before the connection was established
+     * (for HTTPS, before the TLS handshake completed). A response body cut off mid-read is true
+     * in both cases.
      */
     public shouldRetry = false;
 

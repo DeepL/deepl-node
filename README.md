@@ -1440,8 +1440,9 @@ requests that fail multiple times will incur delays: with the default
 
 Methods that create a resource are retried only when the request was not
 sent: after rate limiting (HTTP 429), DNS failures, refused connections,
-unreachable hosts or networks and timeouts before the connection was
-established, as repeating them after other failures could create a duplicate.
+unreachable hosts or networks and timeouts or resets before the connection was
+established (for HTTPS, before the TLS handshake completed), as repeating them
+after other failures could create a duplicate.
 They are `translateDocument()` and `translateDocumentUpload()`, the glossary,
 spoken terms, style rule, custom instruction and style profile creates,
 `createTranslationMemoryImport()`, `createTranslationMemoryExport()` and the
@@ -1491,10 +1492,11 @@ true for failures a later retry could resolve (HTTP 429, 5xx and transient
 network failures), after the library has already retried them `maxRetries`
 times. For methods that create a resource (see [Request retries](#request-retries)),
 `shouldRetry` is true only when the request was not processed (HTTP 429, DNS
-failures, refused connections, unreachable hosts or networks and connect
-timeouts), as resending it after other failures could create a duplicate. A
-response body that is cut off mid-read is retried, except for creates; its
-`ConnectionError` has `shouldRetry` true either way. The subclasses are:
+failures, refused connections, unreachable hosts or networks, and timeouts or
+resets while connecting, TLS handshake included), as resending it after other
+failures could create a duplicate. A response body that is cut off mid-read is
+retried, except for creates; its `ConnectionError` has `shouldRetry` true
+either way. The subclasses are:
 
 -   `AuthorizationError`: HTTP 401 or 403, the authentication key is invalid.
 -   `NotFoundError`: HTTP 404, the requested resource does not exist, including

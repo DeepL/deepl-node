@@ -85,8 +85,16 @@ const UNSENT_AXIOS_ERROR_CODES = new Set([
     'ENETDOWN',
 ]);
 
-/** Axios error codes for timeouts; the request was not sent if its socket never connected. */
-const TIMEOUT_AXIOS_ERROR_CODES = new Set(['ETIMEDOUT', 'ECONNABORTED']);
+/**
+ * Axios error codes for timeouts and resets; the request was not sent if they happen before its
+ * socket connected (for https, before the TLS handshake completed).
+ */
+const CONNECT_PHASE_AXIOS_ERROR_CODES = new Set([
+    'ETIMEDOUT',
+    'ECONNABORTED',
+    'ECONNRESET',
+    'EPIPE',
+]);
 
 /** Connection errors whose request was never sent, so the server cannot have processed it. */
 const unsentRequestErrors = new WeakSet<ConnectionError>();
@@ -100,15 +108,22 @@ const connectedSockets = new WeakSet<object>();
 
 type CreateConnection = (this: http.Agent, ...args: unknown[]) => net.Socket | undefined;
 
-/** Makes the agent record which of its sockets connected, to tell connect timeouts apart. */
-function trackConnects<TAgent extends http.Agent>(agent: TAgent): TAgent {
+/**
+ * Makes the agent record which of its sockets connected, to tell connect-phase failures apart.
+ * A TLS socket emits 'connect' when TCP is up and 'secureConnect' after the handshake; no request
+ * byte is written before connectedEvent.
+ */
+function trackConnects<TAgent extends http.Agent>(
+    agent: TAgent,
+    connectedEvent: 'connect' | 'secureConnect',
+): TAgent {
     const base = Object.getPrototypeOf(agent) as { createConnection: CreateConnection };
     Object.assign(agent, {
         createConnection(this: http.Agent, ...args: unknown[]) {
             const socket = base.createConnection.apply(this, args);
             if (socket) {
                 trackedSockets.add(socket);
-                socket.once('connect', () => connectedSockets.add(socket));
+                socket.once(connectedEvent, () => connectedSockets.add(socket));
             }
             return socket;
         },
@@ -117,10 +132,10 @@ function trackConnects<TAgent extends http.Agent>(agent: TAgent): TAgent {
 }
 
 /**
- * Returns true if the request timed out before it had a connected socket. Sockets this module
+ * Returns true if the request failed before it had a connected socket. Sockets this module
  * did not create (e.g. axios' proxy tunnels) count as connected, as their state is unknown.
  */
-function timedOutBeforeConnect(request: unknown): boolean {
+function failedBeforeConnect(request: unknown): boolean {
     if (request === undefined || request === null) return false;
     const socket = (request as { socket?: object | null }).socket;
     if (!socket) return true;
@@ -128,8 +143,8 @@ function timedOutBeforeConnect(request: unknown): boolean {
 }
 
 const axiosInstance = axios.create({
-    httpAgent: trackConnects(new http.Agent({ keepAlive: true })),
-    httpsAgent: trackConnects(new https.Agent({ keepAlive: true })),
+    httpAgent: trackConnects(new http.Agent({ keepAlive: true }), 'connect'),
+    httpsAgent: trackConnects(new https.Agent({ keepAlive: true }), 'secureConnect'),
 });
 
 /**
@@ -161,8 +176,8 @@ export interface SendRequestOptions {
     rawBody?: Buffer;
     /**
      * Retry only failures that show the request was not processed (HTTP 429, DNS errors,
-     * refused connections, unreachable hosts and connect timeouts), for requests that are unsafe
-     * to repeat.
+     * refused connections, unreachable hosts, and timeouts and resets while connecting, TLS
+     * handshake included), for requests that are unsafe to repeat.
      */
     retryOnlyUnprocessed?: boolean;
     /**
@@ -441,8 +456,8 @@ export class HttpClient {
                 axiosError.response === undefined &&
                 code !== undefined &&
                 (UNSENT_AXIOS_ERROR_CODES.has(code) ||
-                    (TIMEOUT_AXIOS_ERROR_CODES.has(code) &&
-                        timedOutBeforeConnect(axiosError.request)))
+                    (CONNECT_PHASE_AXIOS_ERROR_CODES.has(code) &&
+                        failedBeforeConnect(axiosError.request)))
             ) {
                 unsentRequestErrors.add(error);
             }
