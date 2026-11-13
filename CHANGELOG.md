@@ -210,20 +210,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `exportTranslationMemoryToFilepath()` rejects with a
   `TranslationMemoryJobError` whose `error` is the `ArgumentError`. Catch
   `ArgumentError` instead of `TypeError`.
-- **Breaking:** `createMultilingualGlossary()`,
-  `updateMultilingualGlossary()`, `updateMultilingualGlossaryDictionary()` and
+- **Breaking:** `createMultilingualGlossary()`, `updateMultilingualGlossary()`,
+  `updateMultilingualGlossaryDictionary()` and
   `replaceMultilingualGlossaryDictionary()` throw an `ArgumentError` for a
-  dictionary with an empty, `null` or missing `sourceLangCode` or
-  `targetLangCode`; `createSpokenTerms()`, `updateSpokenTerms()` and
-  `replaceSpokenTermsList()` for a term list with an empty, `null` or missing
-  `lang`; `getSpokenTermsEntries()` and `deleteSpokenTermsList()` for an
-  empty, `null` or missing `lang`. `createStyleRule()` throws an
-  `ArgumentError` for a custom instruction with an empty `source_language`,
-  and `createStyleRuleCustomInstruction()` and
-  `updateStyleRuleCustomInstruction()` for an empty `sourceLanguage`; these
-  two leave out a `null` `sourceLanguage` instead of sending JSON `null`. No
-  request is sent; the API rejected these values with a `DeepLError` before.
-  Catch `ArgumentError` where you handled that `DeepLError`.
+  dictionary with an empty `sourceLangCode` or `targetLangCode`;
+  `createSpokenTerms()`, `updateSpokenTerms()` and `replaceSpokenTermsList()`
+  for a term list with an empty `lang`; `getSpokenTermsEntries()` and
+  `deleteSpokenTermsList()` for an empty `lang`. `createStyleRule()` throws an
+  `ArgumentError` for a custom instruction with an empty `source_language`, and
+  `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`
+  for an empty `sourceLanguage`; these two leave out a `null` `sourceLanguage`
+  instead of sending JSON `null`. No request is sent; the API rejected these
+  values with a `DeepLError` before. Catch `ArgumentError` where you handled
+  that `DeepLError`.
 - `translateText()`, `translateDocument()` and `translateDocumentUpload()`
   treat an `undefined` `sourceLang` like `null`: the source language is
   auto-detected. They threw an `ArgumentError` before.
@@ -235,6 +234,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `shouldRetry` true. The other methods that create a resource behave the same
   from this release on. Code that retries `createDeveloperKey()` itself after
   such an error now sees the library's retries first.
+- **Breaking:** the library no longer checks argument types by hand; the
+  TypeScript types are the contract. A `null`, `undefined` or non-string key in
+  the `DeepLClient` and `DeepLAdminClient` constructors, text in
+  `translateText()`, `rephraseText()` and `correctText()`, language code,
+  glossary name in `createGlossary()` and `createGlossaryWithCsv()`, or glossary
+  or spoken term, and a date that is neither a `Date` nor a string in
+  `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`, threw an
+  `ArgumentError` (a `DeepLError` in 1.x for most of them). It now throws
+  JavaScript's own `TypeError`, or, for a value without `length` such as a
+  number, is sent as given. Empty values and invalid dates still throw
+  `ArgumentError`. Code that catches `ArgumentError` for such values must pass
+  values of the declared types.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

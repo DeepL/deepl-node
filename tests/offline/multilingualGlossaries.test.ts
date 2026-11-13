@@ -733,20 +733,10 @@ describe('multilingual glossary argument checks', () => {
             (c: deepl.DeepLClient, d: deepl.MultilingualGlossaryDictionaryEntries) =>
                 c.replaceMultilingualGlossaryDictionary('g-1', d),
         ],
-    ])(
-        '%s throws ArgumentError for an empty, null or undefined dictionary language',
-        async (_, call) => {
-            for (const language of ['', null, undefined]) {
-                for (const field of ['sourceLangCode', 'targetLangCode']) {
-                    const bad = {
-                        ...dict,
-                        [field]: language,
-                    } as deepl.MultilingualGlossaryDictionaryEntries;
-                    await expect(call(makeDeeplClient(), bad)).rejects.toBeInstanceOf(
-                        deepl.ArgumentError,
-                    );
-                }
-            }
-        },
-    );
+    ])('%s throws ArgumentError for an empty dictionary language', async (_, call) => {
+        for (const field of ['sourceLangCode', 'targetLangCode']) {
+            const bad = { ...dict, [field]: '' };
+            await expect(call(makeDeeplClient(), bad)).rejects.toBeInstanceOf(deepl.ArgumentError);
+        }
+    });
 });

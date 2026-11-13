@@ -49,8 +49,8 @@ export class DeepLAdminClient {
      *     absolute http/https URL, or maxRetries is not a non-negative integer.
      */
     constructor(adminKey: string, options?: DeepLAdminClientOptions) {
-        if (isString(adminKey)) adminKey = adminKey.trim();
-        if (!isString(adminKey) || adminKey.length === 0) {
+        adminKey = adminKey.trim();
+        if (adminKey.length === 0) {
             throw new ArgumentError('adminKey must be a non-empty string');
         }
 
@@ -72,7 +72,7 @@ export class DeepLAdminClient {
      * @param groupBy Optional grouping of the usage by key ('key') or by key and day
      *     ('key_and_day'); not sent if omitted.
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
-     * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
+     * @throws {ArgumentError} If a date is an invalid Date or a string that is not a 'YYYY-MM-DD' date.
      * @return Fulfills with an AdminUsageReport.
      */
     async getUsageAnalytics(
@@ -106,7 +106,7 @@ export class DeepLAdminClient {
      *     by day ('day'); not sent if omitted.
      * @param page Optional page number, from the `nextPage` value of a previous report.
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
-     * @throws {ArgumentError} If a date is not a valid Date or 'YYYY-MM-DD' string.
+     * @throws {ArgumentError} If a date is an invalid Date or a string that is not a 'YYYY-MM-DD' date.
      * @return Fulfills with a CustomTagUsageReport.
      */
     async getCustomTagUsageAnalytics(
@@ -281,7 +281,7 @@ export class DeepLAdminClient {
             }
             return date;
         }
-        if (!(date instanceof Date) || isNaN(date.getTime())) {
+        if (isNaN(date.getTime())) {
             throw new ArgumentError('Invalid date, expected a valid Date or a YYYY-MM-DD string');
         }
         return date.toISOString().substring(0, 10);

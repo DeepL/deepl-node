@@ -405,7 +405,7 @@ const entries = new deepl.GlossaryEntries({ entries: { artist: 'Maler', prize: '
 const glossaryEnToDe = await deeplClient.createMultilingualGlossary('My glossary', [{sourceLangCode: 'en', targetLangCode: 'de', entries: entries}]);
 ```
 
-A dictionary with an empty or missing `sourceLangCode` or `targetLangCode` throws
+A dictionary with an empty `sourceLangCode` or `targetLangCode` throws
 an `ArgumentError` and sends no request.
 
 Glossary terms are trimmed of leading and trailing whitespace and then
@@ -567,7 +567,7 @@ terms. A collection has a name and one term list per language (for example `'en'
 Terms are passed and returned as arrays of strings. Before sending, `createSpokenTerms()`,
 `updateSpokenTerms()` and `replaceSpokenTermsList()` trim each term and check it like a
 glossary term: an empty or whitespace-only term or one containing a control character such
-as a newline throws an `ArgumentError` and sends no request; valid terms are sent trimmed. An empty or `null` language of a term list, or passed to
+as a newline throws an `ArgumentError` and sends no request; valid terms are sent trimmed. An empty language of a term list, or passed to
 `getSpokenTermsEntries()` or `deleteSpokenTermsList()`, throws an `ArgumentError` too. The API validates the rest (for example, at most 300
 characters per list) and rejects invalid terms with a `DeepLError`.
 

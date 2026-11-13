@@ -222,7 +222,7 @@ export function isFreeAccountAuthKey(authKey: string): boolean {
  * @return Standardized language code.
  */
 export function standardizeLanguageCode(langCode: string): LanguageCode {
-    if (!isString(langCode) || langCode.length === 0) {
+    if (langCode.length === 0) {
         throw new ArgumentError('langCode must be a non-empty string');
     }
     const [lang, region] = langCode.split('-', 2);
@@ -238,21 +238,21 @@ export function standardizeLanguageCode(langCode: string): LanguageCode {
  * @return Language code with regional variant removed.
  */
 export function nonRegionalLanguageCode(langCode: string): NonRegionalLanguageCode {
-    if (!isString(langCode) || langCode.length === 0) {
+    if (langCode.length === 0) {
         throw new ArgumentError('langCode must be a non-empty string');
     }
     return langCode.split('-', 2)[0].toLowerCase() as NonRegionalLanguageCode;
 }
 
 /**
- * Checks a language code that is sent as given, and returns it. Throws for null, undefined and
- * an empty string; callers with an optional code call it only when the code is set.
+ * Checks a language code that is sent as given, and returns it. Throws for an empty string;
+ * callers with an optional code call it only when the code is set.
  * @param langCode Language code to check.
  * @param name Name of the parameter or field, for the error message.
  * @private
  */
-export function checkLanguageCode(langCode: string | null | undefined, name: string): string {
-    if (!isString(langCode) || langCode.length === 0) {
+export function checkLanguageCode(langCode: string, name: string): string {
+    if (langCode.length === 0) {
         throw new ArgumentError(`Parameter "${name}" must be a non-empty string`);
     }
     return langCode;
@@ -404,9 +404,9 @@ export function setTextsAndReturnIsSingular(
     texts: string | string[],
 ): boolean {
     const singular = !Array.isArray(texts);
-    const textArray: unknown[] = singular ? [texts] : texts;
+    const textArray: string[] = singular ? [texts] : texts;
     for (const text of textArray) {
-        if (!isString(text) || text.length === 0) {
+        if (text.length === 0) {
             throw new ArgumentError(
                 'texts parameter must be a non-empty string or array of non-empty strings',
             );

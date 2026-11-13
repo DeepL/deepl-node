@@ -182,7 +182,7 @@ function spokenTermsEntriesToJson(entries: SpokenTermsEntries): Record<string, u
     const lang = checkLanguageCode(entries.lang, 'lang');
     // Terms are trimmed, then validated and sent trimmed. Terms are sent newline-separated, so a
     // newline inside a term would split it
-    const terms = entries.entries.map((term) => (typeof term === 'string' ? term.trim() : term));
+    const terms = entries.entries.map((term) => term.trim());
     terms.forEach((term) => GlossaryEntries.validateGlossaryTerm(term));
     return { lang, entries: terms.join('\n') };
 }
@@ -333,8 +333,8 @@ export class DeepLClient {
      *     absolute http/https URL, or maxRetries is not a non-negative integer.
      */
     constructor(authKey: string, options: DeepLClientOptions = {}) {
-        if (isString(authKey)) authKey = authKey.trim();
-        if (!isString(authKey) || authKey.length === 0) {
+        authKey = authKey.trim();
+        if (authKey.length === 0) {
             throw new ArgumentError('authKey must be a non-empty string');
         }
 
@@ -991,7 +991,7 @@ export class DeepLClient {
         sourceLang = nonRegionalLanguageCode(sourceLang);
         targetLang = nonRegionalLanguageCode(targetLang);
 
-        if (!isString(name) || name.length === 0) {
+        if (name.length === 0) {
             throw new ArgumentError('glossary name must be a non-empty string');
         }
 
@@ -1712,7 +1712,7 @@ export class DeepLClient {
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @returns {Promise<SpokenTermsEntries>} The terms of the list.
      *
-     * @throws {ArgumentError} If `lang` is empty or null.
+     * @throws {ArgumentError} If `lang` is empty.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async getSpokenTermsEntries(
@@ -1788,7 +1788,7 @@ export class DeepLClient {
      * @param lang Language code of the term list to delete, for example 'de'.
      *
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
-     * @throws {ArgumentError} If `lang` is empty or null.
+     * @throws {ArgumentError} If `lang` is empty.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
     async deleteSpokenTermsList(

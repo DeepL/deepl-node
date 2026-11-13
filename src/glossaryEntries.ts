@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 import { ArgumentError, DeepLError } from './errors';
-import { isString } from './utils';
 
 /**
  * Stores the entries of a glossary.
@@ -93,7 +92,7 @@ export class GlossaryEntries {
      * @throws {ArgumentError} If the term is empty or contains a disallowed character.
      */
     static validateGlossaryTerm(term: string) {
-        if (!isString(term) || term.length === 0) {
+        if (term.length === 0) {
             throw new ArgumentError(`'${term}' is not a valid term.`);
         }
         for (let idx = 0; idx < term.length; idx++) {

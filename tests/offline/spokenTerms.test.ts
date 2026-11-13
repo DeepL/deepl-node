@@ -134,7 +134,7 @@ describe('DeepLClient spoken terms', () => {
         ).rejects.toBeInstanceOf(deepl.ArgumentError);
     });
 
-    it.each([[''], [null], [undefined]])(
+    it.each([['']])(
         'rejects the language %p of a term list before sending a request',
         async (lang) => {
             const client = makeDeeplClient();
@@ -149,7 +149,7 @@ describe('DeepLClient spoken terms', () => {
         },
     );
 
-    it.each([[''], [null], [undefined]])(
+    it.each([['']])(
         'rejects the language %p of getSpokenTermsEntries() and deleteSpokenTermsList() before sending a request',
         async (lang) => {
             const client = makeDeeplClient();
