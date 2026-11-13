@@ -8,6 +8,8 @@ import { abortReason, logDebug, logInfo, throwIfAborted, timeout } from './utils
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { URLSearchParams } from 'url';
 import { IncomingMessage } from 'http';
+import { AsyncLocalStorage } from 'async_hooks';
+import * as diagnosticsChannel from 'diagnostics_channel';
 import { AppInfo, HttpClientOptions, ProxyConfig } from './types';
 import * as https from 'https';
 import * as http from 'http';
@@ -141,6 +143,20 @@ function failedBeforeConnect(request: unknown): boolean {
     if (!socket) return true;
     return trackedSockets.has(socket) && !connectedSockets.has(socket);
 }
+
+/** For the attempt being sent, a callback that ends its connect timer. */
+const attemptGotSocket = new AsyncLocalStorage<() => void>();
+
+// Runs onGotSocket of the current attempt once its request has a socket; the store is set only
+// inside an attempt. The channel is kept in a constant, as older Node versions hold it weakly.
+const requestStart = diagnosticsChannel.channel('http.client.request.start');
+requestStart.subscribe((message: unknown) => {
+    const onGotSocket = attemptGotSocket.getStore();
+    if (onGotSocket === undefined) return;
+    const request = (message as { request: http.ClientRequest }).request;
+    if (request.socket) onGotSocket();
+    else request.once('socket', onGotSocket);
+});
 
 const axiosInstance = axios.create({
     httpAgent: trackConnects(new http.Agent({ keepAlive: true }), 'connect'),
@@ -411,16 +427,20 @@ export class HttpClient {
     ): Promise<{ statusCode: number; content: TContent }> {
         const signal = axiosRequestConfig.signal as AbortSignal | undefined;
         // axios starts its timeout when the request gets a socket, which a proxy tunnel hands over
-        // only after CONNECT; this timer bounds the whole attempt.
+        // only after CONNECT; this timer bounds the attempt until then, and axios' from there.
         const attempt = new AbortController();
         const timer = setTimeout(() => attempt.abort(), axiosRequestConfig.timeout);
         const forwardAbort = () => attempt.abort();
         signal?.addEventListener('abort', forwardAbort, { once: true });
         try {
-            const response = await axiosInstance.request({
-                ...axiosRequestConfig,
-                signal: attempt.signal,
-            });
+            const response = await attemptGotSocket.run(
+                () => clearTimeout(timer),
+                () =>
+                    axiosInstance.request({
+                        ...axiosRequestConfig,
+                        signal: attempt.signal,
+                    }),
+            );
             if (response.headers !== undefined) {
                 logDebug('Trace details:', {
                     xTraceId: response.headers['x-trace-id'],

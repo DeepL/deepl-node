@@ -34,9 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `translateDocumentUpload()`, the glossary, spoken terms, style rule, custom
   instruction and style profile creates, `createTranslationMemoryImport()`,
   `createTranslationMemoryExport()` and the translation memory file helpers.
-  A 5xx response or a reset connection is no longer retried for them, and the
-  error's `shouldRetry` is false for a 5xx, as the API may have created the
-  resource. Check for the resource before creating it again.
+  A 5xx response or a connection reset after the request was sent is no
+  longer retried for them, and the error's `shouldRetry` is false for a 5xx,
+  as the API may have created the resource. Check for the resource before creating it again.
 - **Breaking:** a response body that is cut off mid-read now fails with a
   `ConnectionError` whose `shouldRetry` is true, and is retried like a reset
   connection, except for the creates above. Before, it was never retried and

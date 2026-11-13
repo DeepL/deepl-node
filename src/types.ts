@@ -51,8 +51,9 @@ export interface HttpClientOptions {
 
     /**
      * Timeout for each HTTP request attempt, in milliseconds: connecting (through a proxy
-     * included) and waiting for the response. The default timeout if this value is unspecified
-     * is 10 seconds (10000).
+     * included), sending the request and waiting for the response headers; while the response
+     * body is read, it bounds each pause between data. The default timeout if this value is
+     * unspecified is 10 seconds (10000).
      */
     minTimeout?: number;
 

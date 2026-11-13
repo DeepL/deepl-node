@@ -4,6 +4,7 @@
 
 import * as deepl from 'deepl-node';
 
+import * as http from 'http';
 import log from 'loglevel';
 import * as net from 'net';
 import nock from 'nock';
@@ -180,6 +181,46 @@ describe('HttpClient proxy timeouts', () => {
         expect(error).toBeInstanceOf(deepl.ConnectionError);
         expect(error.error.code).toBe('ECONNABORTED');
         expect(sockets).toHaveLength(2);
+    });
+});
+
+describe('HttpClient slow responses', () => {
+    let server: http.Server;
+
+    afterEach(() => {
+        server.closeAllConnections();
+        server.close();
+        nock.activate();
+    });
+
+    it('reads a response body that keeps arriving for longer than the timeout', async () => {
+        // nock steps aside so the response comes from a local server, in chunks over 2.4 s
+        nock.restore();
+        server = http.createServer((_, res) => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.write('{"character_count": 1,');
+            let chunks = 0;
+            const interval = setInterval(() => {
+                if (++chunks < 8) {
+                    res.write(' ');
+                } else {
+                    clearInterval(interval);
+                    res.end('"character_limit": 10}');
+                }
+            }, 300);
+            res.once('close', () => clearInterval(interval));
+        });
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const port = (server.address() as net.AddressInfo).port;
+
+        // The timeout of the only attempt is about 1 s, from the backoff deadline
+        const result = await makeDeeplClient({
+            serverUrl: `http://127.0.0.1:${port}`,
+            maxRetries: 0,
+            minTimeout: 200,
+        }).getUsage();
+
+        expect(result.character?.count).toBe(1);
     });
 });
 

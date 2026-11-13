@@ -1296,8 +1296,9 @@ The available options are:
     disables retries. A negative or non-integer value throws an `ArgumentError`.
     See [Request retries](#request-retries).
 -   `minTimeout`: the `Number` of milliseconds each HTTP request attempt may
-    take, connecting (through a proxy included) and waiting for the response.
-    The default value is 10000 (10 seconds).
+    take, connecting (through a proxy included), sending the request and
+    waiting for the response headers; while the response body is read, it
+    bounds each pause between data. The default value is 10000 (10 seconds).
 -   `serverUrl`: `string` containing the URL of the DeepL API, can be overridden
     for example for testing purposes. By default, the URL is selected based on the
     user account type (free or paid): `deepl.isFreeAccountAuthKey(authKey)`
