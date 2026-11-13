@@ -114,8 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `configuredRules.style_and_tone`.
 - `rephraseText()` takes a `RephraseTextOptions` object as its third argument
   and has no fourth argument. Pass `{ writingStyle, tone }` instead of the
-  writing style and tone as the third and fourth arguments. Any other third
-  argument, such as a string, throws `ArgumentError`.
+  writing style and tone as the third and fourth arguments.
 - `checkStatusCode()` is no longer exported from the package root. It is
   internal and has no replacement.
 - The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,

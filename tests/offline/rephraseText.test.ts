@@ -62,17 +62,6 @@ describe('DeepLClient.rephraseText', () => {
         });
     });
 
-    it('throws ArgumentError when the writing style is passed instead of an options object', async () => {
-        const client = makeDeeplClient();
-        // The signature rejects this at compile time; JavaScript callers can still pass it
-        const rephraseText = client.rephraseText.bind(client) as (
-            ...args: unknown[]
-        ) => Promise<unknown>;
-        await expect(rephraseText('abc', 'en', WritingStyle.BUSINESS)).rejects.toThrow(
-            ArgumentError,
-        );
-    });
-
     it('sends every text of an array and returns an array of results', async () => {
         nock(serverUrl)
             .post('/v2/write/rephrase', { text: ['a', 'b'], target_lang: 'de' })

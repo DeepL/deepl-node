@@ -1016,7 +1016,6 @@ export class DeepLClient {
      * @param targetLang Target language code, or `null` to keep the language of the input text.
      * @param options Rephrasing options, see {@link RephraseTextOptions}.
      * @return Promise of a {@link WriteResult}, or an array of them if `texts` is an array.
-     * @throws {ArgumentError} If `options` is not an object.
      * @throws {ArgumentError} If targetLang is an empty string.
      * @throws {DeepLError} If any error occurs while communicating with the DeepL API.
      */
@@ -1025,10 +1024,6 @@ export class DeepLClient {
         targetLang?: string | null,
         options?: RephraseTextOptions,
     ): Promise<T extends string ? WriteResult : WriteResult[]> {
-        // JavaScript callers may still pass the writing style positionally
-        if (options !== undefined && options !== null && typeof options !== 'object') {
-            throw new ArgumentError('options must be a RephraseTextOptions object');
-        }
         const writingStyle = options?.writingStyle;
         const tone = options?.tone;
 
