@@ -6,6 +6,13 @@ import nock from 'nock';
 
 nock.disableNetConnect();
 
+// Each test file loads its own nock, which wraps the http functions that all files in a jest
+// worker share. Remove this file's wrapper when it ends, so a later file's nock.restore() really
+// lets requests through instead of reaching this file's nock, which refuses them (ENETUNREACH).
+afterAll(() => {
+    nock.restore();
+});
+
 afterEach(() => {
     const pending = nock.pendingMocks();
     nock.cleanAll();
