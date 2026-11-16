@@ -41,9 +41,9 @@ export class ConnectionError extends DeepLError {
 }
 
 /**
- * Thrown by translateDocument() for any failure, including an existing or unwritable output path,
- * except a missing or unreadable input file path (ArgumentError). The cause is in `error`;
- * `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
+ * Thrown by translateDocument() for any failure, including an unreadable input file and an existing
+ * or unwritable output path, except a missing input file path (ArgumentError). The cause is in
+ * `error`; `httpStatusCode` and `shouldRetry` are copied from it when it is a DeepLError.
  */
 export class DocumentTranslationError extends DeepLError {
     public readonly documentHandle?: DocumentHandle;
