@@ -238,8 +238,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `DeepLClient` and `DeepLAdminClient` constructors, text in
   `translateText()`, `rephraseText()` and `correctText()`, language code,
   glossary name in `createGlossary()` and `createGlossaryWithCsv()`, or glossary
-  or spoken term, and a date that is neither a `Date` nor a string in
-  `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`, threw an
+  or spoken term, a `DeveloperKey` whose `keyId` is not a string in
+  `deactivateDeveloperKey()`, `renameDeveloperKey()` and
+  `setDeveloperKeyUsageLimits()`, and a date that is neither a `Date` nor a
+  string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`, threw an
   `ArgumentError` (a `DeepLError` in 1.x for most of them). It now throws
   JavaScript's own `TypeError`, or, for a value without `length` such as a
   number, is sent as given. Empty values and invalid dates still throw

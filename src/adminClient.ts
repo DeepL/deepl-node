@@ -289,7 +289,7 @@ export class DeepLAdminClient {
 
     private static keyId(key: string | DeveloperKey): string {
         const keyId = isString(key) ? key : key?.keyId;
-        if (!isString(keyId) || keyId.length === 0) {
+        if (!keyId) {
             throw new ArgumentError('key must be a non-empty key ID or a DeveloperKey');
         }
         return keyId;
