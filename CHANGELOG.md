@@ -226,13 +226,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treat an `undefined` `sourceLang` like `null`: the source language is
   auto-detected. They threw an `ArgumentError` before.
 - **Breaking:** `DeepLAdminClient.createDeveloperKey()` is now also retried
-  after a timeout or connection reset during the TLS handshake, before the
-  request is written; a reset after the handshake is still not retried. It
-  rejected at once with a `ConnectionError` whose `shouldRetry` was false
-  before; now that error comes after `maxRetries` retries and has
-  `shouldRetry` true. The other methods that create a resource behave the same
-  from this release on. Code that retries `createDeveloperKey()` itself after
-  such an error now sees the library's retries first.
+  after a timeout or connection reset during the TLS handshake, inside a proxy's
+  CONNECT tunnel too, before the request is written; a reset after the handshake
+  is still not retried. It rejected at once with a `ConnectionError` whose
+  `shouldRetry` was false before; now that error comes after `maxRetries`
+  retries and has `shouldRetry` true. The other methods that create a resource
+  behave the same from this release on. Code that retries `createDeveloperKey()`
+  itself after such an error now sees the library's retries first.
 - **Breaking:** the library no longer checks argument types by hand; the
   TypeScript types are the contract. A `null`, `undefined` or non-string key in
   the `DeepLClient` and `DeepLAdminClient` constructors, text in
@@ -247,6 +247,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   number, is sent as given. Empty values and invalid dates still throw
   `ArgumentError`. Code that catches `ArgumentError` for such values must pass
   values of the declared types.
+- **Breaking:** a non-2xx answer of the `proxy` to the CONNECT request, for
+  example HTTP 407 (Proxy Authentication Required) or 502, now throws a
+  `ConnectionError` with `shouldRetry` false and no `httpStatusCode`, and is
+  never retried. Before, it was handled as an API response: a `DeepLError`
+  subclass for the proxy's status (for example `NotFoundError` for 404) with
+  that status in `httpStatusCode`, retried for 429 and 5xx. Code that checks
+  `httpStatusCode` 407 for proxy authentication must check for a
+  `ConnectionError` instead; its message contains the proxy's status.
 
 ### Removed
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that

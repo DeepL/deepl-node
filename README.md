@@ -1413,7 +1413,10 @@ const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 The proxy argument is passed to the underlying `axios` request, see the
 [documentation for axios][axios-proxy-docs]. A proxy that does not answer within
 the timeout of an attempt (`minTimeout`) fails it with a `ConnectionError`,
-which is retried like other timeouts.
+which is retried like other timeouts. A proxy that refuses the CONNECT request
+with any status other than 2xx, for example 407 when its credentials are missing
+or wrong, fails the request with a `ConnectionError` whose `shouldRetry` is
+false; it is not retried.
 
 #### Anonymous platform information
 
@@ -1445,8 +1448,8 @@ requests that fail multiple times will incur delays: with the default
 Methods that create a resource are retried only when the request was not
 sent: after rate limiting (HTTP 429), DNS failures, refused connections,
 unreachable hosts or networks and timeouts or resets before the connection was
-established (for HTTPS, before the TLS handshake completed), as repeating them
-after other failures could create a duplicate.
+established (for HTTPS, before the TLS handshake completed, through a proxy
+too), as repeating them after other failures could create a duplicate.
 They are `translateDocument()` and `translateDocumentUpload()`, the glossary,
 spoken terms, style rule, custom instruction and style profile creates,
 `createTranslationMemoryImport()`, `createTranslationMemoryExport()` and the
@@ -1497,8 +1500,8 @@ network failures), after the library has already retried them `maxRetries`
 times. For methods that create a resource (see [Request retries](#request-retries)),
 `shouldRetry` is true only when the request was not processed (HTTP 429, DNS
 failures, refused connections, unreachable hosts or networks, and timeouts or
-resets while connecting, TLS handshake included), as resending it after other
-failures could create a duplicate. A response body that is cut off mid-read is
+resets while connecting, TLS handshake included, also through a proxy), as
+resending it after other failures could create a duplicate. A response body that is cut off mid-read is
 retried, except for creates; its `ConnectionError` has `shouldRetry` true
 either way. The subclasses are:
 
@@ -1510,8 +1513,9 @@ either way. The subclasses are:
 -   `QuotaExceededError`: HTTP 456, the quota of the billing period is used up.
 -   `DocumentNotReadyError`: HTTP 503 while downloading a translated document
     (`translateDocumentDownload()`).
--   `ConnectionError`: the request got no complete HTTP response, for example a
-    timeout or a response body cut off mid-read.
+-   `ConnectionError`: the request got no complete HTTP response from the API,
+    for example a timeout, a response body cut off mid-read, or a proxy that
+    refused the CONNECT request.
 -   `DocumentTranslationError`: a document translation failed. The cause is in
     its `error` property, and `httpStatusCode` and `shouldRetry` are copied
     from it when it is a `DeepLError`.

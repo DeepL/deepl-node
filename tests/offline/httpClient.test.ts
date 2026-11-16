@@ -146,17 +146,18 @@ describe('HttpClient retries', () => {
     });
 });
 
-describe('HttpClient proxy timeouts', () => {
+describe('HttpClient proxy failures', () => {
     let proxy: net.Server;
     let sockets: net.Socket[];
 
-    // nock steps aside so the request reaches a local proxy that never answers CONNECT
-    async function startProxy(close: boolean): Promise<string> {
+    // nock steps aside so the request reaches a local proxy; onConnect gets each CONNECT request
+    async function startProxy(onConnect: (socket: net.Socket) => void): Promise<string> {
         nock.restore();
         sockets = [];
         proxy = net.createServer((socket) => {
             sockets.push(socket);
-            if (close) socket.once('data', () => socket.end());
+            socket.on('error', () => undefined);
+            socket.once('data', () => onConnect(socket));
         });
         await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
         return `http://127.0.0.1:${(proxy.address() as net.AddressInfo).port}`;
@@ -168,11 +169,11 @@ describe('HttpClient proxy timeouts', () => {
         nock.activate();
     });
 
-    it.each([
-        ['never answers', false],
-        ['closes the connection', true],
-    ])('times out and retries when the proxy %s before answering CONNECT', async (_, close) => {
-        const proxyUrl = await startProxy(close);
+    it.each<[string, (socket: net.Socket) => void]>([
+        ['never answers', () => undefined],
+        ['closes the connection', (socket) => socket.end()],
+    ])('times out and retries when the proxy %s before answering CONNECT', async (_, onConnect) => {
+        const proxyUrl = await startProxy(onConnect);
 
         const error = await makeDeeplClient({ proxy: proxyUrl, maxRetries: 1, minTimeout: 100 })
             .getUsage()
@@ -182,6 +183,41 @@ describe('HttpClient proxy timeouts', () => {
         expect(error.error.code).toBe('ECONNABORTED');
         expect(sockets).toHaveLength(2);
     });
+
+    it.each<[string, (socket: net.Socket) => void]>([
+        ['a timeout', () => undefined],
+        ['a reset', (socket) => socket.once('data', () => socket.resetAndDestroy())],
+    ])('retries a create after %s in the TLS handshake inside the tunnel', async (_, onHello) => {
+        const proxyUrl = await startProxy((socket) => {
+            socket.write('HTTP/1.1 200 Connection established\r\n\r\n');
+            onHello(socket);
+        });
+
+        const error = await makeDeeplClient({ proxy: proxyUrl, maxRetries: 1, minTimeout: 100 })
+            .createStyleProfile('p')
+            .catch((e) => e);
+
+        expect(error).toBeInstanceOf(deepl.ConnectionError);
+        expect(error.shouldRetry).toBe(true);
+        expect(sockets).toHaveLength(2);
+    });
+
+    it.each([[407], [502]])(
+        'does not retry when the proxy answers CONNECT with %i',
+        async (status) => {
+            const proxyUrl = await startProxy((socket) =>
+                socket.end(`HTTP/1.1 ${status} Proxy Error\r\nContent-Length: 0\r\n\r\n`),
+            );
+
+            const error = await makeDeeplClient({ proxy: proxyUrl, maxRetries: 1, minTimeout: 100 })
+                .getUsage()
+                .catch((e) => e);
+
+            expect(error).toBeInstanceOf(deepl.ConnectionError);
+            expect(error.shouldRetry).toBe(false);
+            expect(sockets).toHaveLength(1);
+        },
+    );
 });
 
 describe('HttpClient slow responses', () => {

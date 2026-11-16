@@ -16,6 +16,7 @@ import * as http from 'http';
 import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
+import * as tls from 'tls';
 
 // Global since Node.js 18; the pinned @types/node does not declare it yet.
 declare const FormData: new () => {
@@ -134,14 +135,28 @@ function trackConnects<TAgent extends http.Agent>(
 }
 
 /**
- * Returns true if the request failed before it had a connected socket. Sockets this module
- * did not create (e.g. axios' proxy tunnels) count as connected, as their state is unknown.
+ * Returns true if the request failed before it had a connected socket. Through a proxy, the
+ * request gets its socket only after the proxy answered CONNECT: the TLS socket inside the tunnel,
+ * whose alpnProtocol is null until its handshake completed. Other sockets this module did not
+ * create (e.g. nock's) count as connected.
  */
 function failedBeforeConnect(request: unknown): boolean {
     if (request === undefined || request === null) return false;
     const socket = (request as { socket?: object | null }).socket;
     if (!socket) return true;
-    return trackedSockets.has(socket) && !connectedSockets.has(socket);
+    if (trackedSockets.has(socket)) return !connectedSockets.has(socket);
+    return socket instanceof tls.TLSSocket && socket.alpnProtocol === null;
+}
+
+/**
+ * Returns true if the response is the proxy's own answer to CONNECT: axios' proxy tunnel
+ * (https-proxy-agent) replays a non-2xx answer on a plain socket instead of a TLS one.
+ */
+function isProxyAnswer(request: unknown): boolean {
+    const { protocol, socket } = (request ?? {}) as { protocol?: string; socket?: unknown };
+    return (
+        protocol === 'https:' && socket instanceof net.Socket && !(socket instanceof tls.TLSSocket)
+    );
 }
 
 /** For the attempt being sent, a callback that ends its connect timer. */
@@ -441,6 +456,12 @@ export class HttpClient {
                         signal: attempt.signal,
                     }),
             );
+            if (isProxyAnswer(response.request)) {
+                // An error answer from the proxy is never retried, whatever its status
+                throw new ConnectionError(
+                    `Connection failure: proxy answered CONNECT with HTTP ${response.status}`,
+                );
+            }
             if (response.headers !== undefined) {
                 logDebug('Trace details:', {
                     xTraceId: response.headers['x-trace-id'],
@@ -462,6 +483,7 @@ export class HttpClient {
                 // Caller cancellation is never wrapped.
                 throw abortReason(signal);
             }
+            if (axios_error_raw instanceof ConnectionError) throw axios_error_raw;
             let axiosError = axios_error_raw as AxiosError;
             if (attempt.signal.aborted) {
                 axiosError = new AxiosError(

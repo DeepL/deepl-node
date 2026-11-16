@@ -15,8 +15,8 @@ export class DeepLError extends Error {
      * methods that create a resource, which are not safe to repeat, it is true only for
      * failures where the request was not processed: HTTP 429, DNS failures, refused connections,
      * unreachable hosts or networks and timeouts or resets before the connection was established
-     * (for HTTPS, before the TLS handshake completed). A response body cut off mid-read is true
-     * in both cases.
+     * (for HTTPS, before the TLS handshake completed, also through a proxy). A response body cut
+     * off mid-read is true in both cases. A proxy's non-2xx answer to CONNECT is false.
      */
     public shouldRetry = false;
 
