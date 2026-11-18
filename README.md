@@ -120,7 +120,7 @@ translate multiple texts.
 
 The second and third arguments are the source and target language codes.
 Language codes are **case-insensitive** strings according to ISO 639-1, for
-example `'de'`, `'fr'`, `'ja''`. Some target languages also include the regional
+example `'de'`, `'fr'`, `'ja'`. Some target languages also include the regional
 variant according to ISO 3166-1, for example `'en-US'`, or `'pt-BR'`. Target
 languages without a variant use a default variant, for example `'en'` translates
 to `'en-US'` and `'pt'` to `'pt-PT'`. The source language also accepts `null`
@@ -480,10 +480,10 @@ Functions to get, list, and delete stored glossaries are also provided:
 - `deleteMultilingualGlossary()` takes a glossary ID or `MultilingualGlossaryInfo` 
   object and deletes the stored glossary from the server, or raises an 
   exception if no such glossary is found.
-- `deleteMultilingualGlossaryDictionary()` takes a glossary ID or `GlossaryInfo` object to 
-  identify the glossary. Additionally takes in a source and target language or a 
-  `MultilingualGlossaryDictionaryInfo` object and deletes the stored dictionary
-   from the server, or raises an exception if no such glossary dictionary is found.
+- `deleteMultilingualGlossaryDictionary()` takes a glossary ID or `MultilingualGlossaryInfo`
+  object to identify the glossary, plus the source and target language codes of the
+  dictionary, and deletes the stored dictionary from the server, or raises an
+  exception if no such glossary dictionary is found.
 
 ```javascript
 const glossaryDicts = [{sourceLangCode: 'en', targetLangCode: 'de', entries: new deepl.GlossaryEntries({ entries: {'hello': 'hallo'}})}, {sourceLangCode: 'de', targetLangCode: 'en', entries: new deepl.GlossaryEntries({ entries: {'hallo': 'hello'}})}];
@@ -507,7 +507,7 @@ The `MultilingualGlossaryInfo` object does not contain the glossary entries, but
 instead only the number of entries in the `entryCount` property.
 
 To list the entries contained within a stored glossary, use
-`getMultilingualGlossaryEntries()` providing either the `MultilingualGlossaryInfo` object or glossary
+`getMultilingualGlossaryDictionaryEntries()` providing either the `MultilingualGlossaryInfo` object or glossary
 ID and the source and target language pair:
 
 ```javascript
