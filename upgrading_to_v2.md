@@ -131,11 +131,15 @@ The writing style and tone move into `RephraseTextOptions`. There is no fourth a
 
 ```ts
 // Before
-await client.rephraseText('Hi', 'de', 'business', 'confident');
+await client.rephraseText('Hi', 'de', 'business');
+await client.rephraseText('Hi', 'de', null, 'confident');
 
 // After
-await client.rephraseText('Hi', 'de', { writingStyle: 'business', tone: 'confident' });
+await client.rephraseText('Hi', 'de', { writingStyle: 'business' });
+await client.rephraseText('Hi', 'de', { tone: 'confident' });
 ```
+
+The API accepts a writing style or a tone in one request, not both.
 
 ### Empty `targetLang` in `rephraseText()` and `correctText()`
 
@@ -375,12 +379,38 @@ parses, and the fields are ignored.
 ### Create requests are retried less
 
 Methods that create a resource are retried only when the request was not sent: HTTP 429, DNS
-failures, refused connections, unreachable hosts or networks and connect timeouts. A 5xx response
-or a reset connection is no longer retried, and `shouldRetry` is false for a 5xx, because the API
+failures, refused connections, unreachable hosts or networks, and timeouts or resets while
+connecting, TLS handshake included (inside a proxy's CONNECT tunnel too). A 5xx response or a
+connection reset after the request was sent is no longer retried, and `shouldRetry` is false for a 5xx, because the API
 may have created the resource. Affected methods: `translateDocument()`,
 `translateDocumentUpload()`, all glossary, spoken terms, style rule, custom instruction and style
 profile creates, `createTranslationMemoryImport()`, `createTranslationMemoryExport()` and the
 translation memory file helpers. Check whether the resource exists before creating it again.
+
+### `createDeveloperKey()` is retried after a TLS handshake failure
+
+`DeepLAdminClient.createDeveloperKey()` is retried after a timeout or connection reset during the
+TLS handshake, before the request is written, also inside a proxy's CONNECT tunnel. It used to
+reject at once with a `ConnectionError` whose `shouldRetry` was false; now that error comes after
+`maxRetries` retries and has `shouldRetry` true. A reset after the handshake is still not retried.
+Code that retries `createDeveloperKey()` itself after such an error now sees the library's retries
+first.
+
+### Proxy refusals throw `ConnectionError`
+
+A non-2xx answer of the `proxy` to the CONNECT request, for example 407 (Proxy Authentication
+Required) or 502, throws a `ConnectionError` with `shouldRetry` false and no `httpStatusCode`, and
+is never retried. It used to be handled as an API response: a `DeepLError` subclass for the
+proxy's status (for example `NotFoundError` for 404) with that status in `httpStatusCode`, retried
+for 429 and 5xx. The message contains the proxy's status.
+
+```ts
+// Before
+if (e instanceof deepl.DeepLError && e.httpStatusCode === 407) { /* proxy credentials */ }
+
+// After
+if (e instanceof deepl.ConnectionError && e.message.includes('407')) { /* proxy credentials */ }
+```
 
 ### Cut-off response bodies
 
@@ -407,6 +437,51 @@ if (e instanceof deepl.ArgumentError) { /* invalid input */ }
 `instanceof DeepLError` checks keep working. The `GlossaryEntries` constructor and `add()` still
 throw a plain `DeepLError` for malformed TSV and duplicate source terms; `toTsv()` and
 `validateGlossaryTerm()` throw `ArgumentError` for invalid terms.
+
+### `null` resources and empty language codes throw `ArgumentError`
+
+These throw `ArgumentError` without sending a request:
+
+- a `null` `glossaryIds` element in `translateText()`, `translateDocument()` and
+  `translateDocumentUpload()`, and a `null` translation memory in `getTranslationMemory()`,
+  `listTranslationMemorySegments()`, `deleteTranslationMemory()` and
+  `createTranslationMemoryExport()`. They threw a `TypeError` before.
+  `exportTranslationMemoryToFilepath()` rejects with a `TranslationMemoryJobError` whose `error` is
+  the `ArgumentError`.
+- an empty `sourceLangCode` or `targetLangCode` of a dictionary in `createMultilingualGlossary()`,
+  `updateMultilingualGlossary()`, `updateMultilingualGlossaryDictionary()` and
+  `replaceMultilingualGlossaryDictionary()`; an empty `lang` of a term list in
+  `createSpokenTerms()`, `updateSpokenTerms()` and `replaceSpokenTermsList()`, and an empty `lang`
+  in `getSpokenTermsEntries()` and `deleteSpokenTermsList()`; an empty `source_language` of a
+  custom instruction in `createStyleRule()` and an empty `sourceLanguage` in
+  `createStyleRuleCustomInstruction()` and `updateStyleRuleCustomInstruction()`. The API rejected
+  them with a `DeepLError` before. These two methods now leave out a `null` `sourceLanguage`
+  instead of sending JSON `null`.
+
+Catch `ArgumentError` instead of `TypeError` or the `DeepLError` the API returned.
+
+### Argument types are not checked
+
+The TypeScript types are the contract. A `null`, `undefined` or non-string key in the
+`DeepLClient` and `DeepLAdminClient` constructors, text in `translateText()`, `rephraseText()` and
+`correctText()`, language code, glossary name in `createGlossary()` and `createGlossaryWithCsv()`,
+or glossary or spoken term; a `DeveloperKey` whose `keyId` is not a string in
+`deactivateDeveloperKey()`, `renameDeveloperKey()` and `setDeveloperKeyUsageLimits()`; and a date
+that is neither a `Date` nor a string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`
+threw `ArgumentError` (a `DeepLError` in 1.x for most of them). It now throws JavaScript's own
+`TypeError`, or, for a value without `length` such as a number, is sent as given. Empty values and
+invalid dates still throw `ArgumentError`. Pass values of the declared types; check untyped input
+yourself.
+
+```ts
+// Before
+try { await client.translateText(input as string, null, 'de'); }
+catch (e) { if (e instanceof deepl.DeepLError) { /* input was not a string */ } }
+
+// After
+if (typeof input !== 'string') { /* reject the input */ }
+await client.translateText(input, null, 'de');
+```
 
 ### Cancelling requests
 
