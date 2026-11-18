@@ -322,7 +322,8 @@ await client.waitUntilTranslationMemoryJobDone(job, 60_000);
 - `importTranslationMemoryFromFilepath()` throws `ArgumentError` for a missing input file (was the
   Node error `ENOENT`) and `TranslationMemoryJobError` for every other failure.
 - `exportTranslationMemoryToFilepath()` throws `TranslationMemoryJobError` for every failure,
-  including an existing output file and local write failures.
+  including an existing output file and local write failures. For an existing output file the
+  cause is a `DeepLError` ("output file '...' already exists", no `code`) and no request is sent.
 
 The cause is in `error`, next to `jobId` and `job`. `httpStatusCode` and `shouldRetry` are copied
 from a `DeepLError` cause. `downloadTranslationMemoryExport()` still throws the Node error for
@@ -337,7 +338,8 @@ catch (e) { if ((e as NodeJS.ErrnoException).code === 'EEXIST') { /* ... */ } }
 try { await client.exportTranslationMemoryToFilepath(tm, 'tm.tmx'); }
 catch (e) {
     if (e instanceof deepl.TranslationMemoryJobError &&
-        (e.error as NodeJS.ErrnoException | undefined)?.code === 'EEXIST') { /* ... */ }
+        e.error instanceof deepl.DeepLError &&
+        e.error.message.includes('already exists')) { /* ... */ }
 }
 ```
 
@@ -479,7 +481,7 @@ try { await client.translateText(input as string, null, 'de'); }
 catch (e) { if (e instanceof deepl.DeepLError) { /* input was not a string */ } }
 
 // After
-if (typeof input !== 'string') { /* reject the input */ }
+if (typeof input !== 'string') { throw new TypeError('input must be a string'); }
 await client.translateText(input, null, 'de');
 ```
 
