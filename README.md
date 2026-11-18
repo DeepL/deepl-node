@@ -430,7 +430,6 @@ try {
     console.error(`Error reading file at ${filePath}:`, error);
     throw error;
 }
-const csvContent = await readCsvFile(filePath);
 const glossaryEnToDe = await deeplClient.createMultilingualGlossaryFromCsv('My glossary', 'en', 'de', csvContent);
 ```
 
@@ -557,8 +556,8 @@ const updatedGlossary = await deeplClient.updateMultilingualGlossaryDictionary(m
 // Rename the glossary and merge entries in one request
 await deeplClient.updateMultilingualGlossary(myGlossary, { name: 'My renamed glossary', dictionaries: [newDict] });
 
-const entriesObj = await deeplClient.getMultilingualGlossaryDictionaryEntries(createdGlossary, 'en', 'de');
-console.log(entriesObj.entries.toTsv()); // {'artist': 'Maler', 'hello': 'hallo', 'prize': 'Gewinn'}
+const entriesObj = await deeplClient.getMultilingualGlossaryDictionaryEntries(myGlossary, 'en', 'de');
+console.log(entriesObj.entries.toTsv()); // 'artist\tMaler\nhello\thallo\nprize\tGewinn'
 ```
 
 For examples for the other methods please see [this migration guide](upgrading_to_multilingual_glossaries.md)
@@ -1022,7 +1021,9 @@ const result = await deeplClient.translateText(
     'de',
     { translationMemory: 'YOUR_TM_ID' },
 );
+```
 
+```typescript
 // Using a TranslationMemoryInfo object with a similarity threshold
 const translationMemories = await deeplClient.listTranslationMemories();
 const result = await deeplClient.translateText(
@@ -1276,7 +1277,7 @@ the `appInfo` field in the `DeepLClientOptions`, which takes the name and versio
 
 ```javascript
 const options = {appInfo: { appName: 'sampleNodeTranslationApp', appVersion: '1.2.3' },};
-const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+const deeplClient = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 This information is passed along when the library makes calls to the DeepL API.
@@ -1289,7 +1290,7 @@ for example:
 
 ```javascript
 const options = { maxRetries: 5, minTimeout: 10000 };
-const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+const deeplClient = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 The available options are:
@@ -1339,16 +1340,16 @@ The third argument is optional and is a `RephraseTextOptions` object (it extends
 
 ```javascript
 // Rephrasing a text in academic style:
-const rephrasedResult = await deepLClient.rephraseText('This is an example text.', 'en', {
-    writingStyle: WritingStyle.ACADEMIC,
+const rephrasedResult = await deeplClient.rephraseText('This is an example text.', 'en', {
+    writingStyle: deepl.WritingStyle.ACADEMIC,
 });
 console.log(rephrasedResult.text); // The rephrased text in academic style
 
 // Rephrasing multiple texts in a friendly tone:
-const rephrasedTexts = await deepLClient.rephraseText(
+const rephrasedTexts = await deeplClient.rephraseText(
     ['How are you?', 'What are you doing today?'],
     'de',
-    { tone: WritingTone.FRIENDLY },
+    { tone: deepl.WritingTone.FRIENDLY },
 );
 console.log(rephrasedTexts[0].text); // The rephrased text for "How are you?" in a friendly tone
 console.log(rephrasedTexts[1].text); // The rephrased text for "What are you doing today?" in a friendly tone
@@ -1370,11 +1371,11 @@ The third argument is optional and is a `CorrectTextOptions` object (it is `Base
 
 ```javascript
 // Correcting a single text:
-const corrected = await deepLClient.correctText('I has a apple.', 'en-US');
+const corrected = await deeplClient.correctText('I has a apple.', 'en-US');
 console.log(corrected.text); // It has an apple.
 
 // Correcting multiple texts:
-const correctedTexts = await deepLClient.correctText(['I has a apple.', 'She go to school.']);
+const correctedTexts = await deeplClient.correctText(['I has a apple.', 'She go to school.']);
 console.log(correctedTexts[1].text); // She goes to school.
 ```
 
@@ -1401,7 +1402,7 @@ You can configure a proxy by specifying the `proxy` argument when constructing a
 
 ```javascript
 const options = {proxy: {host: 'localhost', port: 3000}};
-const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+const deeplClient = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 The proxy may also be given as a URL; the protocol, host, port and optional
@@ -1410,7 +1411,7 @@ a SOCKS proxy is not supported:
 
 ```javascript
 const options = {proxy: 'http://user:pass@localhost:3000'};
-const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+const deeplClient = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 The proxy argument is passed to the underlying `axios` request, see the
@@ -1432,7 +1433,7 @@ the `DeepLClientOptions` to `false` like so:
 
 ```javascript
 const options = {sendPlatformInfo: false};
-const deepl = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
+const deeplClient = new deepl.DeepLClient('YOUR_AUTH_KEY', options);
 ```
 
 ### Request retries
