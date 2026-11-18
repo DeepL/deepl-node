@@ -127,8 +127,7 @@ The error message no longer contains the URL.
 
 ### `rephraseText()` takes an options object
 
-The writing style and tone move into `RephraseTextOptions`. There is no fourth argument, and a
-non-object third argument throws `ArgumentError`.
+The writing style and tone move into `RephraseTextOptions`. There is no fourth argument.
 
 ```ts
 // Before
