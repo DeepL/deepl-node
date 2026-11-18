@@ -104,6 +104,9 @@ with before and after code.
   `String()`, other objects as JSON, and a `null` value removes the parameter. The API does not convert strings, so a
   string for a field it types as a boolean, number or array is now rejected,
   e.g. `{ outline_detection: '0' }`: pass `false` or use the matching option.
+  `extraBodyParameters: { outline_detection: '0' }` still compiles but fails at
+  runtime with HTTP 400 "Value for 'outline_detection' not supported"; write
+  `extraBodyParameters: { outline_detection: false }`.
   Objects typed as `Record<string, string>` still compile as extra body
   parameters; only code that reads values from a `RequestParameters` as strings
   needs a cast or check.
@@ -176,9 +179,10 @@ with before and after code.
   for 456, `DocumentNotReadyError` for 503). It throws a `DeepLError` instead
   of an `ArgumentError` for a job without download URL, as the job state comes
   from the API.
-- `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
+- **Breaking:** `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
   when `serverUrl` is not an absolute `http` or `https` URL, for example
   `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
+  Pass an absolute URL such as `'https://api.deepl.com'`.
 - **Breaking:** `DeepLClient` and `DeepLAdminClient` constructors throw an
   `ArgumentError` when the `proxy` option is a URL string that is not `http` or
   `https` with a host, for example `'proxy.example.com:3128'` or
@@ -295,7 +299,9 @@ with before and after code.
   its request to `/v2/translate`.
 - **Breaking:** The `'on'` and `'default'` values of `SentenceSplittingMode`: use `'1'`.
   Any other string is still sent unchanged, so these values now reach the API
-  as given.
+  as given. `splitSentences: 'on'` still compiles but fails at runtime with
+  HTTP 400 "Value for 'split_sentences' not supported"; write
+  `splitSentences: '1'`.
 - **Breaking:** `uploadDocument()`, `getDocumentStatus()` and `downloadDocument()`: use
   `translateDocumentUpload()`, `translateDocumentGetStatus()` and
   `translateDocumentDownload()`, which behave the same.
@@ -313,10 +319,12 @@ with before and after code.
 - **Breaking:** the modules `dist/translator`, `dist/documentMinifier` and
   `dist/fsHelper` no longer exist, so deep imports such as
   `deepl-node/dist/translator` fail. Import from the package root.
-- The package no longer depends on `adm-zip`.
-- The package no longer depends on `form-data`: document uploads use the
+- **Breaking:** The package no longer depends on `adm-zip`. Projects that use
+  `adm-zip` themselves add it to their own `dependencies`.
+- **Breaking:** The package no longer depends on `form-data`: document uploads use the
   `FormData` and `Blob` globals of Node.js 18 and send the same multipart
   fields, filename and content type. No code change is needed.
+  Projects that use `form-data` themselves add it to their own `dependencies`.
 
 ### Fixed
 - `translateText()`, `translateDocument()` and `translateDocumentUpload()`
