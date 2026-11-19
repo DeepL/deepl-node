@@ -203,8 +203,9 @@ with before and after code.
   `translationMemoryIds` elements as given, like `glossaryIds` and
   `styleRuleIds`, instead of throwing a `DeepLError` before the request for an
   empty ID or a `TranslationMemoryInfo` without ID; the API now rejects invalid
-  IDs, e.g. an empty ID with HTTP 400. Catch the API's `DeepLError` instead of
-  the `DeepLError` thrown before the request.
+  IDs, e.g. an empty ID with HTTP 400. A `catch` of `DeepLError` still catches
+  it; the error now comes from the API, after the request. Pass valid
+  translation memory IDs.
 - **Breaking:** `translateText()`, `translateDocument()` and
   `translateDocumentUpload()` throw an `ArgumentError` for a `null`
   `glossaryIds` element, and `getTranslationMemory()`,

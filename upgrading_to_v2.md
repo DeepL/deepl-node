@@ -298,7 +298,8 @@ const tone = rule.configuredRules?.style_and_tone;
 `createStyleProfile()` and `updateStyleProfile()` send the `translationMemoryIds` elements as given,
 as for `glossaryIds` and `styleRuleIds`, instead of throwing a `DeepLError` before the request for an
 empty ID or a `TranslationMemoryInfo` without ID. The API now rejects invalid IDs, e.g. an empty ID
-with HTTP 400. Catch the API's `DeepLError` instead of the one thrown before the request.
+with HTTP 400. A `catch` of `DeepLError` still catches it; the error now comes from the API, after
+the request. Pass valid translation memory IDs.
 
 ### `CustomInstruction.id` is required
 
