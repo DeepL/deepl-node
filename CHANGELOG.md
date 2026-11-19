@@ -43,7 +43,8 @@ with before and after code.
 - **Breaking:** a response body that is cut off mid-read now fails with a
   `ConnectionError` whose `shouldRetry` is true, and is retried like a reset
   connection, except for the creates above. Before, it was never retried and
-  `shouldRetry` was false.
+  `shouldRetry` was false. Code that retried such errors itself can rely on
+  the library's retries.
 - **Breaking:** `Usage.anyLimitReached()` is replaced by `Usage.anyCharacterLimitReached()`,
   which returns true if the account's character limit (`character`) or this
   API key's character limit (`apiKeyCharacter`) is reached. An absent detail
@@ -98,10 +99,9 @@ with before and after code.
 - **Breaking:** `RequestParameters`, the type of `extraBodyParameters`, is
   `Record<string, unknown>` (was `Record<string, string>`). In JSON bodies each
   value keeps its JSON type, so booleans, numbers and arrays can be passed
-  (`{ show_billed_characters: false }`); a `null` value is sent as JSON `null`
-  and `undefined` is ignored. In the multipart document upload, strings are
-  sent as given, arrays comma-joined, booleans as `true`/`false`, numbers via
-  `String()`, other objects as JSON, and a `null` value removes the parameter. The API does not convert strings, so a
+  (`{ show_billed_characters: false }`). In the multipart document upload,
+  strings are sent as given, arrays comma-joined, booleans as `true`/`false`,
+  numbers via `String()` and other objects as JSON. The API does not convert strings, so a
   string for a field it types as a boolean, number or array is now rejected,
   e.g. `{ outline_detection: '0' }`: pass `false` or use the matching option.
   `extraBodyParameters: { outline_detection: '0' }` still compiles but fails at
@@ -120,18 +120,9 @@ with before and after code.
   `configuredRules.style_and_tone`.
 - **Breaking:** `rephraseText()` takes a `RephraseTextOptions` object as its third argument
   and has no fourth argument. Pass `{ writingStyle, tone }` instead of the
-  writing style and tone as the third and fourth arguments.
-- **Breaking:** `checkStatusCode()` is no longer exported from the package root. It is
-  internal and has no replacement.
-- **Breaking:** The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,
-  `MultilingualGlossaryDictionaryApiResponse`, `ListMultilingualGlossaryApiResponse`,
-  `StyleRuleInfoApiResponse`, `ListStyleRuleApiResponse`,
-  `TranslationMemoryInfoApiResponse`, `ListTranslationMemoryApiResponse`,
-  `TranslationMemorySegmentsApiResponse`, `TranslationMemoryImportApiResponse`,
-  `TranslationMemoryExportApiResponse`, `TranslationMemoryJobApiResponse` and
-  `LanguageResourceApiResponse` are no longer exported. Use the parsed types
-  the methods return (`MultilingualGlossaryInfo`, `StyleRuleInfo`,
-  `TranslationMemoryInfo`, `TranslationMemoryJob`, `LanguageResource`, ...).
+  writing style and tone as the third and fourth arguments. JavaScript callers
+  that still pass the writing style or tone positionally get no error: the
+  value is ignored and the text is rephrased without it.
 - **Breaking:** Node.js 18 or later is required (`engines.node` is `>=18`, was `>=14.17`),
   and the package is compiled to ES2022. Upgrade Node.js to 18 or later before
   upgrading the package.
@@ -162,11 +153,16 @@ with before and after code.
   `updateMultilingualGlossaryDictionary()` and
   `updateMultilingualGlossaryDictionaryFromCsv()`) throw `ArgumentError` before
   any request for an empty glossary ID or a `MultilingualGlossaryInfo` without
-  one; before, they sent a request to `/v3/glossaries/undefined` or
-  `/v3/glossaries/`. `createMultilingualGlossary()` throws `ArgumentError` for
-  an empty dictionary list, and it, `replaceMultilingualGlossaryDictionary()`,
+  one. Before, all but `updateMultilingualGlossary()` sent a request to
+  `/v3/glossaries/undefined` for a `MultilingualGlossaryInfo` without ID (HTTP
+  400 from the API), and `updateMultilingualGlossaryName()` sent one to
+  `/v3/glossaries/` for an empty ID (HTTP 404); the others already threw
+  `ArgumentError` for an empty ID. `createMultilingualGlossary()` throws
+  `ArgumentError` for an empty dictionary list, and it,
+  `replaceMultilingualGlossaryDictionary()`,
   `updateMultilingualGlossaryDictionary()` and `updateMultilingualGlossary()`
-  throw `ArgumentError` for a dictionary without entries.
+  throw `ArgumentError` for a dictionary without entries. Catch `ArgumentError`
+  where you handled the API's 400 or 404 for these calls.
 - **Breaking:** `translateDocumentGetStatus()` and
   `translateDocumentWaitUntilDone()` throw a `DeepLError` for HTTP 503 (was
   `DocumentNotReadyError`). Only `translateDocumentDownload()` throws
@@ -178,7 +174,7 @@ with before and after code.
   `AuthorizationError` for 403, `NotFoundError` for 404, `QuotaExceededError`
   for 456, `DocumentNotReadyError` for 503). It throws a `DeepLError` instead
   of an `ArgumentError` for a job without download URL, as the job state comes
-  from the API.
+  from the API. Check `httpStatusCode` instead of the `DeepLError` subclass.
 - **Breaking:** `DeepLClient` and `DeepLAdminClient` constructors throw an `ArgumentError`
   when `serverUrl` is not an absolute `http` or `https` URL, for example
   `'api.deepl.com'` or `'ftp://x'`, instead of failing on the first request.
@@ -192,9 +188,10 @@ with before and after code.
 - `createTranslationMemoryExport()` and `exportTranslationMemoryToFilepath()`
   send the export request without a `Content-Type` header, as it has no body
   (was `application/x-www-form-urlencoded`).
-- **Breaking:** `null` values in `extraBodyParameters` are sent as JSON `null`
-  in JSON bodies instead of removing the field; the document upload (form
-  body) still removes them. `undefined` values are still ignored.
+- **Breaking:** a `null` value in `extraBodyParameters` was sent as the string
+  `"null"` in form-encoded bodies; it is now sent as JSON `null` by the methods
+  that switched to JSON bodies and removes the parameter in the document
+  upload. Pass `undefined` to leave a parameter out.
 - **Breaking:** `CustomInstruction.id` is now `string` instead of
   `string | undefined`. `CustomInstruction` is only returned by the API, which
   always sets it; code that builds `CustomInstruction` objects must set `id`.
@@ -204,9 +201,10 @@ with before and after code.
   text.
 - **Breaking:** `createStyleProfile()` and `updateStyleProfile()` send the
   `translationMemoryIds` elements as given, like `glossaryIds` and
-  `styleRuleIds`, instead of throwing `ArgumentError` for an empty ID or a
-  `TranslationMemoryInfo` without ID; the API rejects invalid IDs
-  (`DeepLError`).
+  `styleRuleIds`, instead of throwing a `DeepLError` before the request for an
+  empty ID or a `TranslationMemoryInfo` without ID; the API now rejects invalid
+  IDs, e.g. an empty ID with HTTP 400. Catch the API's `DeepLError` instead of
+  the `DeepLError` thrown before the request.
 - **Breaking:** `translateText()`, `translateDocument()` and
   `translateDocumentUpload()` throw an `ArgumentError` for a `null`
   `glossaryIds` element, and `getTranslationMemory()`,
@@ -231,7 +229,7 @@ with before and after code.
   that `DeepLError`.
 - `translateText()`, `translateDocument()` and `translateDocumentUpload()`
   treat an `undefined` `sourceLang` like `null`: the source language is
-  auto-detected. They threw an `ArgumentError` before.
+  auto-detected. They threw a `DeepLError` before.
 - **Breaking:** `DeepLAdminClient.createDeveloperKey()` is now also retried
   after a timeout or connection reset during the TLS handshake, inside a proxy's
   CONNECT tunnel too, before the request is written; a reset after the handshake
@@ -248,10 +246,12 @@ with before and after code.
   or spoken term, a `DeveloperKey` whose `keyId` is not a string in
   `deactivateDeveloperKey()`, `renameDeveloperKey()` and
   `setDeveloperKeyUsageLimits()`, and a date that is neither a `Date` nor a
-  string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`, threw an
-  `ArgumentError` (a `DeepLError` in 1.x for most of them). It now throws
-  JavaScript's own `TypeError`, or, for a value without `length` such as a
-  number, is sent as given. Empty values and invalid dates still throw
+  string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`: in
+  1.29.0 these threw a plain `DeepLError` (`DeepLClient` constructor, texts,
+  language codes, glossary names and terms) or an `ArgumentError`
+  (`DeepLAdminClient` constructor, developer key methods, usage analytics
+  dates). It now throws JavaScript's own `TypeError`, or, for a value without
+  `length` such as a number, is sent as given. Empty values and invalid dates still throw
   `ArgumentError`. Code that catches `ArgumentError` for such values must pass
   values of the declared types.
 - **Breaking:** a non-2xx answer of the `proxy` to the CONNECT request, for
@@ -264,6 +264,17 @@ with before and after code.
   `ConnectionError` instead; its message contains the proxy's status.
 
 ### Removed
+- **Breaking:** `checkStatusCode()` is no longer exported from the package root. It is
+  internal and has no replacement.
+- **Breaking:** The internal response types `MultilingualGlossaryDictionaryEntriesApiResponse`,
+  `MultilingualGlossaryDictionaryApiResponse`, `ListMultilingualGlossaryApiResponse`,
+  `StyleRuleInfoApiResponse`, `ListStyleRuleApiResponse`,
+  `TranslationMemoryInfoApiResponse`, `ListTranslationMemoryApiResponse`,
+  `TranslationMemorySegmentsApiResponse`, `TranslationMemoryImportApiResponse`,
+  `TranslationMemoryExportApiResponse`, `TranslationMemoryJobApiResponse` and
+  `LanguageResourceApiResponse` are no longer exported. Use the parsed types
+  the methods return (`MultilingualGlossaryInfo`, `StyleRuleInfo`,
+  `TranslationMemoryInfo`, `TranslationMemoryJob`, `LanguageResource`, ...).
 - **Breaking:** the deprecated `GlossaryNotFoundError`. Glossary requests that
   answer HTTP 404, and `getMultilingualGlossaryDictionaryEntries()` when the
   dictionary is missing, throw `NotFoundError`, which it extended. Replace
