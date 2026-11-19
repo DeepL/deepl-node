@@ -100,8 +100,9 @@ string for a boolean, number or array field is rejected. Pass the real type:
 { extraBodyParameters: { outline_detection: false } }
 ```
 
-A `null` value is sent as JSON `null` in a JSON body. It used to remove the field. In the form body
-of the document upload, `null` still removes the parameter. `undefined` is ignored.
+A `null` value was sent as the string `"null"` in form-encoded bodies. It is now sent as JSON `null`
+by the methods that switched to JSON bodies and removes the parameter in the document upload. Pass
+`undefined` to leave a parameter out.
 
 ### Request bodies are JSON
 
@@ -139,7 +140,9 @@ await client.rephraseText('Hi', 'de', { writingStyle: 'business' });
 await client.rephraseText('Hi', 'de', { tone: 'confident' });
 ```
 
-The API accepts a writing style or a tone in one request, not both.
+The API accepts a writing style or a tone in one request, not both. JavaScript callers that still
+pass the writing style or tone positionally get no error: the value is ignored and the text is
+rephrased without it.
 
 ### Empty `targetLang` in `rephraseText()` and `correctText()`
 
@@ -247,7 +250,10 @@ monolingual `createGlossaryWithCsv()` keeps its name.
 ### Missing IDs and empty dictionaries throw before the request
 
 The multilingual glossary methods that take a glossary throw `ArgumentError` for an empty ID or a
-`MultilingualGlossaryInfo` without one. Before, they requested `/v3/glossaries/undefined`.
+`MultilingualGlossaryInfo` without one. Before, they sent a request to `/v3/glossaries/undefined`
+for a `MultilingualGlossaryInfo` without ID (except `updateMultilingualGlossary()`), and
+`updateMultilingualGlossaryName()` sent one to `/v3/glossaries/` for an empty ID; the others already
+threw `ArgumentError` for an empty ID.
 `createMultilingualGlossary()` throws for an empty dictionary list, and it and the replace and
 update methods throw for a dictionary without entries. `deleteMultilingualGlossary()` throws
 `ArgumentError` for an empty or missing ID (was a plain `Error`, or `TypeError` for `null`).
@@ -289,9 +295,10 @@ const tone = rule.configuredRules?.style_and_tone;
 
 ### Style profiles send translation memory IDs as given
 
-`createStyleProfile()` and `updateStyleProfile()` no longer throw `ArgumentError` for an empty
-translation memory ID. The API rejects it with a `DeepLError`, as for `glossaryIds` and
-`styleRuleIds`.
+`createStyleProfile()` and `updateStyleProfile()` send the `translationMemoryIds` elements as given,
+as for `glossaryIds` and `styleRuleIds`, instead of throwing a `DeepLError` before the request for an
+empty ID or a `TranslationMemoryInfo` without ID. The API now rejects invalid IDs, e.g. an empty ID
+with HTTP 400. Catch the API's `DeepLError` instead of the one thrown before the request.
 
 ### `CustomInstruction.id` is required
 
@@ -469,11 +476,12 @@ The TypeScript types are the contract. A `null`, `undefined` or non-string key i
 `correctText()`, language code, glossary name in `createGlossary()` and `createGlossaryWithCsv()`,
 or glossary or spoken term; a `DeveloperKey` whose `keyId` is not a string in
 `deactivateDeveloperKey()`, `renameDeveloperKey()` and `setDeveloperKeyUsageLimits()`; and a date
-that is neither a `Date` nor a string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`
-threw `ArgumentError` (a `DeepLError` in 1.x for most of them). It now throws JavaScript's own
-`TypeError`, or, for a value without `length` such as a number, is sent as given. Empty values and
-invalid dates still throw `ArgumentError`. Pass values of the declared types; check untyped input
-yourself.
+that is neither a `Date` nor a string in `getUsageAnalytics()` and `getCustomTagUsageAnalytics()`:
+in 1.29.0 these threw a plain `DeepLError` (`DeepLClient` constructor, texts, language codes,
+glossary names and terms) or an `ArgumentError` (`DeepLAdminClient` constructor, developer key
+methods, usage analytics dates). It now throws JavaScript's own `TypeError`, or, for a value
+without `length` such as a number, is sent as given. Empty values and invalid dates still throw
+`ArgumentError`. Pass values of the declared types; check untyped input yourself.
 
 ```ts
 // Before
