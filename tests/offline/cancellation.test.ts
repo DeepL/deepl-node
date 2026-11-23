@@ -24,6 +24,22 @@ function abortAfter(ms: number): { signal: AbortSignal; reason: Error } {
     return { signal: controller.signal, reason };
 }
 
+/** An error body that sends one chunk, then the rest after the given delay. */
+function slowErrorBody(ms: number): Readable {
+    let sent = false;
+    return new Readable({
+        read() {
+            if (sent) return;
+            sent = true;
+            this.push('{"message":');
+            setTimeout(() => {
+                this.push('"not ready"}');
+                this.push(null);
+            }, ms);
+        },
+    });
+}
+
 describe('signal option', () => {
     it('rejects with the abort reason, unwrapped, when the request in flight is aborted', async () => {
         nock(serverUrl).get('/v2/usage').delay(2000).reply(200, { character_count: 1 });
@@ -127,6 +143,51 @@ describe('signal option', () => {
 
         const error = await makeDeeplClient()
             .translateDocumentDownload(handle, outputFile, { signal })
+            .catch((e) => e);
+
+        expect(error).toBe(reason);
+        expect(fs.existsSync(outputFile)).toBe(false);
+    });
+
+    it('rejects translateDocumentDownload with the abort reason while an error body streams', async () => {
+        nock(serverUrl)
+            .post('/v2/document/doc-id/result', keyBody)
+            .reply(404, () => slowErrorBody(1000));
+        const outputFile = path.join(
+            fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-node-')),
+            'out.txt',
+        );
+        const { signal, reason } = abortAfter(100);
+
+        const error = await makeDeeplClient()
+            .translateDocumentDownload(handle, outputFile, { signal })
+            .catch((e) => e);
+
+        expect(error).toBe(reason);
+    });
+
+    it('rejects downloadTranslationMemoryExport with the abort reason while an error body streams', async () => {
+        const storageUrl = 'https://storage.example';
+        nock(storageUrl)
+            .get('/download')
+            .reply(403, () => slowErrorBody(1000));
+        const outputFile = path.join(
+            fs.mkdtempSync(path.join(os.tmpdir(), 'deepl-node-')),
+            'out.tmx',
+        );
+        const { signal, reason } = abortAfter(100);
+
+        const error = await makeDeeplClient()
+            .downloadTranslationMemoryExport(
+                {
+                    jobId: 'job-id',
+                    operation: 'export',
+                    product: 'translation_memory',
+                    results: [{ status: 'completed', downloadUrl: `${storageUrl}/download` }],
+                },
+                outputFile,
+                { signal },
+            )
             .catch((e) => e);
 
         expect(error).toBe(reason);

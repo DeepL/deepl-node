@@ -114,7 +114,8 @@ import {
     extractTranslationMemoryId,
     isString,
     streamToBuffer,
-    streamToString,
+    readErrorBody,
+    throwIfAborted,
     logInfo,
     buildQueryString,
     setExtraBodyParameters,
@@ -196,11 +197,16 @@ async function throwStorageError(
     action: string,
     statusCode: number,
     content: string | IncomingMessage,
+    signal?: AbortSignal,
 ): Promise<never> {
     if (content instanceof IncomingMessage) {
         // Reading the body drains the response, so the socket is not left held
-        content = await streamToString(content).catch((e) => `error reading response: ${e}`);
+        content = await readErrorBody(content, signal).catch((e) => {
+            throwIfAborted(signal);
+            return `error reading response: ${e}`;
+        });
     }
+    throwIfAborted(signal);
     const error = new DeepLError(`${action}, HTTP status: ${statusCode}, content: ${content}`);
     error.httpStatusCode = statusCode;
     error.shouldRetry = statusCode === 429 || statusCode >= 500;
@@ -969,7 +975,7 @@ export class DeepLClient {
                 { data, signal: options?.signal },
                 true,
             );
-        await checkStatusCode(statusCode, content, true);
+        await checkStatusCode(statusCode, content, true, options?.signal);
 
         return pipeToStream(content, outputStream, options?.signal);
     }
@@ -2283,6 +2289,7 @@ export class DeepLClient {
                     'Error downloading translation memory export',
                     statusCode,
                     content,
+                    options?.signal,
                 );
             }
 

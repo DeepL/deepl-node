@@ -113,6 +113,38 @@ export function throwIfAborted(signal?: AbortSignal): void {
 }
 
 /**
+ * Reads an error response body to a string. If the signal is aborted first, destroys the stream,
+ * so the socket is released, and rejects with the abort reason.
+ * @private
+ */
+export async function readErrorBody(
+    stream: IncomingMessage,
+    signal?: AbortSignal,
+): Promise<string> {
+    if (!signal) return streamToString(stream);
+    if (signal.aborted) {
+        stream.destroy();
+        throw abortReason(signal);
+    }
+    let onAbort: (() => void) | undefined = undefined;
+    const aborted = new Promise<never>((resolve, reject) => {
+        onAbort = () => {
+            stream.destroy();
+            reject(abortReason(signal));
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+        return await Promise.race([streamToString(stream), aborted]);
+    } catch (error) {
+        throwIfAborted(signal);
+        throw error;
+    } finally {
+        if (onAbort) signal.removeEventListener('abort', onAbort);
+    }
+}
+
+/**
  * Resolves after the given time, or rejects with the signal's abort reason when it is aborted.
  * @private
  */
@@ -677,16 +709,19 @@ export async function checkStatusCode(
     statusCode: number,
     content: string | IncomingMessage,
     inDocumentDownload = false,
+    signal?: AbortSignal,
 ): Promise<void> {
     if (200 <= statusCode && statusCode < 300) return;
 
     if (content instanceof IncomingMessage) {
         try {
-            content = await streamToString(content);
+            content = await readErrorBody(content, signal);
         } catch (e) {
+            throwIfAborted(signal);
             content = `Error occurred while reading response: ${e}`;
         }
     }
+    throwIfAborted(signal);
 
     let message = '';
     try {
