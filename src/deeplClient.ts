@@ -367,7 +367,8 @@ export class DeepLClient {
     }
 
     /**
-     * Queries character and document usage during the current billing period.
+     * Queries usage during the current billing period: character usage, and for API Pro accounts
+     * also this key's character usage, speech minutes, per-product usage and the period's dates.
      * @param options Optional `signal` to cancel the request, see {@link RequestOptions}.
      * @return Fulfills with Usage object on success.
      */
