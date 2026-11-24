@@ -19,13 +19,12 @@ with before and after code.
   methods that had none, a new trailing `options` argument of the new type
   `RequestOptions` (which `BaseRequestOptions`, `WaitOptions`,
   `TranslationMemorySegmentsOptions` and `GetLanguagesForResourceOptions` now
-  extend). Aborting cancels the request in flight, pending retries and the wait
-  between status checks of `translateDocument()`,
+  extend). Aborting cancels the request in flight, the download of a response
+  body (an error response's included), pending retries and the wait between
+  status checks of `translateDocument()`,
   `translateDocumentWaitUntilDone()`, `waitUntilTranslationMemoryJobDone()` and
-  the translation memory file helpers, and closes the connection while the body
-  of an error response to `translateDocumentDownload()` or
-  `downloadTranslationMemoryExport()` arrives. The promise rejects with the
-  signal's abort reason, unwrapped: not a `DeepLError`, and `translateDocument()` does
+  the translation memory file helpers. The promise rejects with the signal's
+  abort reason, unwrapped: not a `DeepLError`, and `translateDocument()` does
   not wrap it in a `DocumentTranslationError`. Code that relies on every
   rejection being a `DeepLError` must check `signal.aborted` first when it
   passes a signal.
