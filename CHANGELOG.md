@@ -348,11 +348,6 @@ with before and after code.
   the attempt's timeout (`minTimeout`) with a `ConnectionError` (`error.code`
   `ECONNABORTED`) and are retried like other timeouts. They never settled
   before.
-- Cancellation: aborting `translateDocumentDownload()` or
-  `downloadTranslationMemoryExport()` while the body of an error response is
-  still arriving rejects with the signal's abort reason and closes the
-  connection. It waited for the body and rejected with a `DeepLError` (for
-  example `DocumentNotReadyError`) before.
 
 ## [1.29.0] - 2026-11-02
 TL;DR: new APIs in this release: the Admin API, spoken terms, style profiles and text correction.
