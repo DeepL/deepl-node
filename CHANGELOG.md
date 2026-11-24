@@ -22,8 +22,10 @@ with before and after code.
   extend). Aborting cancels the request in flight, pending retries and the wait
   between status checks of `translateDocument()`,
   `translateDocumentWaitUntilDone()`, `waitUntilTranslationMemoryJobDone()` and
-  the translation memory file helpers. The promise rejects with the signal's
-  abort reason, unwrapped: not a `DeepLError`, and `translateDocument()` does
+  the translation memory file helpers, and closes the connection while the body
+  of an error response to `translateDocumentDownload()` or
+  `downloadTranslationMemoryExport()` arrives. The promise rejects with the
+  signal's abort reason, unwrapped: not a `DeepLError`, and `translateDocument()` does
   not wrap it in a `DocumentTranslationError`. Code that relies on every
   rejection being a `DeepLError` must check `signal.aborted` first when it
   passes a signal.
