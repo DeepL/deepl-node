@@ -549,7 +549,7 @@ export class HttpClient {
  * @private
  */
 function constructUserAgentString(sendPlatformInfo: boolean, appInfo: AppInfo | undefined): string {
-    let libraryInfoString = 'deepl-node/1.29.0';
+    let libraryInfoString = 'deepl-node/2.0.0';
     if (sendPlatformInfo) {
         const systemType = os.type();
         const systemVersion = os.version();
