@@ -980,7 +980,7 @@ Read Changed and Deprecated before upgrading; no public API is removed in this r
   Note: older library versions also support the new glossary language pairs,
   this update only adds new types.
 - Fixed typo in readme: `createGlossaryWithCsv` not `createGlossaryFromCsv`
-  * Issue [#36](https://github.com/DeepLcom/deepl-node/issues/36) thanks to
+  * Issue [#36](https://github.com/DeepL/deepl-node/issues/36) thanks to
     [phenomen](https://github.com/phenomen).
 
 ## [1.10.2] - 2023-06-02
@@ -1037,7 +1037,7 @@ Read Changed and Deprecated before upgrading; no public API is removed in this r
 ### Fixed
 - Prefer `for .. of` loops to `for .. in` loops, to handle cases where array
   prototype has been modified.
-  * Issue [#10](https://github.com/DeepLcom/deepl-node/issues/10) thanks to
+  * Issue [#10](https://github.com/DeepL/deepl-node/issues/10) thanks to
     [LorenzoJokhan](https://github.com/LorenzoJokhan)
 - Node 18 is supported, this is now explicitly documented.
 
@@ -1077,7 +1077,7 @@ Read Changed and Deprecated before upgrading; no public API is removed in this r
   `getTargetLanguages()` result.
 - Use TypeScript conditional types on `translateText()` to fix TS compiler
   errors.
-  * Issue [#9](https://github.com/DeepLcom/deepl-node/issues/9) thanks to
+  * Issue [#9](https://github.com/DeepL/deepl-node/issues/9) thanks to
     [Jannis Blossey](https://github.com/jblossey)
 
 ## [1.3.1] - 2022-05-18

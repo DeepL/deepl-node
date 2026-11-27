@@ -6,9 +6,9 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git://github.com/DeepLcom/deepl-node.git"
+        "url": "git://github.com/DeepL/deepl-node.git"
     },
-    "bugs": "https://github.com/DeepLcom/deepl-node/issues",
+    "bugs": "https://github.com/DeepL/deepl-node/issues",
     "homepage": "https://www.deepl.com/",
     "engines": {
         "node": ">=18"

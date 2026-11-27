@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/npm/v/deepl-node.svg)](https://www.npmjs.org/package/deepl-node)
 [![Minimum node.js version](https://img.shields.io/node/v/deepl-node.svg)](https://npmjs.com/package/deepl-node)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blueviolet.svg)](https://github.com/DeepLcom/deepl-node/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blueviolet.svg)](https://github.com/DeepL/deepl-node/blob/main/LICENSE)
 
 Official Node.js Client Library for the DeepL API.
 
@@ -1588,7 +1588,7 @@ requests that contribute toward your API usage.
 [api-docs-csv-format]: https://www.deepl.com/docs-api/managing-glossaries/supported-glossary-formats/?utm_source=github&utm_medium=github-nodejs-readme
 [axios-proxy-docs]: https://axios-http.com/docs/req_config
 [create-account]: https://www.deepl.com/pro?utm_source=github&utm_medium=github-nodejs-readme#developer
-[issues]: https://www.github.com/DeepLcom/deepl-node/issues
+[issues]: https://github.com/DeepL/deepl-node/issues
 [nock]: https://github.com/nock/nock
 [node-version-list]: https://nodejs.dev/en/about/releases/
 [pro-account]: https://www.deepl.com/pro-account/?utm_source=github&utm_medium=github-nodejs-readme

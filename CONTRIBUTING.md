@@ -34,4 +34,4 @@ Contributions must be licensed under the same license as the project:
 Currently automated testing is implemented internally at DeepL, however we plan
 to implement publicly visible testing soon.
 
-[issues]: https://www.github.com/DeepLcom/deepl-node/issues
+[issues]: https://github.com/DeepL/deepl-node/issues
